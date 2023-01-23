@@ -12,6 +12,16 @@ provider "aws" {
   region = "us-east-1"
 }
 
+variable "aws_account_id" {
+  type        = string
+  description = "The id of the team's AWS account"
+}
+
+variable "globus_auth_secret_name" {
+  type        = string
+  description = "The id of the team's AWS account"
+}
+
 /* Authorizer Lambda */
 
 resource "aws_lambda_function" "garden_authorizer" {
@@ -127,6 +137,15 @@ resource "aws_api_gateway_method" "garden_auth_hookup" {
   rest_api_id   = aws_api_gateway_rest_api.garden_api.id
 }
 
+resource "aws_lambda_permission" "garden_api_auth_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.garden_authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${aws_api_gateway_rest_api.garden_api.execution_arn}/*/*"
+}
+
 /* Connect the app Lambda to the gateway */
 
 resource "aws_api_gateway_resource" "garden_app" {
@@ -159,6 +178,8 @@ resource "aws_lambda_permission" "garden_api_gw" {
 
 /* Shared Lambda resources */
 
+# You might need separate policies per Lambda ...
+
 resource "aws_iam_role" "lambda_exec" {
   name = "garden_lambda"
 
@@ -176,7 +197,30 @@ resource "aws_iam_role" "lambda_exec" {
   })
 }
 
+resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
+  name        = "test-policy"
+  description = "A test policy"
+
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:${var.globus_auth_secret_name}"
+        }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
 }

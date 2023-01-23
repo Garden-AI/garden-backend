@@ -55,7 +55,7 @@ def lambda_handler(event, context):
     print("established auth_client\n")
     print("Event received: {} \n".format(event))
 
-    token = event['headers']['authorization'].replace("Bearer ", "")
+    token = event['headers']['Authorization'].replace("Bearer ", "")
 
 
     auth_res = auth_client.oauth2_token_introspect(token, include="identities_set")
@@ -64,22 +64,22 @@ def lambda_handler(event, context):
         print("Dependent token ", dependent_token)
 
         if not auth_res:
-            return generate_policy(None, 'Deny', event['routeArn'],
+            return generate_policy(None, 'Deny', event['methodArn'],
                                    message='User not found')
 
         if not auth_res['active']:
-            return generate_policy(None, 'Deny', event['routeArn'],
+            return generate_policy(None, 'Deny', event['methodArn'],
                                    message='User account not active')
 
         print("auth_res", auth_res)
         user_email = auth_res.get("email", "nobody@nowhere.com")
 
-        return generate_policy(auth_res['username'], 'Allow', event['routeArn'],
+        return generate_policy(auth_res['username'], 'Allow', event['methodArn'],
                                name=auth_res["name"],
                                identities=auth_res["identities_set"],
                                user_id=auth_res['sub'],
                                dependent_token=dependent_token,
                                user_email=user_email)
     except:
-        return generate_policy(None, 'Deny', event['routeArn'],
+        return generate_policy(None, 'Deny', event['methodArn'],
                                message='Invalid auth token')
