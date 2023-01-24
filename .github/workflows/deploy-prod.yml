@@ -37,7 +37,7 @@ jobs:
         pip3 install --platform manylinux2010_x86_64 \
                      --use-deprecated=legacy-resolver  \
                      --implementation cp \
-                     --python 3.7 \
+                     --python 3.9 \
                      --only-binary=:all: --upgrade \
                      -r authorizer/requirements.txt -t ./python
         #zip files into current directory
@@ -47,8 +47,18 @@ jobs:
 
     - name: Upload Globus Auth Function
       run: |
+         pip3 install --platform manylinux2010_x86_64 \
+                      --use-deprecated=legacy-resolver  \
+                      --implementation cp \
+                      --python 3.9 \
+                      --only-binary=:all: --upgrade \
+                      -r authorizer/requirements.txt -t ./packages
+         cd packages
+         zip -r ../authorizer.zip .
+         cd ..
          cp authorizer/lambda_function.py ./lambda_function.py
          zip authorizer.zip ./lambda_function.py
+         zip authorizer.zip ./lambda_function.py         
          rm ./lambda_function.py
          aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://./authorizer.zip
 
