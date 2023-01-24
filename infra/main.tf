@@ -27,7 +27,7 @@ variable "globus_auth_secret_name" {
 resource "aws_lambda_function" "garden_authorizer" {
   function_name = "GardenAuthorizer"
 
-  layers = ["arn:aws:lambda:us-east-1:557062710055:layer:GlobusLayer:92"]
+  layers = [aws_lambda_layer_version.garden_python_layer.arn]
   filename = "authorizer.zip"
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
@@ -46,7 +46,7 @@ resource "aws_cloudwatch_log_group" "garden_authorizer" {
 resource "aws_lambda_function" "garden_app" {
   function_name = "GardenApp"
 
-  layers = ["arn:aws:lambda:us-east-1:557062710055:layer:GlobusLayer:92"]
+  layers = [aws_lambda_layer_version.garden_python_layer.arn]
   filename = "app.zip"
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
@@ -78,14 +78,25 @@ resource "aws_api_gateway_stage" "garden_api" {
     format = jsonencode({
       requestId               = "$context.requestId"
       sourceIp                = "$context.identity.sourceIp"
-      requestTime             = "$context.requestTime"
-      protocol                = "$context.protocol"
       httpMethod              = "$context.httpMethod"
       resourcePath            = "$context.resourcePath"
       routeKey                = "$context.routeKey"
       status                  = "$context.status"
       responseLength          = "$context.responseLength"
       integrationErrorMessage = "$context.integrationErrorMessage"
+      protocol                = "$context.protocol"
+      requestTime             = "$context.requestTime"
+      integrationRequestId    = "$context.integration.requestId"
+      functionResponseStatus  = "$context.integration.status"
+      integrationLatency      = "$context.integration.latency"
+      integrationServiceStatus= "$context.integration.integrationStatus"
+      xrayTraceId             = "$context.xrayTraceId"
+      responseLatency         = "$context.responseLatency"
+      path                    = "$context.path"
+      authorizeResultStatus   = "$context.authorize.status"
+      authorizerServiceStatus = "$context.authorizer.status"
+      authorizerLatency       = "$context.authorizer.latency"
+      authorizerRequestId     = "$context.authorizer.requestId"
       }
     )
   }
@@ -152,7 +163,7 @@ resource "aws_api_gateway_resource" "garden_app" {
   rest_api_id = aws_api_gateway_rest_api.garden_api.id
   parent_id = aws_api_gateway_rest_api.garden_api.root_resource_id
 
-  path_part = "api"
+  path_part = "{proxy+}"
 }
 
 resource "aws_api_gateway_integration" "garden_app" {
@@ -178,7 +189,12 @@ resource "aws_lambda_permission" "garden_api_gw" {
 
 /* Shared Lambda resources */
 
-# You might need separate policies per Lambda ...
+resource "aws_lambda_layer_version" "garden_python_layer" {
+  filename   = "lambda_layer.zip"
+  layer_name = "GardenPythonLayer"
+
+  compatible_runtimes = ["python3.6", "python3.7"]
+}
 
 resource "aws_iam_role" "lambda_exec" {
   name = "garden_lambda"
