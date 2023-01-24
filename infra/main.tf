@@ -102,6 +102,7 @@ resource "aws_api_gateway_stage" "garden_api" {
 
 resource "aws_api_gateway_deployment" "garden_deployment" {
   rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  description = "Terraform managed deployment"
 
   triggers = {
     # NOTE: The configuration below will satisfy ordering considerations,
