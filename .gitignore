@@ -168,3 +168,6 @@ override.tf.json
 terraform.rc
 hello-world.zip
 response.json
+
+.DS_Store
+.idea/

@@ -31,7 +31,7 @@ jobs:
 
     - name: Upload Globus Auth Function
       run: |
-         cp authorizer/lambda-function.py ./lambda_function.py
+         cp authorizer/lambda_function.py ./lambda_function.py
          zip authorizer.zip ./lambda_function.py
          rm ./lambda_function.py
          aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://./authorizer.zip
