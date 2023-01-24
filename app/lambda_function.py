@@ -27,6 +27,6 @@ def mint_doi(event, context, kwargs):
         'body': json.dumps(
             {
                 "success": True,
-                'message': 'I made a DOI for you. (not really though, sorry.)',
+                'message': 'I made a DOI for you. (Not really though, sorry.)',
             })
     }

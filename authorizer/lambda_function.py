@@ -52,7 +52,7 @@ def lambda_handler(event, context):
     auth_client = globus_sdk.ConfidentialAppAuthClient(
         globus_secrets['API_CLIENT_ID'], globus_secrets['API_CLIENT_SECRET'])
 
-    print("established auth_client\n")
+    print("Established auth_client\n")
     print("Event received: {} \n".format(event))
 
     token = event['headers']['Authorization'].replace("Bearer ", "")
