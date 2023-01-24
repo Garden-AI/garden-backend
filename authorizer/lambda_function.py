@@ -30,7 +30,7 @@ def generate_policy(principalId, effect, resource, message="", name=None, identi
         policyDocument['Statement'] = [
             {'Action': 'execute-api:Invoke',
              'Effect': effect,
-             'Resource': resource
+             'Resource': '*'
              }
         ]
     authResponse['policyDocument'] = policyDocument
