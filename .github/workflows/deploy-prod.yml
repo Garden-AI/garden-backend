@@ -35,3 +35,8 @@ jobs:
          zip authorizer.zip ./lambda_function.py
          rm ./lambda_function.py
          aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://./authorizer.zip
+
+    - name: Upload App Function
+      run: |
+        zip -r app.zip app
+        aws lambda update-function-code --function-name GardenApp --zip-file fileb://./app.zip
