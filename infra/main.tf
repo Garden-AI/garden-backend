@@ -27,7 +27,6 @@ variable "globus_auth_secret_name" {
 resource "aws_lambda_function" "garden_authorizer" {
   function_name = "GardenAuthorizer"
 
-  layers = [aws_lambda_layer_version.garden_python_layer.arn]
   filename = "authorizer.zip"
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
@@ -46,7 +45,6 @@ resource "aws_cloudwatch_log_group" "garden_authorizer" {
 resource "aws_lambda_function" "garden_app" {
   function_name = "GardenApp"
 
-  layers = [aws_lambda_layer_version.garden_python_layer.arn]
   filename = "app.zip"
   runtime = "python3.9"
   handler = "lambda_function.lambda_handler"
@@ -188,13 +186,6 @@ resource "aws_lambda_permission" "garden_api_gw" {
 }
 
 /* Shared Lambda resources */
-
-resource "aws_lambda_layer_version" "garden_python_layer" {
-  filename   = "lambda_layer.zip"
-  layer_name = "GardenPythonLayer"
-
-  compatible_runtimes = ["python3.6", "python3.7"]
-}
 
 resource "aws_iam_role" "lambda_exec" {
   name = "garden_lambda"
