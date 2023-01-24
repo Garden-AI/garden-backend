@@ -1,0 +1,37 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::557062710055:role/GH_Actions_Garden_Deployer
+        role-session-name: garden-backend-deployer
+        aws-region: us-east-1
+
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.7'
+
+    - name: Upload Globus Auth Function
+      run: |
+         cp authorizer/lambda-function.py ./lambda_function.py
+         zip authorizer.zip ./lambda_function.py
+         rm ./lambda_function.py
+         aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://./authorizer.zip
