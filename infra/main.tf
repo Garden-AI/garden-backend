@@ -19,7 +19,7 @@ variable "aws_account_id" {
 
 variable "globus_auth_secret_name" {
   type        = string
-  description = "The id of the team's AWS account"
+  description = "The arn of the secret that the auth lambda needs access to"
 }
 
 /* Authorizer Lambda */
