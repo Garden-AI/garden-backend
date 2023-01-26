@@ -5,7 +5,15 @@ terraform {
       version = "~> 4.0.0"
     }
   }
-  required_version = "~> 1.0"
+  required_version = "~> 1.3.0"
+  backend "s3" {
+    bucket         = "garden-backend-terraform-state"
+    key            = "garden-backend/s3/terraform.tfstate"
+    region         = "us-east-1"
+
+    dynamodb_table = "garden-terraform-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
