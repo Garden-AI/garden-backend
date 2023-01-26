@@ -45,7 +45,7 @@ jobs:
          cd ../authorizer
          zip -r ../authorizer.zip *
          # Deploy to Lambda.
-         aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://./authorizer.zip
+         aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://../authorizer.zip
          # Delete temporary packages directory
          cd ..
          rm -rf packages
