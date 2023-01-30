@@ -1,4 +1,6 @@
 import json
+
+from doi import mint_doi
 from tiny_router import TinyLambdaRouter
 
 app = TinyLambdaRouter()
@@ -20,13 +22,4 @@ def hello(event, context, kwargs):
     }
 
 
-@app.route('/doi', methods=['POST'])
-def mint_doi(event, context, kwargs):
-    return {
-        'statusCode': 201,
-        'body': json.dumps(
-            {
-                "success": True,
-                'message': 'I made a DOI for you. (Not really though, sorry.)',
-            })
-    }
+app.route("/doi", methods=["POST"])(mint_doi)  # equivalent to decorator syntax
