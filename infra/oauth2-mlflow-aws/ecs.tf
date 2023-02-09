@@ -213,9 +213,9 @@ resource "aws_ecs_task_definition" "mlflow" {
         "--cookie-secure", "false",
         "--cookie-refresh", "5m",
         "--email-domain", "*",
-        "--provider", "google",
+        "--provider", "oidc",
+        "--oidc-issuer-url", "https://auth.globus.org",
         "--skip-jwt-bearer-tokens", "true",
-        "--extra-jwt-issuers", "https://accounts.google.com=32555940559.apps.googleusercontent.com"
       ]
       essential = true
 
