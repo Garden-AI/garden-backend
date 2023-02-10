@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 
 def mint_doi(event, _context, _kwargs):
-    payload = event["body"]
+    payload = json.loads(event["body"])
     try:
         DATACITE_REPOSITORY_ID = os.environ["DATACITE_REPOSITORY_ID"]
         DATACITE_PASSWORD = os.environ["DATACITE_PASSWORD"]
