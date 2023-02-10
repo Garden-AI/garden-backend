@@ -47,12 +47,11 @@ def mint_doi(event, _context, _kwargs):
     else:
         # DataCite successful response *would* have all our repo info,
         # so extract just the newly minted DOI for the response body
-        try:
-            doi = res.json()["data"]["attributes"]["doi"]
-        except requests.exceptions.JSONDecodeError as e:
-            return {"statusCode": 500, "body": str(e)}
-        else:
-            return {
-                "statusCode": 201,
-                "body": json.dumps({"doi": doi}),
-            }
+        return {
+            "statusCode": 201,
+            "body": json.dumps(
+                {
+                    "doi": res.json()["data"]["attributes"]["doi"],
+                }
+            ),
+        }
