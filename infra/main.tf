@@ -165,6 +165,7 @@ resource "aws_api_gateway_deployment" "garden_deployment" {
       aws_api_gateway_resource.garden_app.id,
       aws_api_gateway_method.garden_auth_hookup.id,
       aws_api_gateway_integration.garden_app.id,
+      aws_api_gateway_integration.mlflow_integration.id
     ]))
   }
 
