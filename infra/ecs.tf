@@ -49,7 +49,7 @@ resource "aws_ecs_cluster" "app" {
 # note that the source for the turner default backend image is here:
 # https://github.com/turnerlabs/turner-defaultbackend
 variable "default_backend_image" {
-  default = "557062710055.dkr.ecr.us-east-1.amazonaws.com/garden-private-experiment:latest"
+  default = "quay.io/turner/turner-defaultbackend:latest"
 }
 
 resource "aws_appautoscaling_target" "app_scale_target" {
@@ -142,12 +142,7 @@ resource "aws_ecs_service" "app" {
 
   # workaround for https://github.com/hashicorp/terraform/issues/12634
   depends_on = [aws_lb_listener.tcp]
-
-  # [after initial apply] don't override changes made to task_definition
-  # from outside of terrraform (i.e.; fargate cli)
-  lifecycle {
-    ignore_changes = [task_definition]
-  }
+  
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html
