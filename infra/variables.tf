@@ -52,9 +52,14 @@ variable "private_subnets" {
   default = "subnet-0392d59bd67242b8b,subnet-016b3eb6829a87ecb"
 }
 
+variable "data_subnets" {
+  default = "subnet-0392d59bd67242b8b,subnet-016b3eb6829a87ecb"
+}
+
 locals {
   namespace      = "${var.app}-${var.environment}"
   target_subnets = split(",", var.private_subnets)
+  db_subnets     = split(",", var.private_subnets)
 }
 
 variable "artifact_bucket_path" {
@@ -84,4 +89,27 @@ variable "service_memory" {
 variable "unique_name" {
   type        = string
   default     = "mlflow-dummy"
+}
+
+variable "database_max_capacity" {
+  type        = number
+  default     = 4
+  description = "The maximum capacity for the Aurora Serverless cluster. Aurora will scale automatically in this range. See: https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html"
+}
+
+variable "database_auto_pause" {
+  type        = bool
+  default     = true
+  description = "Pause Aurora Serverless after a given amount of time with no activity. https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.pause-resume"
+}
+
+variable "database_seconds_until_auto_pause" {
+  type        = number
+  default     = 300
+  description = "The number of seconds without activity before Aurora Serverless is paused. https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless.how-it-works.html#aurora-serverless.how-it-works.pause-resume"
+}
+
+variable "database_skip_final_snapshot" {
+  type    = bool
+  default = true
 }

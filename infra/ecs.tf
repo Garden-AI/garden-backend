@@ -64,10 +64,6 @@ data "aws_s3_bucket" "mlflow_bucket" {
   bucket = "oauth2-mlflow-artifacts-zy3os0yx"
 }
 
-data "aws_rds_cluster" "mlflow_datastore" {
-  cluster_identifier = "oauth2-mlflow"
-}
-
 data "aws_secretsmanager_secret" "db_password" {
   name = "mlflow/store-db-password"
 }
@@ -91,7 +87,7 @@ resource "aws_ecs_task_definition" "mlflow" {
           --host=0.0.0.0 \
           --port=${local.mlflow_port} \
           --default-artifact-root=s3://${data.aws_s3_bucket.mlflow_bucket.bucket}${var.artifact_bucket_path} \
-          --backend-store-uri=mysql+pymysql://${data.aws_rds_cluster.mlflow_datastore.master_username}:`echo -n $DB_PASSWORD`@${data.aws_rds_cluster.mlflow_datastore.endpoint}:${data.aws_rds_cluster.mlflow_datastore.port}/${data.aws_rds_cluster.mlflow_datastore.database_name} \
+          --backend-store-uri=mysql+pymysql://${aws_rds_cluster.backend_store.master_username}:`echo -n $DB_PASSWORD`@${aws_rds_cluster.backend_store.endpoint}:${aws_rds_cluster.backend_store.port}/${aws_rds_cluster.backend_store.database_name} \
           --gunicorn-opts '${var.gunicorn_opts}'"
         EOT
       ]
