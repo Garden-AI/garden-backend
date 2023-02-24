@@ -19,7 +19,7 @@ variable "replicas" {
 
 # The name of the container to run
 variable "container_name" {
-  default = "app"
+  default = "mlflow-dummy-prod"
 }
 
 # The minimum number of containers that should be running.
@@ -60,69 +60,124 @@ resource "aws_appautoscaling_target" "app_scale_target" {
   min_capacity       = var.ecs_autoscale_min_instances
 }
 
-resource "aws_ecs_task_definition" "app" {
-  family                   = "${var.app}-${var.environment}"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
+data "aws_s3_bucket" "mlflow_bucket" {
+  bucket = "oauth2-mlflow-artifacts-zy3os0yx"
+}
 
-  # defined in role.tf
-  task_role_arn = aws_iam_role.app_role.arn
+data "aws_rds_cluster" "mlflow_datastore" {
+  cluster_identifier = "oauth2-mlflow"
+}
 
-  container_definitions = <<DEFINITION
-[
-  {
-    "name": "${var.container_name}",
-    "image": "${var.default_backend_image}",
-    "essential": true,
-    "portMappings": [
-      {
-        "protocol": "tcp",
-        "containerPort": ${var.container_port},
-        "hostPort": ${var.container_port}
-      }
-    ],
-    "environment": [
-      {
-        "name": "PORT",
-        "value": "${var.container_port}"
-      },
-      {
-        "name": "ENABLE_LOGGING",
-        "value": "false"
-      },
-      {
-        "name": "PRODUCT",
-        "value": "${var.app}"
-      },
-      {
-        "name": "ENVIRONMENT",
-        "value": "${var.environment}"
-      }
-    ],
-    "logConfiguration": {
-      "logDriver": "awslogs",
-      "options": {
-        "awslogs-group": "/fargate/service/${var.app}-${var.environment}",
-        "awslogs-region": "us-east-1",
-        "awslogs-stream-prefix": "ecs"
+data "aws_secretsmanager_secret" "db_password" {
+  name = "mlflow/store-db-password"
+}
+
+data "aws_secretsmanager_secret_version" "db_password" {
+  secret_id = data.aws_secretsmanager_secret.db_password.id
+}
+
+resource "aws_ecs_task_definition" "mlflow" {
+  family = "mlflow-dummy"
+  container_definitions = jsonencode(concat([
+    {
+      name      = "mlflow-dummy-prod"
+      image     = "gcr.io/getindata-images-public/mlflow:1.22.0"
+      essential = true
+
+      entryPoint = ["sh", "-c"]
+      command = [
+        <<EOT
+        /bin/sh -c "mlflow server \
+          --host=0.0.0.0 \
+          --port=${local.mlflow_port} \
+          --default-artifact-root=s3://${data.aws_s3_bucket.mlflow_bucket.bucket}${var.artifact_bucket_path} \
+          --backend-store-uri=mysql+pymysql://${data.aws_rds_cluster.mlflow_datastore.master_username}:`echo -n $DB_PASSWORD`@${data.aws_rds_cluster.mlflow_datastore.endpoint}:${data.aws_rds_cluster.mlflow_datastore.port}/${data.aws_rds_cluster.mlflow_datastore.database_name} \
+          --gunicorn-opts '${var.gunicorn_opts}'"
+        EOT
+      ]
+
+      portMappings = [{ containerPort = local.mlflow_port, hostPort = local.mlflow_port }]
+      environment = [
+        {
+          name  = "AWS_DEFAULT_REGION"
+          value = var.region
+        },
+      ]
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = data.aws_secretsmanager_secret.db_password.arn
+        }
+      ]
+      logConfiguration = {
+        logDriver     = "awslogs"
+        secretOptions = null
+        options = {
+          "awslogs-group"         = "/fargate/service/mlflow-dummy-prod"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
       }
     }
-  }
-]
-DEFINITION
+  ]))
 
+  network_mode             = "awsvpc"
+  task_role_arn            = aws_iam_role.app_role.arn
+  execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.service_cpu
+  memory                   = var.service_memory
+}
 
-  tags = var.tags
+resource "aws_iam_role_policy" "secrets" {
+  name = "${var.unique_name}-read-secret"
+  role = aws_iam_role.ecsTaskExecutionRole.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds",
+        ]
+        Resource = [
+          data.aws_secretsmanager_secret_version.db_password.arn,
+        ]
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "s3" {
+  name = "${var.unique_name}-s3"
+  role = aws_iam_role.ecsTaskExecutionRole.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = ["arn:aws:s3:::${data.aws_s3_bucket.mlflow_bucket.bucket}"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:*Object"]
+        Resource = ["arn:aws:s3:::${data.aws_s3_bucket.mlflow_bucket.bucket}/*"]
+      },
+    ]
+  })
 }
 
 resource "aws_ecs_service" "app" {
   name            = "${var.app}-${var.environment}"
   cluster         = aws_ecs_cluster.app.id
   launch_type     = "FARGATE"
-  task_definition = aws_ecs_task_definition.app.arn
+  task_definition = aws_ecs_task_definition.mlflow.arn
   desired_count   = var.replicas
 
   network_configuration {
@@ -142,7 +197,7 @@ resource "aws_ecs_service" "app" {
 
   # workaround for https://github.com/hashicorp/terraform/issues/12634
   depends_on = [aws_lb_listener.tcp]
-  
+
 }
 
 # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html

@@ -56,3 +56,32 @@ locals {
   namespace      = "${var.app}-${var.environment}"
   target_subnets = split(",", var.private_subnets)
 }
+
+variable "artifact_bucket_path" {
+  type        = string
+  default     = "/"
+  description = "The path within the bucket where MLflow will store its artifacts"
+}
+
+variable "gunicorn_opts" {
+  description = "Additional command line options forwarded to gunicorn processes (https://mlflow.org/docs/latest/cli.html#cmdoption-mlflow-server-gunicorn-opts)"
+  type        = string
+  default     = ""
+}
+
+variable "service_cpu" {
+  type        = number
+  default     = 2048
+  description = "The number of CPU units reserved for the MLflow container"
+}
+
+variable "service_memory" {
+  type        = number
+  default     = 4096
+  description = "The amount (in MiB) of memory reserved for the MLflow container"
+}
+
+variable "unique_name" {
+  type        = string
+  default     = "mlflow-dummy"
+}
