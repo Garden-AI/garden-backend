@@ -41,27 +41,12 @@ resource "aws_ecs_cluster" "app" {
   tags = var.tags
 }
 
-# The default docker image to deploy with the infrastructure.
-# Note that you can use the fargate CLI for application concerns
-# like deploying actual application images and environment variables
-# on top of the infrastructure provisioned by this template
-# https://github.com/turnerlabs/fargate
-# note that the source for the turner default backend image is here:
-# https://github.com/turnerlabs/turner-defaultbackend
-variable "default_backend_image" {
-  default = "quay.io/turner/turner-defaultbackend:latest"
-}
-
 resource "aws_appautoscaling_target" "app_scale_target" {
   service_namespace  = "ecs"
   resource_id        = "service/${aws_ecs_cluster.app.name}/${aws_ecs_service.app.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   max_capacity       = var.ecs_autoscale_max_instances
   min_capacity       = var.ecs_autoscale_min_instances
-}
-
-data "aws_s3_bucket" "mlflow_bucket" {
-  bucket = "oauth2-mlflow-artifacts-zy3os0yx"
 }
 
 data "aws_secretsmanager_secret" "db_password" {
@@ -86,7 +71,7 @@ resource "aws_ecs_task_definition" "mlflow" {
         /bin/sh -c "mlflow server \
           --host=0.0.0.0 \
           --port=${local.mlflow_port} \
-          --default-artifact-root=s3://${data.aws_s3_bucket.mlflow_bucket.bucket}${var.artifact_bucket_path} \
+          --default-artifact-root=s3://${aws_s3_bucket.artifacts.bucket}${var.artifact_bucket_path} \
           --backend-store-uri=mysql+pymysql://${aws_rds_cluster.backend_store.master_username}:`echo -n $DB_PASSWORD`@${aws_rds_cluster.backend_store.endpoint}:${aws_rds_cluster.backend_store.port}/${aws_rds_cluster.backend_store.database_name} \
           --gunicorn-opts '${var.gunicorn_opts}'"
         EOT
@@ -158,12 +143,12 @@ resource "aws_iam_role_policy" "s3" {
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
-        Resource = ["arn:aws:s3:::${data.aws_s3_bucket.mlflow_bucket.bucket}"]
+        Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}"]
       },
       {
         Effect   = "Allow"
         Action   = ["s3:*Object"]
-        Resource = ["arn:aws:s3:::${data.aws_s3_bucket.mlflow_bucket.bucket}/*"]
+        Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}/*"]
       },
     ]
   })
