@@ -20,11 +20,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-variable "aws_account_id" {
-  type        = string
-  description = "The id of the team's AWS account"
-}
-
 data "aws_secretsmanager_secret" "datacite_endpoint" {
   name = "datacite/endpoint"
 }

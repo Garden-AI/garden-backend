@@ -66,14 +66,14 @@ resource "aws_ecs_task_definition" "mlflow" {
         <<EOT
         /bin/sh -c "mlflow server \
           --host=0.0.0.0 \
-          --port=${local.mlflow_port} \
+          --port=${var.container_port} \
           --default-artifact-root=s3://${aws_s3_bucket.artifacts.bucket}${var.artifact_bucket_path} \
           --backend-store-uri=mysql+pymysql://${aws_rds_cluster.backend_store.master_username}:`echo -n $DB_PASSWORD`@${aws_rds_cluster.backend_store.endpoint}:${aws_rds_cluster.backend_store.port}/${aws_rds_cluster.backend_store.database_name} \
           --gunicorn-opts '${var.gunicorn_opts}'"
         EOT
       ]
 
-      portMappings = [{ containerPort = local.mlflow_port, hostPort = local.mlflow_port }]
+      portMappings = [{ containerPort = var.container_port, hostPort = var.container_port }]
       environment = [
         {
           name  = "AWS_DEFAULT_REGION"

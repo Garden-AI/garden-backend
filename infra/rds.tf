@@ -11,8 +11,8 @@ resource "aws_security_group" "rds" {
   tags   = var.tags
 
   ingress {
-    from_port       = local.db_port
-    to_port         = local.db_port
+    from_port       = var.database_port
+    to_port         = var.database_port
     protocol        = "tcp"
     security_groups = [aws_security_group.nsg_task.id]
   }
@@ -32,7 +32,7 @@ resource "aws_rds_cluster" "backend_store" {
   engine                    = "aurora-mysql"
   engine_version            = "5.7.mysql_aurora.2.08.3"
   engine_mode               = "serverless"
-  port                      = local.db_port
+  port                      = var.database_port
   db_subnet_group_name      = aws_db_subnet_group.rds.name
   vpc_security_group_ids    = [aws_security_group.rds.id]
   master_username           = "ecs_task"

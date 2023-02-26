@@ -7,6 +7,11 @@ variable "region" {
   default = "us-east-1"
 }
 
+variable "aws_account_id" {
+  type        = string
+  description = "The id of the team's AWS account"
+}
+
 # Tags for the infrastructure
 variable "tags" {
   type    = map(string)
@@ -27,7 +32,12 @@ variable "environment" {
 # Best practice is that this value is higher than 1024 so the container processes
 # isn't running at root.
 variable "container_port" {
-  default = "8080"
+  default = 8080
+}
+
+# The port the load balancer will listen on
+variable "database_port" {
+  default = 3306
 }
 
 # The port the load balancer will listen on
