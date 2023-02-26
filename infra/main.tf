@@ -24,11 +24,6 @@ variable "aws_account_id" {
   type        = string
   description = "The id of the team's AWS account"
 }
-# TODO: just say the secret name
-variable "globus_auth_secret_name" {
-  type        = string
-  description = "The arn of the secret that the auth lambda needs access to"
-}
 
 data "aws_secretsmanager_secret" "datacite_endpoint" {
   name = "datacite/endpoint"
@@ -294,7 +289,7 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
             "Action": [
                 "secretsmanager:GetSecretValue"
             ],
-            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:${var.globus_auth_secret_name}"
+            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
         }
     ]
   })
