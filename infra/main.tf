@@ -165,7 +165,7 @@ resource "aws_api_gateway_deployment" "garden_deployment" {
       aws_api_gateway_resource.garden_app.id,
       aws_api_gateway_method.garden_auth_hookup.id,
       aws_api_gateway_integration.garden_app.id,
-      aws_api_gateway_integration.mlflow_integration.id
+      aws_api_gateway_integration.mlflow_integration
     ]))
   }
 
@@ -310,51 +310,7 @@ resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
   policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
 }
 
-/* First attempt at making mlflow proxy resource */
-
-#resource "aws_api_gateway_resource" "mlflow" {
-#  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-#  parent_id   = aws_api_gateway_rest_api.garden_api.root_resource_id
-#  path_part   = "mlflow"
-#}
-
-#resource "aws_api_gateway_vpc_link" "main" {
-#  name        = "${local.namespace}"
-#  description = "allows public API Gateway for ${local.namespace} to talk to private NLB"
-#  target_arns = [aws_lb.main.arn]
-#}
-#
-#resource "aws_api_gateway_integration" "mlflow" {
-#  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-#  resource_id = aws_api_gateway_resource.mlflow.id
-#  http_method = "ANY"
-#  type = "AWS_PROXY"
-#  integration_http_method = "GET"
-#  uri    = aws_lambda_function.garden_app.invoke_arn # mlfow.thegardens.ai?
-#  depends_on = [
-#    aws_api_gateway_resource.garden_app
-#  ]
-#}
-#
-#resource "aws_api_gateway_integration" "main" {
-#  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-#  resource_id = aws_api_gateway_resource.garden_app.id
-#  http_method = "ANY"
-#
-#  type                    = "HTTP"
-#  integration_http_method = "ANY"
-#  uri                     = "http://oauth2-mlflow-1540579326.us-east-1.elb.amazonaws.com"
-#  connection_type         = "VPC_LINK"
-#  connection_id           = aws_api_gateway_vpc_link.main.id
-#  timeout_milliseconds    = 29000 # 50-29000
-#
-#  cache_key_parameters = ["method.request.path.proxy"]
-#  request_parameters = {
-#    "integration.request.path.proxy" = "method.request.path.proxy"
-#  }
-#}
-
-/* Turnerlabs attempt */
+/* Make mlflow proxy resource */
 
 resource "aws_api_gateway_vpc_link" "main" {
   name        = "${local.namespace}"
@@ -380,7 +336,6 @@ resource "aws_api_gateway_method" "mlflow_proxy_method" {
   http_method      = "ANY"
   authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.garden_authorizer.id
-  # Is this secretly important?
   request_parameters = {
     "method.request.path.proxy" = true
   }
@@ -396,7 +351,7 @@ resource "aws_api_gateway_integration" "mlflow_integration" {
   uri                     = "http://${aws_lb.main.dns_name}/{proxy}"
   connection_type         = "VPC_LINK"
   connection_id           = aws_api_gateway_vpc_link.main.id
-  timeout_milliseconds    = 29000 # 50-29000
+  timeout_milliseconds    = 28000 # 50-29000
 
   cache_key_parameters = ["method.request.path.proxy"]
   request_parameters = {
