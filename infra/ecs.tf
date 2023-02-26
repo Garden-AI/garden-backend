@@ -6,10 +6,6 @@
  * Next it creates a ECS Service, https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html
  * It attaches the Load Balancer created in `lb.tf` to the service, and sets up the networking required.
  * It also creates a role with the correct permissions. And lastly, ensures that logs are captured in CloudWatch.
- *
- * When building for the first time, it will install a "default backend", which is a simple web service that just
- * responds with a HTTP 200 OK. It's important to uncomment the lines noted below after you have successfully
- * migrated the real application containers to the task definition.
  */
 
 # How many containers to run
@@ -19,7 +15,7 @@ variable "replicas" {
 
 # The name of the container to run
 variable "container_name" {
-  default = "mlflow-dummy-prod"
+  default = "mlflow"
 }
 
 # The minimum number of containers that should be running.
@@ -58,10 +54,10 @@ data "aws_secretsmanager_secret_version" "db_password" {
 }
 
 resource "aws_ecs_task_definition" "mlflow" {
-  family = "mlflow-dummy"
+  family = "mlflow"
   container_definitions = jsonencode(concat([
     {
-      name      = "mlflow-dummy-prod"
+      name      = "mlflow"
       image     = "gcr.io/getindata-images-public/mlflow:1.22.0"
       essential = true
 
@@ -94,7 +90,7 @@ resource "aws_ecs_task_definition" "mlflow" {
         logDriver     = "awslogs"
         secretOptions = null
         options = {
-          "awslogs-group"         = "/fargate/service/mlflow-dummy-prod"
+          "awslogs-group"         = "/fargate/service/mlflow-prod"
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
         }

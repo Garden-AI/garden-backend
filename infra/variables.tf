@@ -15,7 +15,7 @@ variable "tags" {
 
 # The application's name
 variable "app" {
-  default = "mlflow-dummy"
+  default = "mlflow"
 }
 
 # The environment that is being built
@@ -88,7 +88,7 @@ variable "service_memory" {
 
 variable "unique_name" {
   type        = string
-  default     = "mlflow-dummy"
+  default     = "mlflow"
 }
 
 variable "database_max_capacity" {
