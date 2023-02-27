@@ -1,5 +1,3 @@
-# Actual TODO: sub this for the right subset of oauth2-mlflow permissions
-
 # creates an application role that the container/task runs as
 resource "aws_iam_role" "app_role" {
   name               = "${var.app}-${var.environment}"
@@ -29,7 +27,6 @@ resource "aws_iam_role_policy" "app_policy" {
   policy = data.aws_iam_policy_document.app_policy.json
 }
 
-# TODO: fill out custom policy
 data "aws_iam_policy_document" "app_policy" {
   statement {
     actions = [
