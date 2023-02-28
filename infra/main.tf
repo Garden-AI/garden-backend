@@ -20,14 +20,36 @@ provider "aws" {
   region = "us-east-1"
 }
 
-variable "aws_account_id" {
-  type        = string
-  description = "The id of the team's AWS account"
+data "aws_secretsmanager_secret" "datacite_endpoint" {
+  name = "datacite/endpoint"
 }
 
-variable "globus_auth_secret_name" {
-  type        = string
-  description = "The arn of the secret that the auth lambda needs access to"
+data "aws_secretsmanager_secret_version" "datacite_endpoint" {
+  secret_id = data.aws_secretsmanager_secret.datacite_endpoint.id
+}
+
+data "aws_secretsmanager_secret" "datacite_password" {
+  name = "datacite/password"
+}
+
+data "aws_secretsmanager_secret_version" "datacite_password" {
+  secret_id = data.aws_secretsmanager_secret.datacite_password.id
+}
+
+data "aws_secretsmanager_secret" "datacite_prefix" {
+  name = "datacite/prefix"
+}
+
+data "aws_secretsmanager_secret_version" "datacite_prefix" {
+  secret_id = data.aws_secretsmanager_secret.datacite_prefix.id
+}
+
+data "aws_secretsmanager_secret" "datacite_repo_id" {
+  name = "datacite/repo_id"
+}
+
+data "aws_secretsmanager_secret_version" "datacite_repo_id" {
+  secret_id = data.aws_secretsmanager_secret.datacite_repo_id.id
 }
 
 /* Authorizer Lambda */
@@ -58,6 +80,15 @@ resource "aws_lambda_function" "garden_app" {
   handler = "lambda_function.lambda_handler"
 
   role = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+      "DATACITE_ENDPOINT"      = data.aws_secretsmanager_secret_version.datacite_endpoint.secret_string
+      "DATACITE_PASSWORD"      = data.aws_secretsmanager_secret_version.datacite_password.secret_string
+      "DATACITE_PREFIX"        = data.aws_secretsmanager_secret_version.datacite_prefix.secret_string
+      "DATACITE_REPOSITORY_ID" = data.aws_secretsmanager_secret_version.datacite_repo_id.secret_string
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "garden_app" {
@@ -124,6 +155,7 @@ resource "aws_api_gateway_deployment" "garden_deployment" {
       aws_api_gateway_resource.garden_app.id,
       aws_api_gateway_method.garden_auth_hookup.id,
       aws_api_gateway_integration.garden_app.id,
+      aws_api_gateway_integration.mlflow_integration
     ]))
   }
 
@@ -162,6 +194,33 @@ resource "aws_lambda_permission" "garden_api_auth_permission" {
   principal     = "apigateway.amazonaws.com"
 
   source_arn = "${aws_api_gateway_rest_api.garden_api.execution_arn}/*/*"
+}
+
+/* Connect api.thegardens.ai to the gateway */
+
+data "aws_route53_zone" "hosted_zone" {
+  name = "thegardens.ai"
+}
+
+data "aws_acm_certificate" "api_cert" {
+  domain = "api.thegardens.ai"
+}
+
+resource "aws_api_gateway_domain_name" "api_domain_name" {
+  certificate_arn = data.aws_acm_certificate.api_cert.arn
+  domain_name     = data.aws_acm_certificate.api_cert.domain
+}
+
+resource "aws_route53_record" "api_record" {
+  name    = aws_api_gateway_domain_name.api_domain_name.domain_name
+  type    = "A"
+  zone_id = data.aws_route53_zone.hosted_zone.id
+
+  alias {
+    evaluate_target_health = true
+    name                   = aws_api_gateway_domain_name.api_domain_name.cloudfront_domain_name
+    zone_id                = aws_api_gateway_domain_name.api_domain_name.cloudfront_zone_id
+  }
 }
 
 /* Connect the app Lambda to the gateway */
@@ -225,7 +284,7 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
             "Action": [
                 "secretsmanager:GetSecretValue"
             ],
-            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:${var.globus_auth_secret_name}"
+            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
         }
     ]
   })
@@ -239,4 +298,75 @@ resource "aws_iam_role_policy_attachment" "lambda_policy" {
 resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
+}
+
+/* Make mlflow proxy resource */
+
+resource "aws_api_gateway_vpc_link" "main" {
+  name        = "${local.namespace}"
+  description = "allows public API Gateway for ${local.namespace} to talk to private NLB"
+  target_arns = [aws_lb.main.arn]
+}
+
+resource "aws_api_gateway_resource" "mlflow_parent_resource" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  parent_id   = aws_api_gateway_rest_api.garden_api.root_resource_id
+  path_part   = "mlflow"
+}
+
+resource "aws_api_gateway_resource" "mlflow_proxy_resource" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  parent_id   = aws_api_gateway_resource.mlflow_parent_resource.id
+  path_part   = "{proxy+}"
+}
+
+resource "aws_api_gateway_method" "mlflow_proxy_method" {
+  rest_api_id      = aws_api_gateway_rest_api.garden_api.id
+  resource_id      = aws_api_gateway_resource.mlflow_proxy_resource.id
+  http_method      = "ANY"
+  authorization = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.garden_authorizer.id
+  request_parameters = {
+    "method.request.path.proxy" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "mlflow_integration" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  resource_id = aws_api_gateway_resource.mlflow_proxy_resource.id
+  http_method = aws_api_gateway_method.mlflow_proxy_method.http_method
+
+  type                    = "HTTP_PROXY"
+  integration_http_method = "ANY"
+  uri                     = "http://${aws_lb.main.dns_name}/{proxy}"
+  connection_type         = "VPC_LINK"
+  connection_id           = aws_api_gateway_vpc_link.main.id
+  timeout_milliseconds    = 28000 # 50-29000
+
+  cache_key_parameters = ["method.request.path.proxy"]
+  request_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
+}
+
+resource "aws_api_gateway_method_response" "main" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  resource_id = aws_api_gateway_resource.mlflow_proxy_resource.id
+  http_method = aws_api_gateway_method.mlflow_proxy_method.http_method
+  status_code = "200"
+}
+
+
+resource "aws_api_gateway_integration_response" "main" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  resource_id = aws_api_gateway_resource.mlflow_proxy_resource.id
+  http_method = aws_api_gateway_method.mlflow_proxy_method.http_method
+  status_code = aws_api_gateway_method_response.main.status_code
+
+  response_templates = {
+    "application/json" = ""
+  }
+  depends_on = [
+    aws_api_gateway_integration.mlflow_integration
+  ]
 }

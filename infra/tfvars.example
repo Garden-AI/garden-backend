@@ -1,2 +1,1 @@
 aws_account_id = "12345fakefakefake"
-globus_auth_secret_name = "fake/also_fake"

@@ -6,7 +6,7 @@ resource "random_string" "suffix" {
 
 resource "aws_s3_bucket" "artifacts" {
   bucket = "${var.unique_name}-artifacts-${random_string.suffix.result}"
-  tags   = local.tags
+  tags   = var.tags
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {

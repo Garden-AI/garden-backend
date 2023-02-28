@@ -2,19 +2,19 @@
 
 resource "aws_db_subnet_group" "rds" {
   name       = "${var.unique_name}-rds"
-  subnet_ids = module.vpc.database_subnets
+  subnet_ids = local.db_subnets
 }
 
 resource "aws_security_group" "rds" {
   name   = "${var.unique_name}-rds"
-  vpc_id = module.vpc.vpc_id
-  tags   = local.tags
+  vpc_id = var.vpc
+  tags   = var.tags
 
   ingress {
-    from_port       = local.db_port
-    to_port         = local.db_port
+    from_port       = var.database_port
+    to_port         = var.database_port
     protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_service.id]
+    security_groups = [aws_security_group.nsg_task.id]
   }
 
   egress {
@@ -28,11 +28,11 @@ resource "aws_security_group" "rds" {
 resource "aws_rds_cluster" "backend_store" {
   cluster_identifier        = var.unique_name
   apply_immediately         = true
-  tags                      = local.tags
+  tags                      = var.tags
   engine                    = "aurora-mysql"
   engine_version            = "5.7.mysql_aurora.2.08.3"
   engine_mode               = "serverless"
-  port                      = local.db_port
+  port                      = var.database_port
   db_subnet_group_name      = aws_db_subnet_group.rds.name
   vpc_security_group_ids    = [aws_security_group.rds.id]
   master_username           = "ecs_task"
