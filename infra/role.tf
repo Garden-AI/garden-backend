@@ -13,12 +13,27 @@ resource "aws_iam_role" "app_role" {
       },
     ]
   })
+  inline_policy {
+    name = "allow_s3_access"
+
+    policy = jsonencode({
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Effect   = "Allow"
+          Action   = ["s3:*Object"]
+          Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}/*"]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["s3:ListBucket"]
+          Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}"]
+        },
+      ]
+    })
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_execution" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-  role       = aws_iam_role.app_role.name
-}
 
 # assigns the app policy
 resource "aws_iam_role_policy" "app_policy" {
