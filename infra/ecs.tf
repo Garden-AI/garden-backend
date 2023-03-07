@@ -58,7 +58,7 @@ resource "aws_ecs_task_definition" "mlflow" {
   container_definitions = jsonencode(concat([
     {
       name      = "mlflow"
-      image     = "gcr.io/getindata-images-public/mlflow:1.22.0"
+      image     = "gcr.io/getindata-images-public/mlflow:1.24.0"
       essential = true
 
       entryPoint = ["sh", "-c"]
@@ -67,7 +67,8 @@ resource "aws_ecs_task_definition" "mlflow" {
         /bin/sh -c "mlflow server \
           --host=0.0.0.0 \
           --port=${var.container_port} \
-          --default-artifact-root=s3://${aws_s3_bucket.artifacts.bucket}${var.artifact_bucket_path} \
+          --artifacts-destination=s3://${aws_s3_bucket.artifacts.bucket}${var.artifact_bucket_path} \
+          --serve-artifacts \
           --backend-store-uri=mysql+pymysql://${aws_rds_cluster.backend_store.master_username}:`echo -n $DB_PASSWORD`@${aws_rds_cluster.backend_store.endpoint}:${aws_rds_cluster.backend_store.port}/${aws_rds_cluster.backend_store.database_name} \
           --gunicorn-opts '${var.gunicorn_opts}'"
         EOT
@@ -124,27 +125,6 @@ resource "aws_iam_role_policy" "secrets" {
         Resource = [
           data.aws_secretsmanager_secret_version.db_password.arn,
         ]
-      },
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "s3" {
-  name = "${var.unique_name}-s3"
-  role = aws_iam_role.ecsTaskExecutionRole.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}"]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:*Object"]
-        Resource = ["arn:aws:s3:::${aws_s3_bucket.artifacts.bucket}/*"]
       },
     ]
   })
