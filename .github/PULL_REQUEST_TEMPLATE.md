@@ -1,4 +1,4 @@
-Fixes # (Some reference to an issue)
+Link to any related issues, companion PRs, or blockers. eg, `Fixes #37`
 
 ## Overview
 
@@ -6,7 +6,7 @@ A quick summary of what this PR is meant to do.
 
 ## Discussion
 
-More context that you think is important for reviewers or our future selves looking at this PR.
+Any additional context that you think is important for reviewers or future users/contributors looking at this PR.
 
 ## Testing
 
