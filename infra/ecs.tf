@@ -58,7 +58,7 @@ resource "aws_ecs_task_definition" "mlflow" {
   container_definitions = jsonencode(concat([
     {
       name      = "mlflow"
-      image     = "gcr.io/getindata-images-public/mlflow:1.24.0"
+      image     = "public.ecr.aws/x2v7f8j4/mlflow:2.2.2"
       essential = true
 
       entryPoint = ["sh", "-c"]
