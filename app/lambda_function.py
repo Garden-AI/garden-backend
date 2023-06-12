@@ -1,6 +1,6 @@
 import json
 
-from doi import mint_doi, update_metadata
+from doi import call_datacite
 from tiny_router import TinyLambdaRouter
 
 app = TinyLambdaRouter()
@@ -22,5 +22,4 @@ def hello(event, context, kwargs):
     }
 
 
-app.route("/doi", methods=["POST"])(mint_doi)  # equivalent to decorator syntax
-app.route("/doi", methods=["PUT"])(update_metadata)
+app.route("/doi", methods=["POST", "PUT"])(call_datacite)  # equivalent to decorator syntax
