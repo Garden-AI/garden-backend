@@ -95,4 +95,4 @@ def update_metadata(event, _context, _kwargs):
     else:
         # DataCite successful response *would* have all our repo info,
         # so extract just the newly minted DOI for the response body
-        return {"statusCode": 201}
+        return {"statusCode": 200}
