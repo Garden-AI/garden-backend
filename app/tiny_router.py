@@ -43,8 +43,6 @@ class TinyLambdaRouter:
             search_key = f'{method}-{path}'
             self._path_funcs[search_key] = {'function': func, 'kwargs': kwargs}
 
-        # print(self._path_funcs)
-
     def run(self, aws_event, aws_context):
         self.aws_event = aws_event
         self.aws_context = aws_context
