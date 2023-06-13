@@ -9,7 +9,8 @@ import logging
 logger = logging.getLogger()
 
 
-def mint_doi(event, _context, _kwargs):
+def call_datacite(event, _context, _kwargs):
+    method = event["httpMethod"]
     payload = json.loads(event["body"])
     try:
         DATACITE_REPOSITORY_ID = os.environ["DATACITE_REPOSITORY_ID"]
@@ -30,7 +31,16 @@ def mint_doi(event, _context, _kwargs):
     try:
         payload["data"]["attributes"]["prefix"] = DATACITE_PREFIX
 
-        res: requests.Response = requests.post(
+        if method == "POST":
+            request = requests.post
+            return_response = {"statusCode": 201}
+        elif method == "PUT":
+            request = requests.put
+            return_response = {"statusCode": 200}
+        else:
+            return {"statusCode": 400, "body": "Invalid request method."}
+
+        res: requests.Response = request(
             DATACITE_ENDPOINT,
             headers={"Content-Type": "application/vnd.api+json"},
             json=payload,
@@ -47,11 +57,14 @@ def mint_doi(event, _context, _kwargs):
     else:
         # DataCite successful response *would* have all our repo info,
         # so extract just the newly minted DOI for the response body
-        return {
-            "statusCode": 201,
-            "body": json.dumps(
+        if method == "POST":
+            return_response.update(
                 {
-                    "doi": res.json()["data"]["attributes"]["doi"],
+                    "body": json.dumps(
+                        {
+                            "doi": res.json()["data"]["attributes"]["doi"],
+                        }
+                    )
                 }
-            ),
-        }
+            )
+        return return_response
