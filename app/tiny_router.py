@@ -43,7 +43,7 @@ class TinyLambdaRouter:
             search_key = f'{method}-{path}'
             self._path_funcs[search_key] = {'function': func, 'kwargs': kwargs}
 
-        print(self._path_funcs)
+        # print(self._path_funcs)
 
     def run(self, aws_event, aws_context):
         self.aws_event = aws_event
@@ -54,7 +54,9 @@ class TinyLambdaRouter:
         search_key = f'{method}-{path}'
 
         try:
+            print("INITIALIZING MINI-APP. The following routes are registered.")
             print(self._path_funcs)
+            print("INITIALIZED")
             path_func = self._path_funcs[search_key]['function']
             kwargs = self._path_funcs[search_key]['kwargs']
         except KeyError:
