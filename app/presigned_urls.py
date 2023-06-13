@@ -44,10 +44,10 @@ def make_presigned_url(event, _context, _kwargs):
     if direction not in url_makers:
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": f"'direction' must be one of ${UPLOAD} or ${DOWNLOAD}. Got ${direction}"}),
+            "body": json.dumps({"message": f"'direction' must be one of {UPLOAD} or {DOWNLOAD}. Got {direction}"}),
         }
 
-    if not is_probably_valid_object_path(s3_path):
+    if s3_path is None or not is_probably_valid_object_path(s3_path):
         message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
         message += f"Got {s3_path}"
         return {
