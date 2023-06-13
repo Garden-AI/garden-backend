@@ -1,11 +1,7 @@
 import json
 
-<<<<<<< HEAD
-from doi import mint_doi
 from presigned_urls import make_presigned_url
-=======
 from doi import call_datacite
->>>>>>> main
 from tiny_router import TinyLambdaRouter
 
 app = TinyLambdaRouter()
