@@ -58,7 +58,9 @@ def call_datacite(event, _context, _kwargs):
         # DataCite successful response *would* have all our repo info,
         # so extract just the newly minted DOI for the response body
         if method == "POST":
-            return return_response.update(
+            return_response.update(...)
+        ...
+        return return_response
                 {
                     "body": json.dumps(
                         {
