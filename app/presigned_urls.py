@@ -5,7 +5,7 @@ import boto3
 
 logger = logging.getLogger()
 
-EXPIRATION_TIME = 3600  # 36000 seconds == 1 hour
+EXPIRATION_TIME = 3600  # 3600 seconds == 1 hour
 UPLOAD = 'upload'
 DOWNLOAD = 'download'
 
