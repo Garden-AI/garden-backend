@@ -1,0 +1,19 @@
+curl -s --user "$CLIENT_ID:$CLIENT_SECRET" -H \
+    'Content-Type: application/json' \
+    -XPOST https://auth.globus.org/v2/api/clients/$CLIENT_ID/scopes \
+    -d '{"scope":{"name":"AI Model Garden Test Scope","description":"A scope on the Garden-AI project that does not do anything in particular","scope_suffix":"test_scope","dependent_scopes":[],"advertised":true,"allow_refresh_tokens":true}}' | jq
+{
+  "scopes": [
+    {
+      "advertised": true,
+      "id": "31857a51-48b0-468d-b70e-478672b021de",
+      "dependent_scopes": [],
+      "client": "0948a6b0-a622-4078-b0a4-bfd6d77d65cf",
+      "required_domains": [],
+      "description": "A scope on the Garden-AI project that does not do anything in particular",
+      "allows_refresh_token": true,
+      "name": "AI Model Garden Test Scope",
+      "scope_string": "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/test_scope"
+    }
+  ]
+}
