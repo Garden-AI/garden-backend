@@ -1,5 +1,6 @@
 import json
 
+from presigned_urls import make_presigned_url
 from doi import call_datacite
 from tiny_router import TinyLambdaRouter
 
@@ -23,3 +24,4 @@ def hello(event, context, kwargs):
 
 
 app.route("/doi", methods=["POST", "PUT"])(call_datacite)  # equivalent to decorator syntax
+app.route("/presigned-url", methods=["POST"])(make_presigned_url)
