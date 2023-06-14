@@ -302,6 +302,11 @@ resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
   policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
 }
 
+resource "aws_iam_role_policy_attachment" "s3_full_access_attach" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.s3_full_access.arn
+}
+
 /* Make mlflow proxy resource */
 
 resource "aws_api_gateway_vpc_link" "main" {

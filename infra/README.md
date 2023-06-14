@@ -26,7 +26,7 @@ Prereqs:
 
 Steps:
 - Make your edit to the terraform code.
-- `terraform plan -var-file="{env}.tfvars"` and then if you approve, `terraform plan -var-file="{env}.tfvars"`
+- `terraform plan -var-file="{env}.tfvars"` and then if you approve, `terraform apply -var-file="{env}.tfvars"`
 - Do a sanity check to make sure things are still working, and you're done :)
 
 ## Deploying from scratch
