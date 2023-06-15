@@ -48,7 +48,7 @@ def publish(event, _context, _kwargs):
         "subject": garden_meta[
             "uuid"
         ],  # needs to be updated to doi after #140 goes through
-        "visible_to": ["all_authenticated_users"],
+        "visible_to": ["public"],
         "content": garden_meta,
     }
 
