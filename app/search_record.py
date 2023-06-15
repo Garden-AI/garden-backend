@@ -38,7 +38,7 @@ def publish(event, _context, _kwargs):
         globus_secrets["API_CLIENT_ID"], globus_secrets["API_CLIENT_SECRET"]
     )
     cc_authorizer = globus_sdk.ClientCredentialsAuthorizer(
-        confidential_client, globus_sdk.SearchClient.scopes.resource_server
+        confidential_client, globus_sdk.SearchClient.scopes.all
     )
     search_client = globus_sdk.SearchClient(authorizer=cc_authorizer)
 
