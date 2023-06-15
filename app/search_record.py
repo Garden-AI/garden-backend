@@ -54,7 +54,7 @@ def publish(event, _context, _kwargs):
 
     publish_result = search_client.create_entry(GARDEN_INDEX_UUID, gmeta_ingest)
 
-    max_intervals = 5
+    max_intervals = 25
     task_result = search_client.get_task(publish_result["task_id"])
     while task_result["state"] not in {"FAILED", "SUCCESS"}:
         if not max_intervals:
