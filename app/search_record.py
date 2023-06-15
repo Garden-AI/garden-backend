@@ -48,13 +48,13 @@ def publish(event, _context, _kwargs):
         "subject": garden_meta[
             "uuid"
         ],  # needs to be updated to doi after #140 goes through
-        "visible_to": ["all_authenticated_users"],
+        "visible_to": ["public"],
         "content": garden_meta,
     }
 
     publish_result = search_client.create_entry(GARDEN_INDEX_UUID, gmeta_ingest)
 
-    max_intervals = 30
+    max_intervals = 5
     task_result = search_client.get_task(publish_result["task_id"])
     while task_result["state"] not in {"FAILED", "SUCCESS"}:
         if not max_intervals:
@@ -66,7 +66,7 @@ def publish(event, _context, _kwargs):
                     }
                 ),
             }
-        sleep(2)
+        sleep(0.2)
         max_intervals -= 1
         task_result = search_client.get_task(publish_result["task_id"])
 
