@@ -73,7 +73,7 @@ def publish(event, _context, _kwargs):
     if task_result["state"] == "SUCCESS":
         return {
             "statusCode": 200,
-            "body": json.dumps(task_result),
+            "body": task_result.text,
         }
     else:
         return {
