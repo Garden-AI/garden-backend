@@ -80,6 +80,7 @@ resource "aws_lambda_function" "garden_app" {
   handler = "lambda_function.lambda_handler"
 
   role = aws_iam_role.lambda_exec.arn
+  timeout = 10
 
   environment {
     variables = {
