@@ -45,9 +45,7 @@ def publish(event, _context, _kwargs):
     garden_meta = json.loads(event["body"])
 
     gmeta_ingest = {
-        "subject": garden_meta[
-            "uuid"
-        ],  # needs to be updated to doi after #140 goes through
+        "subject": garden_meta["doi"],
         "visible_to": ["public"],
         "content": garden_meta,
     }
