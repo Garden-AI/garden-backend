@@ -33,15 +33,17 @@ def call_datacite(event, _context, _kwargs):
 
         if method == "POST":
             request = requests.post
+            target = DATACITE_ENDPOINT
             return_response = {"statusCode": 201}
         elif method == "PUT":
             request = requests.put
+            target = f"{DATACITE_ENDPOINT}/{payload['data']['attributes']['doi']}"
             return_response = {"statusCode": 200}
         else:
             return {"statusCode": 400, "body": "Invalid request method."}
 
         res: requests.Response = request(
-            DATACITE_ENDPOINT,
+            target,
             headers={"Content-Type": "application/vnd.api+json"},
             json=payload,
             auth=(DATACITE_REPOSITORY_ID, DATACITE_PASSWORD),
