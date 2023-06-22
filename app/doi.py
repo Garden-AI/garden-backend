@@ -33,9 +33,8 @@ def call_datacite(event, _context, _kwargs):
             "body": json.dumps({"message": message, "error": str(e)}),
         }
     try:
-        payload["data"]["attributes"]["prefix"] = DATACITE_PREFIX
-
         if method == "POST":
+            payload["data"]["attributes"]["prefix"] = DATACITE_PREFIX
             request = requests.post
             target = DATACITE_ENDPOINT
             return_response = {"statusCode": 201}
