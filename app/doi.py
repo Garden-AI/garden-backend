@@ -37,7 +37,7 @@ def call_datacite(event, _context, _kwargs):
             return_response = {"statusCode": 201}
         elif method == "PUT":
             request = requests.put
-            target = f"{DATACITE_ENDPOINT}/{payload['data']['attributes']['doi']}"
+            target = f"{DATACITE_ENDPOINT}/{payload['data']['attributes']['identifiers'][0]['identifier']}"
             return_response = {"statusCode": 200}
         else:
             return {"statusCode": 400, "body": "Invalid request method."}
