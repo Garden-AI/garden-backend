@@ -61,12 +61,8 @@ def call_datacite(event, _context, _kwargs):
         # so extract just the newly minted DOI for the response body
         if method == "POST":
             return_response.update(
-                {
-                    "body": json.dumps(
-                        {
-                            "doi": res.json()["data"]["attributes"]["doi"],
-                        }
-                    )
-                }
+                body=json.dumps({"doi": res.json()["data"]["attributes"]["doi"]})
             )
+        else:
+            return_response.update(body="{}")
         return return_response
