@@ -13,6 +13,9 @@ def call_datacite(event, _context, _kwargs):
     method = event["httpMethod"]
     payload = json.loads(event["body"])
     print(str(payload))  # logger.info appears to not be high enough level to be seen
+    print(type(payload))
+    print(type(payload["data"]))
+    print(type(payload["data"]["attributes"]))
     try:
         DATACITE_REPOSITORY_ID = os.environ["DATACITE_REPOSITORY_ID"]
         DATACITE_PASSWORD = os.environ["DATACITE_PASSWORD"]
