@@ -12,6 +12,7 @@ logger = logging.getLogger()
 def call_datacite(event, _context, _kwargs):
     method = event["httpMethod"]
     payload = json.loads(event["body"])
+    logger.info(str(payload))
     try:
         DATACITE_REPOSITORY_ID = os.environ["DATACITE_REPOSITORY_ID"]
         DATACITE_PASSWORD = os.environ["DATACITE_PASSWORD"]
