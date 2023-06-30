@@ -1,8 +1,8 @@
-import os
 import json
 
 import requests
 from requests.exceptions import HTTPError
+from utils import get_secret
 
 import logging
 
@@ -13,22 +13,12 @@ def call_datacite(event, _context, _kwargs):
     method = event["httpMethod"]
     payload = json.loads(event["body"])
     print(f"json {payload = }")  # logger.info appears to not be high enough level to be seen
-    try:
-        DATACITE_REPOSITORY_ID = os.environ["DATACITE_REPOSITORY_ID"]
-        DATACITE_PASSWORD = os.environ["DATACITE_PASSWORD"]
-        DATACITE_ENDPOINT = os.environ["DATACITE_ENDPOINT"]
-        DATACITE_PREFIX = os.environ["DATACITE_PREFIX"]
-    except KeyError as e:
-        message = (
-            "Garden server was unable to authenticate with DataCite. Please "
-            "contact support and/or open an issue at "
-            "https://github.com/Garden-AI/garden-backend/issues. "
-        )
-        logger.error(f"DATACITE_* environment variables not set. env: {os.environ}")
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"message": message, "error": str(e)}),
-        }
+
+    DATACITE_REPOSITORY_ID = get_secret("REPO-ID-SECRETLOC-HERE")
+    DATACITE_PASSWORD = get_secret("DATACITE-PWD-SECRETLOC-HERE")
+    DATACITE_ENDPOINT = get_secret("DATACITE-ENDPOINT-SECRETLOC-HERE")
+    DATACITE_PREFIX = get_secret("DATACITE-PREFIX-SECRETLOC-HERE")
+
     try:
         if method == "POST":
             payload["data"]["attributes"]["prefix"] = DATACITE_PREFIX
