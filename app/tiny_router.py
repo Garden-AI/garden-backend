@@ -1,4 +1,4 @@
-# stolen from https://kevinquinn.fun/blog/tiny-python-router-for-aws-lambda/
+# found at https://kevinquinn.fun/blog/tiny-python-router-for-aws-lambda/
 
 class RouteNotFoundException(Exception):
     def __init__(self, msg: str) -> None:
