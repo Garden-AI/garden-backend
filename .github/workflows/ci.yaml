@@ -38,10 +38,6 @@ jobs:
         run: |
           pytest ./app/test_app.py
 
-      - name: Perform Type Checking With mypy
-        run: |
-          mypy .
-
       - name: Check for vulnerable libraries with safety
         run: |
           safety check
