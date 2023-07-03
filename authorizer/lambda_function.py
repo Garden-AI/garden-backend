@@ -1,5 +1,6 @@
 import globus_sdk
 import boto3
+import json
 
 
 def get_secret():
@@ -17,7 +18,7 @@ def get_secret():
     get_secret_value_response = client.get_secret_value(
         SecretId=secret_name
     )
-    return eval(get_secret_value_response['SecretString'])
+    return json.loads(get_secret_value_response['SecretString'])
 
 
 def generate_policy(principalId, effect, resource, message="", name=None, identities=[],

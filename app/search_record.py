@@ -1,31 +1,16 @@
 import json
 import globus_sdk
-import boto3
 
 from time import sleep
+from utils import get_secret
 
 # garden-dev index
 GARDEN_INDEX_UUID = "58e4df29-4492-4e7d-9317-b27eba62a911"
 
 
-def get_secret():
-    secret_name = (
-        "arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW"
-    )
-    region_name = "us-east-1"
-
-    # Create a Secrets Manager client
-    session = boto3.session.Session()
-
-    client = session.client(service_name="secretsmanager", region_name=region_name)
-
-    get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-    return eval(get_secret_value_response["SecretString"])
-
-
 def publish(event, _context, _kwargs):
     try:
-        globus_secrets = get_secret()
+        globus_secrets = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW")
     except Exception:
         return {
             "statusCode": 500,

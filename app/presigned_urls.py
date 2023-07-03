@@ -6,8 +6,8 @@ import boto3
 logger = logging.getLogger()
 
 EXPIRATION_TIME = 3600  # 3600 seconds == 1 hour
-UPLOAD = 'upload'
-DOWNLOAD = 'download'
+UPLOAD = "upload"
+DOWNLOAD = "download"
 
 
 def make_upload_url(full_object_path: str, bucket: str) -> dict:
@@ -36,7 +36,7 @@ url_makers = {
 
 
 def make_presigned_url(event, _context, _kwargs):
-    bucket_name = 'garden-mlflow-models-dev'
+    bucket_name = "garden-mlflow-models-dev"
     payload = json.loads(event["body"])
     s3_path = payload.get("s3_path", None)
     direction = payload.get("direction", None)
@@ -76,7 +76,7 @@ def is_probably_valid_object_path(object_path: str):
     :param object_path: The path we have gotten a request to generate a URL for.
     :return: bool
     """
-    segments = object_path.split('/')
+    segments = object_path.split("/")
     if len(segments) != 3:
         return False
 
