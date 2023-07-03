@@ -1,9 +1,7 @@
 name: tests
 on:
-  push:
+  pull_request:
     branches:
-      - "*"
-    tags:
       - "*"
   workflow_dispatch:
 permissions:
