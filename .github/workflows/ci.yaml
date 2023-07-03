@@ -6,6 +6,9 @@ on:
     tags:
       - "*"
   pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read    # This is required for actions/checkout
 
 jobs:
   build:
