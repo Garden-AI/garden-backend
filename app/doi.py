@@ -14,10 +14,10 @@ def call_datacite(event, _context, _kwargs):
     payload = json.loads(event["body"])
     print(f"json {payload = }")  # logger.info appears to not be high enough level to be seen
 
-    DATACITE_REPOSITORY_ID = get_secret("REPO-ID-SECRETLOC-HERE")
-    DATACITE_PASSWORD = get_secret("DATACITE-PWD-SECRETLOC-HERE")
-    DATACITE_ENDPOINT = get_secret("DATACITE-ENDPOINT-SECRETLOC-HERE")
-    DATACITE_PREFIX = get_secret("DATACITE-PREFIX-SECRETLOC-HERE")
+    DATACITE_REPOSITORY_ID = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/repo_id-ePlB1w")
+    DATACITE_PASSWORD = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/password-FFLiwt")
+    DATACITE_ENDPOINT = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/endpoint-06aepz")
+    DATACITE_PREFIX = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/prefix-K6GdzM")
 
     try:
         if method == "POST":
