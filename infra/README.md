@@ -13,9 +13,9 @@ If you're making a new API endpoint that has the same auth requirements as an ex
 ## What infra is there?
 
 - An AWS API Gateway
-- An authorizer Lambda that 
 - Authorizer Lambda
 - App Lambda
+- S3 buckets for storing model binaries
 
 ## Making changes to the existing deployment
 
