@@ -5,7 +5,7 @@ from lambda_function import lambda_handler
 from tiny_router import RouteNotFoundException
 
 
-def sanity_test() -> None:
+def test_sanity() -> None:
     events = [
         {"path": "/hello-world", "httpMethod": "GET"},
         {"path": "/route/we/do/not/support", "httpMethod": "GET"},
@@ -60,10 +60,3 @@ def test_garden_search_record(mocker) -> None:
     assert lambda_handler(event, None)["statusCode"] == 500
     mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "SUCCESS", "task_id": "uuid-here", "fatal_error": "Globus error"})
     assert lambda_handler(event, None)["statusCode"] == 200
-
-
-if __name__ == "__main__":
-    sanity_test()
-    test_doi()
-    test_presigned_url()
-    test_garden_search_record()
