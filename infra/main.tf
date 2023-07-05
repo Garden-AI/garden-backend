@@ -81,15 +81,6 @@ resource "aws_lambda_function" "garden_app" {
 
   role = aws_iam_role.lambda_exec.arn
   timeout = 10
-
-  environment {
-    variables = {
-      "DATACITE_ENDPOINT"      = data.aws_secretsmanager_secret_version.datacite_endpoint.secret_string
-      "DATACITE_PASSWORD"      = data.aws_secretsmanager_secret_version.datacite_password.secret_string
-      "DATACITE_PREFIX"        = data.aws_secretsmanager_secret_version.datacite_prefix.secret_string
-      "DATACITE_REPOSITORY_ID" = data.aws_secretsmanager_secret_version.datacite_repo_id.secret_string
-    }
-  }
 }
 
 resource "aws_cloudwatch_log_group" "garden_app" {
@@ -286,7 +277,13 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
             "Action": [
                 "secretsmanager:GetSecretValue"
             ],
-            "Resource": "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
+            "Resource": [
+                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-ePlB1w",
+                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-FFLiwt",
+                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-06aepz",
+                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-K6GdzM",
+                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
+            ]
         }
     ]
   })
