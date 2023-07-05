@@ -22,7 +22,7 @@ def call_datacite(event, _context, _kwargs):
 
     try:
         if method == "POST":
-            payload["data"]["attributes"]["prefix"] = DATACITE_PREFIX
+            payload["data"]["attributes"]["prefix"] = str(DATACITE_PREFIX)
             request = requests.post
             target = DATACITE_ENDPOINT
             return_response = {"statusCode": 201}
