@@ -15,6 +15,8 @@ def get_secret(secret_name: str) -> Union[dict, str]:
     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
     # some of our secrets are stored as str(dict[str, str]), and others are just strings
     try:
+        print(f"Trying to json.loads {secret_name}")
         return json.loads(get_secret_value_response["SecretString"])
     except json.JSONDecodeError:
+        print(f"Trying to get {secret_name} raw")
         return get_secret_value_response["SecretString"]
