@@ -10,7 +10,7 @@ GARDEN_INDEX_UUID = "58e4df29-4492-4e7d-9317-b27eba62a911"
 
 def publish(event, _context, _kwargs):
     try:
-        globus_secrets = get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW")
+        globus_secrets = json.loads(get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW"))
     except Exception:
         return {
             "statusCode": 500,
