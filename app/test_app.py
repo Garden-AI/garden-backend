@@ -40,10 +40,11 @@ def test_doi(mocker) -> None:
 
 def test_presigned_url() -> None:
     payloads = [
-        json.dumps({"direction": "not-a-direction", "s3_path": "willengler@uchicago.edu/example-model/model.zip"}),
-        json.dumps({"direction": "upload", "s3_path": "willengler@uchicago.edu/example-model/model.tar"}),
-        json.dumps({"direction": "upload", "s3_path": "willengler@uchicago.edu/example-model/model.zip"}),
-        json.dumps({"direction": "download", "s3_path": "willengler@uchicago.edu/example-model/model.zip"}),
+        json.dumps({"direction": "not-a-direction", "batch": ["willengler@uchicago.edu/example-model/model.zip"]}),
+        json.dumps({"direction": "upload", "batch": ["willengler@uchicago.edu/example-model/model.tar"]}),
+        json.dumps({"direction": "upload", "batch": ["willengler@uchicago.edu/example-model/model.zip"]}),
+        json.dumps({"direction": "download", "batch": ["willengler@uchicago.edu/example-model/model.zip",
+                                                       "willengler@uchicago.edu/sample-model/model.zip"]}),
     ]
     events = [{"path": "/presigned-url", "httpMethod": "POST", "body": payload} for payload in payloads]
 
