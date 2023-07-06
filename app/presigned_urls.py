@@ -38,8 +38,8 @@ url_makers = {
 def make_presigned_url(event, _context, _kwargs):
     bucket_name = "garden-mlflow-models-dev"
     payload = json.loads(event["body"])
-    s3_path = payload.get("s3_path", None)
-    direction = payload.get("direction", None)
+    batch = payload["batch"]
+    direction = payload["direction"]
 
     if direction not in url_makers:
         return {
@@ -47,24 +47,31 @@ def make_presigned_url(event, _context, _kwargs):
             "body": json.dumps({"message": f"'direction' must be one of {UPLOAD} or {DOWNLOAD}. Got {direction}"}),
         }
 
-    if s3_path is None or not is_probably_valid_object_path(s3_path):
-        message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
-        message += f"Got {s3_path}"
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"message": message}),
+    for i, s3_path in enumerate(batch):
+        if not is_probably_valid_object_path(s3_path):
+            message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
+            message += f"Got {s3_path}"
+            batch[i] = {
+                "statusCode": 400,
+                "body": json.dumps({"message": message}),
+            }
+            break
+
+        make_url = url_makers[direction]
+        try:
+            url_and_fields_payload = make_url(s3_path, bucket_name)
+        except Exception as e:
+            batch[i] = {"statusCode": 500, "body": str(e)}
+            break
+
+        batch[i] = {
+            "statusCode": 200,
+            "body": json.dumps(url_and_fields_payload),
         }
 
-    make_url = url_makers[direction]
-    try:
-        url_and_fields_payload = make_url(s3_path, bucket_name)
-    except Exception as e:
-        return {"statusCode": 500, "body": str(e)}
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(url_and_fields_payload),
-    }
+    # provides all of the responses when successful, otherwise only the first error encountered
+    overall_status = batch[i]["statusCode"]
+    return {"statusCode": overall_status, "body": json.dumps({"responses": [batch[i]] if overall_status >= 400 else batch})}
 
 
 def is_probably_valid_object_path(object_path: str):
