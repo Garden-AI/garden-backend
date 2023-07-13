@@ -38,8 +38,9 @@ url_makers = {
 def make_presigned_url(event, _context, _kwargs):
     bucket_name = "garden-mlflow-models-dev"
     payload = json.loads(event["body"])
-    s3_path = payload.get("s3_path", None)
-    direction = payload.get("direction", None)
+    batch = payload["batch"]
+    direction = payload["direction"]
+    responses = []
 
     if direction not in url_makers:
         return {
@@ -47,24 +48,27 @@ def make_presigned_url(event, _context, _kwargs):
             "body": json.dumps({"message": f"'direction' must be one of {UPLOAD} or {DOWNLOAD}. Got {direction}"}),
         }
 
-    if s3_path is None or not is_probably_valid_object_path(s3_path):
-        message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
-        message += f"Got {s3_path}"
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"message": message}),
-        }
+    for s3_path in batch:
+        if not is_probably_valid_object_path(s3_path):
+            message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
+            message += f"Got {s3_path}"
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"message": message}),
+            }
 
-    make_url = url_makers[direction]
-    try:
-        url_and_fields_payload = make_url(s3_path, bucket_name)
-    except Exception as e:
-        return {"statusCode": 500, "body": str(e)}
+        make_url = url_makers[direction]
+        try:
+            response_payload = {"model_name": s3_path[:s3_path.find("/model.zip")]}
+            url_and_fields_payload = make_url(s3_path, bucket_name)
+            response_payload.update(url_and_fields_payload)
+        except Exception as e:
+            return {"statusCode": 500, "body": str(e)}
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps(url_and_fields_payload),
-    }
+        responses.append(response_payload)
+
+    # provides all of the responses when successful, otherwise only the first error encountered
+    return {"statusCode": 200, "body": json.dumps({"responses": responses})}
 
 
 def is_probably_valid_object_path(object_path: str):
