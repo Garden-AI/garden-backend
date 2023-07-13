@@ -59,11 +59,13 @@ def make_presigned_url(event, _context, _kwargs):
 
         make_url = url_makers[direction]
         try:
+            response_payload = {"model_name": s3_path[:s3_path.find("/model.zip")]}
             url_and_fields_payload = make_url(s3_path, bucket_name)
+            response_payload.update(url_and_fields_payload)
         except Exception as e:
             return {"statusCode": 500, "body": str(e)}
 
-        responses.append(url_and_fields_payload)
+        responses.append(response_payload)
 
     # provides all of the responses when successful, otherwise only the first error encountered
     return {"statusCode": 200, "body": json.dumps({"responses": responses})}

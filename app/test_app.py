@@ -51,7 +51,9 @@ def test_presigned_url() -> None:
     assert (res:=lambda_handler(events[0], None))["statusCode"] == 400 and "direction" in json.loads(res["body"])["message"]
     assert (res:=lambda_handler(events[1], None))["statusCode"] == 400 and "format" in json.loads(res["body"])["message"]
     assert (res:=lambda_handler(events[2], None))["statusCode"] == 200 and (res:=json.loads(res["body"])["responses"][0])["url"] and res["fields"]
+    assert res["model_name"] == "willengler@uchicago.edu/example-model"
     assert (res:=lambda_handler(events[3], None))["statusCode"] == 200 and (res:=json.loads(res["body"])["responses"])[0]["url"] and res[1]["url"]
+    assert res[0]["model_name"] == "willengler@uchicago.edu/example-model" and res[1]["model_name"] == "willengler@uchicago.edu/sample-model"
 
 
 def test_garden_search_record(mocker) -> None:
