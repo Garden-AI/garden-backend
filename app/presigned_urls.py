@@ -63,7 +63,7 @@ def make_presigned_url(event, _context, _kwargs):
         except Exception as e:
             return {"statusCode": 500, "body": str(e)}
 
-        responses.append({"body": json.dumps(url_and_fields_payload)})
+        responses.append(url_and_fields_payload)
 
     # provides all of the responses when successful, otherwise only the first error encountered
     return {"statusCode": 200, "body": json.dumps({"responses": responses})}
