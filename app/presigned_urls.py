@@ -40,6 +40,7 @@ def make_presigned_url(event, _context, _kwargs):
     payload = json.loads(event["body"])
     batch = payload["batch"]
     direction = payload["direction"]
+    responses = []
 
     if direction not in url_makers:
         return {
@@ -47,31 +48,25 @@ def make_presigned_url(event, _context, _kwargs):
             "body": json.dumps({"message": f"'direction' must be one of {UPLOAD} or {DOWNLOAD}. Got {direction}"}),
         }
 
-    for i, s3_path in enumerate(batch):
+    for s3_path in batch:
         if not is_probably_valid_object_path(s3_path):
             message = "'s3_path' must be formatted like '<email address>/<model short name>/model.zip'. "
             message += f"Got {s3_path}"
-            batch[i] = {
+            return {
                 "statusCode": 400,
                 "body": json.dumps({"message": message}),
             }
-            break
 
         make_url = url_makers[direction]
         try:
             url_and_fields_payload = make_url(s3_path, bucket_name)
         except Exception as e:
-            batch[i] = {"statusCode": 500, "body": str(e)}
-            break
+            return {"statusCode": 500, "body": str(e)}
 
-        batch[i] = {
-            "statusCode": 200,
-            "body": json.dumps(url_and_fields_payload),
-        }
+        responses.append({"body": json.dumps(url_and_fields_payload)})
 
     # provides all of the responses when successful, otherwise only the first error encountered
-    overall_status = batch[i]["statusCode"]
-    return {"statusCode": overall_status, "body": json.dumps({"responses": [batch[i]] if overall_status >= 400 else batch})}
+    return {"statusCode": 200, "body": json.dumps({"responses": responses})}
 
 
 def is_probably_valid_object_path(object_path: str):
