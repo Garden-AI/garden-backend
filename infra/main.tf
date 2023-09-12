@@ -91,94 +91,17 @@ resource "aws_cloudwatch_log_group" "garden_app" {
 
 /* API Gateway */
 
-resource "aws_api_gateway_rest_api" "garden_api" {
-  name               = "garden_gateway"
-  binary_media_types = ["application/octet-stream"]
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  api_cert_arn                  = data.aws_acm_certificate.api_cert.arn
+  api_cert_domain               = data.aws_acm_certificate.api_cert.domain
+  garden_app_invoke_arn         = aws_lambda_function.garden_app.invoke_arn
+  garden_app_function_name      = aws_lambda_function.garden_app.function_name
+  garden_authorizer_invoke_arn  = aws_lambda_function.garden_authorizer.invoke_arn
+  garden_authorizer_function_name = aws_lambda_function.garden_authorizer.function_name
 }
 
-resource "aws_api_gateway_stage" "garden_api" {
-  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-  deployment_id = aws_api_gateway_deployment.garden_deployment.id
-
-  stage_name        = "garden_prod"
-
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.garden_api_gw.arn
-
-    format = jsonencode({
-      requestId               = "$context.requestId"
-      sourceIp                = "$context.identity.sourceIp"
-      httpMethod              = "$context.httpMethod"
-      resourcePath            = "$context.resourcePath"
-      routeKey                = "$context.routeKey"
-      status                  = "$context.status"
-      responseLength          = "$context.responseLength"
-      integrationErrorMessage = "$context.integrationErrorMessage"
-      protocol                = "$context.protocol"
-      requestTime             = "$context.requestTime"
-      integrationRequestId    = "$context.integration.requestId"
-      functionResponseStatus  = "$context.integration.status"
-      integrationLatency      = "$context.integration.latency"
-      integrationServiceStatus= "$context.integration.integrationStatus"
-      xrayTraceId             = "$context.xrayTraceId"
-      responseLatency         = "$context.responseLatency"
-      path                    = "$context.path"
-      authorizeResultStatus   = "$context.authorize.status"
-      authorizerServiceStatus = "$context.authorizer.status"
-      authorizerLatency       = "$context.authorizer.latency"
-      authorizerRequestId     = "$context.authorizer.requestId"
-      }
-    )
-  }
-}
-
-resource "aws_api_gateway_deployment" "garden_deployment" {
-  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-  description = "Terraform managed deployment"
-
-  triggers = {
-    # NOTE: The configuration below will satisfy ordering considerations,
-    #       but not pick up all future REST API changes. More advanced patterns
-    #       are possible, such as using the filesha1() function against the
-    #       Terraform configuration file(s) or removing the .id references to
-    #       calculate a hash against whole resources. Be aware that using whole
-    #       resources will show a difference after the initial implementation.
-    #       It will stabilize to only change when resources change afterwards.
-    redeployment = sha1(jsonencode([
-      aws_api_gateway_rest_api.garden_api,
-      aws_api_gateway_resource.garden_app.id,
-      aws_api_gateway_method.garden_auth_hookup.id,
-      aws_api_gateway_integration.garden_app.id,
-    ]))
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_cloudwatch_log_group" "garden_api_gw" {
-  name = "/aws/garden_api_gw/${aws_api_gateway_rest_api.garden_api.name}"
-
-  retention_in_days = 30
-}
-
-/* Connect the authorizer Lambda to the gateway */
-
-resource "aws_api_gateway_authorizer" "garden_authorizer" {
-  rest_api_id                       = aws_api_gateway_rest_api.garden_api.id
-  type                              = "REQUEST"
-  authorizer_uri                    = aws_lambda_function.garden_authorizer.invoke_arn
-  name                              = aws_lambda_function.garden_authorizer.function_name
-}
-
-resource "aws_api_gateway_method" "garden_auth_hookup" {
-  authorization = "CUSTOM"
-  http_method   = "ANY"
-  authorizer_id = aws_api_gateway_authorizer.garden_authorizer.id
-  resource_id   = aws_api_gateway_resource.garden_app.id
-  rest_api_id   = aws_api_gateway_rest_api.garden_api.id
-}
 
 resource "aws_lambda_permission" "garden_api_auth_permission" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -186,7 +109,7 @@ resource "aws_lambda_permission" "garden_api_auth_permission" {
   function_name = aws_lambda_function.garden_authorizer.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_api_gateway_rest_api.garden_api.execution_arn}/*/*"
+  source_arn = "${module.api_gateway.api_execution_arn}/*/*"
 }
 
 /* Connect api.thegardens.ai to the gateway */
@@ -199,43 +122,20 @@ data "aws_acm_certificate" "api_cert" {
   domain = "api.thegardens.ai"
 }
 
-resource "aws_api_gateway_domain_name" "api_domain_name" {
-  certificate_arn = data.aws_acm_certificate.api_cert.arn
-  domain_name     = data.aws_acm_certificate.api_cert.domain
-}
 
 resource "aws_route53_record" "api_record" {
-  name    = aws_api_gateway_domain_name.api_domain_name.domain_name
+  name    = module.api_gateway.api_domain_name
   type    = "A"
   zone_id = data.aws_route53_zone.hosted_zone.id
 
   alias {
     evaluate_target_health = true
-    name                   = aws_api_gateway_domain_name.api_domain_name.cloudfront_domain_name
-    zone_id                = aws_api_gateway_domain_name.api_domain_name.cloudfront_zone_id
+    name                   = module.api_gateway.api_cloudfront_domain_name
+    zone_id                = module.api_gateway.api_cloudfront_zone_id
   }
 }
 
 /* Connect the app Lambda to the gateway */
-
-resource "aws_api_gateway_resource" "garden_app" {
-  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-  parent_id = aws_api_gateway_rest_api.garden_api.root_resource_id
-
-  path_part = "{proxy+}"
-}
-
-resource "aws_api_gateway_integration" "garden_app" {
-  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-  resource_id = aws_api_gateway_resource.garden_app.id
-  http_method = "ANY"
-  type = "AWS_PROXY"
-  integration_http_method = "POST"
-  uri    = aws_lambda_function.garden_app.invoke_arn
-  depends_on = [
-    aws_api_gateway_resource.garden_app
-  ]
-}
 
 resource "aws_lambda_permission" "garden_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -243,7 +143,7 @@ resource "aws_lambda_permission" "garden_api_gw" {
   function_name = aws_lambda_function.garden_app.function_name
   principal     = "apigateway.amazonaws.com"
 
-  source_arn = "${aws_api_gateway_rest_api.garden_api.execution_arn}/*/*"
+  source_arn = "${module.api_gateway.api_execution_arn}/*/*"
 }
 
 /* Shared Lambda resources */
