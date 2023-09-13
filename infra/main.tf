@@ -7,9 +7,9 @@ terraform {
   }
   required_version = "~> 1.3.0"
   backend "s3" {
-    bucket         = "garden-backend-terraform-state"
-    key            = "garden-backend/s3/terraform.tfstate"
-    region         = "us-east-1"
+    bucket = "garden-backend-terraform-state"
+    key    = "garden-backend/s3/terraform.tfstate"
+    region = "us-east-1"
 
     dynamodb_table = "garden-terraform-locks"
     encrypt        = true
@@ -58,8 +58,8 @@ resource "aws_lambda_function" "garden_authorizer" {
   function_name = "GardenAuthorizer"
 
   filename = "authorizer.zip"
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
+  runtime  = "python3.9"
+  handler  = "lambda_function.lambda_handler"
 
   role = aws_iam_role.lambda_exec.arn
 }
@@ -76,10 +76,10 @@ resource "aws_lambda_function" "garden_app" {
   function_name = "GardenApp"
 
   filename = "app.zip"
-  runtime = "python3.9"
-  handler = "lambda_function.lambda_handler"
+  runtime  = "python3.9"
+  handler  = "lambda_function.lambda_handler"
 
-  role = aws_iam_role.lambda_exec.arn
+  role    = aws_iam_role.lambda_exec.arn
   timeout = 10
 }
 
@@ -92,25 +92,17 @@ resource "aws_cloudwatch_log_group" "garden_app" {
 /* API Gateway */
 
 module "api_gateway" {
-  source = "./modules/api_gateway"
-
-  api_cert_arn                  = data.aws_acm_certificate.api_cert.arn
-  api_cert_domain               = data.aws_acm_certificate.api_cert.domain
-  garden_app_invoke_arn         = aws_lambda_function.garden_app.invoke_arn
-  garden_app_function_name      = aws_lambda_function.garden_app.function_name
-  garden_authorizer_invoke_arn  = aws_lambda_function.garden_authorizer.invoke_arn
+  source                          = "./modules/api_gateway"
+  env                             = var.env
+  api_cert_arn                    = data.aws_acm_certificate.api_cert.arn
+  api_cert_domain                 = data.aws_acm_certificate.api_cert.domain
+  garden_app_invoke_arn           = aws_lambda_function.garden_app.invoke_arn
+  garden_app_function_name        = aws_lambda_function.garden_app.function_name
+  garden_authorizer_invoke_arn    = aws_lambda_function.garden_authorizer.invoke_arn
   garden_authorizer_function_name = aws_lambda_function.garden_authorizer.function_name
 }
 
 
-resource "aws_lambda_permission" "garden_api_auth_permission" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.garden_authorizer.function_name
-  principal     = "apigateway.amazonaws.com"
-
-  source_arn = "${module.api_gateway.api_execution_arn}/*/*"
-}
 
 /* Connect api.thegardens.ai to the gateway */
 
@@ -135,7 +127,16 @@ resource "aws_route53_record" "api_record" {
   }
 }
 
-/* Connect the app Lambda to the gateway */
+/* Connect the auth/app Lambdas to the gateway */
+
+resource "aws_lambda_permission" "garden_api_auth_permission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.garden_authorizer.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  source_arn = "${module.api_gateway.api_execution_arn}/*/*"
+}
 
 resource "aws_lambda_permission" "garden_api_gw" {
   statement_id  = "AllowExecutionFromAPIGateway"
@@ -170,21 +171,21 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
   description = "A test policy"
 
   policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "secretsmanager:GetSecretValue"
-            ],
-            "Resource": [
-                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-ePlB1w",
-                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-FFLiwt",
-                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-06aepz",
-                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-K6GdzM",
-                "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
-            ]
-        }
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "secretsmanager:GetSecretValue"
+        ],
+        "Resource" : [
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-ePlB1w",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-FFLiwt",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-06aepz",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-K6GdzM",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
+        ]
+      }
     ]
   })
 }

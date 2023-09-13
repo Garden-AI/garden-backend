@@ -1,3 +1,4 @@
+
 variable "api_cert_arn" {
   description = "The ARN of the ACM certificate"
   type        = string
@@ -26,4 +27,9 @@ variable "garden_authorizer_invoke_arn" {
 variable "garden_authorizer_function_name" {
   description = "The function name of the GardenAuthorizer Lambda function"
   type        = string
+}
+
+variable "env" {
+  type = string
+  description = "Either 'dev' or 'prod'"
 }

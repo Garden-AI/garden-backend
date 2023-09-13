@@ -14,7 +14,7 @@ variable "tags" {
   default = {}
 }
 
-# variable "env" {
-#   type = string
-#   description = "Either 'dev' or 'prod'"
-# }
+variable "env" {
+  type = string
+  description = "Either 'dev' or 'prod'"
+}
