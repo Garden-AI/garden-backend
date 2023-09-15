@@ -58,7 +58,7 @@ jobs:
                       --implementation cp \
                       --python 3.9 \
                       --only-binary=:all: --upgrade \
-                      -r authorizer/requirements.txt -t ./packages
+                      -r app/requirements.txt -t ./packages
         # Put the requirements into the top level of our deployable zip archive.
         cd packages
         zip -r ../app.zip *
