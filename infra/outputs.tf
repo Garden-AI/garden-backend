@@ -3,7 +3,7 @@
 output "function_name" {
   description = "Name of the Lambda function."
 
-  value = aws_lambda_function.garden_app.function_name
+  value = module.lambda.garden_app_function_name
 }
 
 output "base_url" {

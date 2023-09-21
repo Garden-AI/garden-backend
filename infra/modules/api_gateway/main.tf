@@ -1,6 +1,6 @@
 
 resource "aws_api_gateway_rest_api" "garden_api" {
-  name               = "garden_gateway"
+  name               = "garden_gateway_${var.env}"
   binary_media_types = ["application/octet-stream"]
 }
 
@@ -8,7 +8,7 @@ resource "aws_api_gateway_stage" "garden_api" {
   rest_api_id = aws_api_gateway_rest_api.garden_api.id
   deployment_id = aws_api_gateway_deployment.garden_deployment.id
 
-  stage_name        = "garden_prod"
+  stage_name        = "garden_${var.env}"
 
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.garden_api_gw.arn
@@ -71,28 +71,12 @@ resource "aws_cloudwatch_log_group" "garden_api_gw" {
   retention_in_days = 30
 }
 
-resource "aws_api_gateway_domain_name" "api_domain_name" {
-  certificate_arn = var.api_cert_arn
-  domain_name     = var.api_cert_domain
-}
 
 resource "aws_api_gateway_resource" "garden_app" {
   rest_api_id = aws_api_gateway_rest_api.garden_api.id
   parent_id = aws_api_gateway_rest_api.garden_api.root_resource_id
 
   path_part = "{proxy+}"
-}
-
-resource "aws_api_gateway_integration" "garden_app" {
-  rest_api_id = aws_api_gateway_rest_api.garden_api.id
-  resource_id = aws_api_gateway_resource.garden_app.id
-  http_method = "ANY"
-  type = "AWS_PROXY"
-  integration_http_method = "POST"
-  uri    = var.garden_app_invoke_arn
-  depends_on = [
-    aws_api_gateway_resource.garden_app
-  ]
 }
 
 /* Connect the authorizer Lambda to the gateway */
@@ -110,4 +94,16 @@ resource "aws_api_gateway_method" "garden_auth_hookup" {
   authorizer_id = aws_api_gateway_authorizer.garden_authorizer.id
   resource_id   = aws_api_gateway_resource.garden_app.id
   rest_api_id   = aws_api_gateway_rest_api.garden_api.id
+}
+
+resource "aws_api_gateway_integration" "garden_app" {
+  rest_api_id = aws_api_gateway_rest_api.garden_api.id
+  resource_id = aws_api_gateway_resource.garden_app.id
+  http_method = "ANY"
+  type = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri    = var.garden_app_invoke_arn
+  depends_on = [
+    aws_api_gateway_resource.garden_app
+  ]
 }

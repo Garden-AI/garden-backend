@@ -171,3 +171,4 @@ response.json
 
 .DS_Store
 .idea/
+*.zip

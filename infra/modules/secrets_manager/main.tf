@@ -1,0 +1,57 @@
+data "aws_secretsmanager_secret" "datacite_endpoint" {
+  name = "datacite/endpoint"
+}
+data "aws_secretsmanager_secret_version" "datacite_endpoint" {
+  secret_id = data.aws_secretsmanager_secret.datacite_endpoint.id
+}
+
+data "aws_secretsmanager_secret" "datacite_password" {
+  name = "datacite/password"
+}
+data "aws_secretsmanager_secret_version" "datacite_password" {
+  secret_id = data.aws_secretsmanager_secret.datacite_password.id
+}
+
+data "aws_secretsmanager_secret" "datacite_prefix" {
+  name = "datacite/prefix"
+}
+data "aws_secretsmanager_secret_version" "datacite_prefix" {
+  secret_id = data.aws_secretsmanager_secret.datacite_prefix.id
+}
+
+data "aws_secretsmanager_secret" "datacite_repo_id" {
+  name = "datacite/repo_id"
+}
+data "aws_secretsmanager_secret_version" "datacite_repo_id" {
+  secret_id = data.aws_secretsmanager_secret.datacite_repo_id.id
+}
+
+
+resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
+  name        = "test-policy-${var.env}"
+  description = "A test policy"
+
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "secretsmanager:GetSecretValue"
+        ],
+        "Resource" : [
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-ePlB1w",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-FFLiwt",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-06aepz",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-K6GdzM",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
+  role       = var.lambda_exec_role_name
+  policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
+}

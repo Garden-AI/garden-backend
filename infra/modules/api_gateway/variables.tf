@@ -1,14 +1,4 @@
 
-variable "api_cert_arn" {
-  description = "The ARN of the ACM certificate"
-  type        = string
-}
-
-variable "api_cert_domain" {
-  description = "The domain name of the ACM certificate"
-  type        = string
-}
-
 variable "garden_app_invoke_arn" {
   description = "The invoke ARN of the GardenApp Lambda function"
   type        = string
