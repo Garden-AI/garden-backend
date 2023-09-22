@@ -17,6 +17,24 @@ If you're making a new API endpoint that has the same auth requirements as an ex
 - App Lambda
 - S3 buckets for storing model binaries
 
+### Subdirectory structure / modules
+Almost all resources are configured in dedicated modules under the `modules/` subdirectory. Currently the only exception to this are resources pertaining to the custom `api.thegardens.ai` domain, which live in `prod/main.tf`. 
+
+- `modules/api_gateway`
+  - contains every `aws_api_gateway_*` resource
+  - requires input variables to plug into the app/auth lambdas
+  - provisions totally distinct resources based on `env` input variable 
+- `modules/lambda`
+  - resources for both the GardenApp and GardenAuthorizer lambdas
+  - also configures relevant IAM resources 
+  - distinct resources based on `env` input variable 
+- `modules/secrets_manager`
+  - configuration for datacite endpoint/password/prefix secrets
+  - IAM resources are distinct based on `var.env`, but the actual datacite secrets are still the same (for now) 
+- `modules/s3`
+  - configures the s3 buckets for model binaries for both dev and prod together 
+  - also configures the `"s3_full_access"` IAM policy if we want to change that based on env, but currently keeps it the same for both. 
+
 ## Making changes to the existing deployment
 
 Prereqs:
@@ -26,13 +44,16 @@ Prereqs:
 
 Steps:
 - Make your edit to the terraform code.
-- `terraform plan -var-file="{env}.tfvars"` and then if you approve, `terraform apply -var-file="{env}.tfvars"`
-- Do a sanity check to make sure things are still working, and you're done :)
+- From the `dev/` subdirectory:
+  - `terraform plan -var-file="dev.tfvars"` and then if you approve, `terraform apply -var-file="dev.tfvars"`
+  - Do a sanity check to make sure things are still working in the dev environment
+  - If sane, do the same from the `prod/` subdirectory and with `var-file="prod.tfvars"` instead
+  - Final sanity check to make sure things are still working, and you're done :)
 
 ## Deploying from scratch
 
 We don't want to use Terraform for our routine code deploys, but also Terraform reasonably refuses to create lambdas without code ot run on them.
-So if you're deploying from scratch, you will need to place an `authorizer.zip` and `app.zip` in the infra directory.
+So if you're deploying from scratch, you will need to place an `authorizer.zip` and `app.zip` in the `infra/dev` or `infra/prod` directory.
 You can follow the shell commands in the GH Action yaml to see how to zip it up properly, but also you could just use dummy files and it would be fine.
 
 ## Using Terraform
