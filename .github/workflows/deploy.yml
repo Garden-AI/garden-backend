@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
   workflow_dispatch:
 permissions:
   id-token: write   # This is required for requesting the JWT
@@ -28,6 +29,15 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.9'
+    # Determine the environment suffix to target to based on the branch
+    - name: Set Environment
+      id: vars
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "::set-output name=env::prod"
+        else
+          echo "::set-output name=env::dev"
+        fi
 
     - name: Upload Globus Auth Function
       run: |
@@ -35,7 +45,6 @@ jobs:
          pip3 install --platform manylinux2010_x86_64 \
                       --use-deprecated=legacy-resolver  \
                       --implementation cp \
-                      --python 3.9 \
                       --only-binary=:all: --upgrade \
                       -r authorizer/requirements.txt -t ./packages
          # Put the requirements into the top level of our deployable zip archive.
@@ -45,7 +54,7 @@ jobs:
          cd ../authorizer
          zip -r ../authorizer.zip *
          # Deploy to Lambda.
-         aws lambda update-function-code --function-name GardenAuthorizer --zip-file fileb://../authorizer.zip
+         aws lambda update-function-code --function-name GardenAuthorizer-${{ steps.vars.outputs.env }} --zip-file fileb://../authorizer.zip
          # Delete temporary packages directory
          cd ..
          rm -rf packages
@@ -56,9 +65,8 @@ jobs:
         pip3 install --platform manylinux2010_x86_64 \
                       --use-deprecated=legacy-resolver  \
                       --implementation cp \
-                      --python 3.9 \
                       --only-binary=:all: --upgrade \
-                      -r authorizer/requirements.txt -t ./packages
+                      -r app/requirements.txt -t ./packages
         # Put the requirements into the top level of our deployable zip archive.
         cd packages
         zip -r ../app.zip *
@@ -66,7 +74,7 @@ jobs:
         cd ../app
         zip -r ../app.zip *
         # Deploy to Lambda.
-        aws lambda update-function-code --function-name GardenApp --zip-file fileb://../app.zip
+        aws lambda update-function-code --function-name GardenApp-${{ steps.vars.outputs.env }} --zip-file fileb://../app.zip
         # Delete temporary packages directory
         cd ..
         rm -rf packages

@@ -13,3 +13,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "env" {
+  type = string
+  description = "Either 'dev' or 'prod'"
+  default = "prod"
+}
