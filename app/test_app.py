@@ -4,6 +4,10 @@ import pytest
 from lambda_function import lambda_handler
 from tiny_router import RouteNotFoundException
 
+@pytest.fixture(autouse=True)
+def mock_get_environment_from_arn(mocker):
+    mocker.patch('utils.get_environment_from_arn', return_value="pytest")
+    return
 
 def test_sanity() -> None:
     events = [
