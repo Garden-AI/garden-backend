@@ -6,8 +6,8 @@ from tiny_router import RouteNotFoundException
 
 @pytest.fixture(autouse=True)
 def mock_get_environment_from_arn(mocker):
-    mocker.patch('utils.get_environment_from_arn', return_value="pytest")
-    return
+    import os
+    os.environ["AWS_LAMBDA_FUNCTION_NAME"] = "fake_lambda_name-dev"
 
 def test_sanity() -> None:
     events = [
