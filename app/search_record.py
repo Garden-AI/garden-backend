@@ -1,16 +1,24 @@
 import json
-import globus_sdk
-
 from time import sleep
-from utils import get_secret
+
+import globus_sdk
+from utils import get_environment_from_arn, get_secret
 
 # garden-dev index
-GARDEN_INDEX_UUID = "58e4df29-4492-4e7d-9317-b27eba62a911"
+DEV_INDEX = "58e4df29-4492-4e7d-9317-b27eba62a911"
+PROD_INDEX = "813d4556-cbd4-4ba9-97f2-a7155f70682f"
 
 
 def publish(event, _context, _kwargs):
+    GARDEN_INDEX_UUID = (
+        PROD_INDEX if get_environment_from_arn() == "prod" else DEV_INDEX
+    )
     try:
-        globus_secrets = json.loads(get_secret("arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW"))
+        globus_secrets = json.loads(
+            get_secret(
+                "arn:aws:secretsmanager:us-east-1:557062710055:secret:garden/globus_api-2YYuTW"
+            )
+        )
     except Exception:
         return {
             "statusCode": 500,

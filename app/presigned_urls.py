@@ -2,6 +2,7 @@ import json
 
 import logging
 import boto3
+from utils import get_environment_from_arn
 
 logger = logging.getLogger()
 
@@ -36,7 +37,7 @@ url_makers = {
 
 
 def make_presigned_url(event, _context, _kwargs):
-    bucket_name = "garden-mlflow-models-dev"
+    bucket_name = f"garden-mlflow-models-{get_environment_from_arn()}"
     payload = json.loads(event["body"])
     batch = payload["batch"]
     direction = payload["direction"]
