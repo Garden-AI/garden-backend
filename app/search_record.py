@@ -7,12 +7,12 @@ from utils import get_environment_from_arn, get_secret
 # garden-dev index
 DEV_INDEX = "58e4df29-4492-4e7d-9317-b27eba62a911"
 PROD_INDEX = "813d4556-cbd4-4ba9-97f2-a7155f70682f"
-GARDEN_INDEX_UUID = (
-    PROD_INDEX if get_environment_from_arn() == "prod" else DEV_INDEX
-)
 
 
 def publish(event, _context, _kwargs):
+    GARDEN_INDEX_UUID = (
+        PROD_INDEX if get_environment_from_arn() == "prod" else DEV_INDEX
+    )
     try:
         globus_secrets = json.loads(
             get_secret(
