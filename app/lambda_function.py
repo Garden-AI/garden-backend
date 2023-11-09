@@ -1,7 +1,6 @@
 import json
 
 from doi import call_datacite
-from presigned_urls import make_presigned_url
 from search_record import publish
 from tiny_router import TinyLambdaRouter
 
@@ -29,4 +28,3 @@ app.route("/doi", methods=["POST", "PUT"])(
     call_datacite
 )  # equivalent to decorator syntax
 app.route("/garden-search-record", methods=["POST"])(publish)
-app.route("/presigned-url", methods=["POST"])(make_presigned_url)
