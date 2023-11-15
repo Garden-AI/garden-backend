@@ -4,6 +4,12 @@ import pytest
 from lambda_function import lambda_handler
 from tiny_router import RouteNotFoundException
 
+# Imitate the GlobusHTTPResponse
+class DictWithText(dict):
+    def __init__(self, initial_dict=None, text=""):
+        super().__init__(initial_dict if initial_dict is not None else {})
+        self.text = text
+
 @pytest.fixture(autouse=True)
 def mock_get_environment_from_arn(mocker):
     import os
@@ -46,7 +52,8 @@ def test_garden_search_record(mocker) -> None:
     event = {"path": "/garden-search-record", "httpMethod": "POST", "body": json.dumps({"doi": "10.23677/fake-doi"})}
     mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "PENDING", "task_id": "uuid-here", "fatal_error": "Globus error"})
     assert lambda_handler(event, None)["statusCode"] == 408
-    mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "FAILED", "task_id": "uuid-here", "fatal_error": "Globus error"})
+    failure_response = DictWithText(initial_dict={"state": "FAILED", "task_id": "uuid-here", "fatal_error": "Globus error"}, text="Globus error")
+    mocker.patch("globus_sdk.SearchClient.get_task", return_value=failure_response)
     assert lambda_handler(event, None)["statusCode"] == 500
     mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "SUCCESS", "task_id": "uuid-here", "fatal_error": "Globus error"})
     assert lambda_handler(event, None)["statusCode"] == 200
