@@ -69,9 +69,5 @@ def publish(event, _context, _kwargs):
     else:
         return {
             "statusCode": 500,
-            "body": json.dumps(
-                {
-                    "message": f"The publication process failed. Globus responded with: {task_result['fatal_error']}"
-                },
-            ),
+            "body": json.dumps(task_result),
         }
