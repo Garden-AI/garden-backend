@@ -69,5 +69,5 @@ def publish(event, _context, _kwargs):
     else:
         return {
             "statusCode": 500,
-            "body": json.dumps(task_result),
+            "body": task_result.text,
         }
