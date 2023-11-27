@@ -3,17 +3,26 @@ resource "aws_s3_bucket" "pipeline_notebooks_bucket" {
   tags   = var.tags
 }
 
-resource "aws_s3_bucket_public_access_block" "pipeline_notebooks_access_block" {
+# Allow anyone to read the contents of the bucket
+resource "aws_s3_bucket_policy" "public_read_policy" {
   bucket = aws_s3_bucket.pipeline_notebooks_bucket.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = "*",
+        Action = "s3:GetObject",
+        Resource = "${aws_s3_bucket.pipeline_notebooks_bucket.arn}/*"
+      }
+    ]
+  })
 }
 
+# But only the backend can write to it
 resource "aws_iam_policy" "s3_full_access" {
-  name        = "s3_full_access"
+  name        = "s3_full_access-${var.env}"
   description = "Full access to notebook bucket"
 
   policy = jsonencode({
