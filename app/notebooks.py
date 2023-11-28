@@ -9,14 +9,16 @@ DEV_NOTEBOOK_BUCKET = "pipeline-notebooks-dev"
 
 def upload_notebook(event, _context, _kwargs):
     bucket = PROD_NOTEBOOK_BUCKET if get_environment_from_arn() == "prod" else DEV_NOTEBOOK_BUCKET
-    hash_object = hashlib.sha256(event["body"].encode())
-    hash = hash_object.hexdigest()
 
-    # Get the notebook JSON from the request body
-    body = json.loads(event["body"])
-    notebook_json = body["notebook_json"]
+    # Get the arguments from the request body
+    body = event["body"]
+    notebook_json = json.dumps(body["notebook_json"])
     notebook_name = body["notebook_name"]
     folder = body["folder"] or "misc"
+
+    # Construct the object path, including a hash of the notebook JSON
+    hash_object = hashlib.sha256(notebook_json.encode())
+    hash = hash_object.hexdigest()
     object_path = f"{folder}/{notebook_name}-{hash}.ipynb"
 
     # Upload the notebook JSON to S3
