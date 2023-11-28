@@ -59,7 +59,7 @@ def test_garden_search_record(mocker) -> None:
     assert lambda_handler(event, None)["statusCode"] == 200
 
 
-simple_notebook = json.dumps({"cells": [], "nbformat": 4, "nbformat_minor": 2})
+simple_notebook = {"cells": [], "nbformat": 4, "nbformat_minor": 2}
 def test_notebook(mocker) -> None:
     mocker.patch("boto3.client")
     event = {"path": "/notebook", "httpMethod": "POST", "body": json.dumps({"notebook_json": simple_notebook, "notebook_name": "notebook_name", "folder": "folder"})}
