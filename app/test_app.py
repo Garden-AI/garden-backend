@@ -57,3 +57,12 @@ def test_garden_search_record(mocker) -> None:
     assert lambda_handler(event, None)["statusCode"] == 500
     mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "SUCCESS", "task_id": "uuid-here", "fatal_error": "Globus error"})
     assert lambda_handler(event, None)["statusCode"] == 200
+
+
+simple_notebook = json.dumps({"cells": [], "nbformat": 4, "nbformat_minor": 2})
+def test_notebook(mocker) -> None:
+    mocker.patch("boto3.client")
+    event = {"path": "/notebook", "httpMethod": "POST", "body": json.dumps({"notebook_json": simple_notebook, "notebook_name": "notebook_name", "folder": "folder"})}
+    response = lambda_handler(event, None)
+    assert response["statusCode"] == 200
+    assert "notebook_name" in json.loads(response["body"])["notebook_url"]

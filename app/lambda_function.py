@@ -2,6 +2,7 @@ import json
 
 from doi import call_datacite
 from search_record import publish
+from notebooks import upload_notebook
 from tiny_router import TinyLambdaRouter
 
 app = TinyLambdaRouter()
@@ -28,3 +29,4 @@ app.route("/doi", methods=["POST", "PUT"])(
     call_datacite
 )  # equivalent to decorator syntax
 app.route("/garden-search-record", methods=["POST"])(publish)
+app.route("/notebook", methods=["POST"])(upload_notebook)
