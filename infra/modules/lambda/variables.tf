@@ -12,3 +12,8 @@ variable "api_gateway_execution_arn" {
   description = "The execution ARN for the API Gateway."
   type        = string
 }
+
+variable "ecr_access_policy_arn" {
+  description = "The ARN for the ECR access policy to attach to the lambda_exec role."
+  type        = string
+}
