@@ -45,10 +45,17 @@ module "lambda" {
   env = var.env
   api_gateway_execution_arn = module.api_gateway.api_execution_arn
   s3_access_policy_arn = module.s3.full_access_arn
+  ecr_access_policy_arn = module.ecr.ecr_backend_write_policy_arn
 }
 
 module "s3" {
   source = "../modules/s3"
+
+  env    = var.env
+}
+
+module "ecr" {
+  source = "../modules/ecr"
 
   env    = var.env
 }
