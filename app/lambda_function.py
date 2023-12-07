@@ -4,6 +4,7 @@ from doi import call_datacite
 from search_record import publish
 from notebooks import upload_notebook
 from tiny_router import TinyLambdaRouter
+from docker_token import create_ecr_sts_token
 
 app = TinyLambdaRouter()
 
@@ -30,3 +31,4 @@ app.route("/doi", methods=["POST", "PUT"])(
 )  # equivalent to decorator syntax
 app.route("/garden-search-record", methods=["POST"])(publish)
 app.route("/notebook", methods=["POST"])(upload_notebook)
+app.route("/docker-push-token", methods=["GET"])(create_ecr_sts_token)
