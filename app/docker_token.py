@@ -9,6 +9,9 @@ ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:policy/ECRBackendWriteAccess-dev'
 STS_TOKEN_TIMEOUT = 3 * 60 * 60 # 3 hour timeout
 
 def create_ecr_sts_token(event, _context, _kwargs):
+	ECR_REPO_ARN = ECR_REPO_ARN_PROD if get_environment_from_arn() == "prod" else ECR_REPO_ARN_DEV
+	ECR_ROLE_ARN = ECR_ROLE_ARN_PROD if get_environment_from_arn() == "prod" else ECR_ROLE_ARN_DEV
+
     try:
 	    sts_client = boto3.client('sts')
 
