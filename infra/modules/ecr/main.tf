@@ -18,8 +18,11 @@ resource "aws_iam_policy" "ecr_backend_write" {
           "ecr-public:BatchCheckLayerAvailability",
           "ecr-public:PutImage",
           "ecr-public:InitiateLayerUpload",
+          "ecr-public:CompleteLayerUpload",
           "ecr-public:UploadLayerPart",
-          "ecr-public:CompleteLayerUpload"
+          "ecr-public:GetAuthorizationToken",
+          "sts:GetServiceBearerToken",
+          "sts:AssumeRole"
         ],
         Resource = aws_ecrpublic_repository.ecr_repo.arn,
       }
