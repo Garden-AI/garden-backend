@@ -4,7 +4,7 @@ from doi import call_datacite
 from search_record import publish
 from notebooks import upload_notebook
 from tiny_router import TinyLambdaRouter
-from docker_token import create_ecr_sts_token
+from ecr_token import create_ecr_sts_token
 
 app = TinyLambdaRouter()
 
