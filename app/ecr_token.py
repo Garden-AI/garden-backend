@@ -3,8 +3,8 @@ import json
 
 from utils import get_environment_from_arn
 
-ECR_REPO_ARN_PROD = 'arn:aws:ecr-public::128137667265:repository/garden-containers-prod'
-ECR_REPO_ARN_DEV = 'arn:aws:ecr-public::128137667265:repository/garden-containers-dev'
+ECR_REPO_ARN_PROD = 'arn:aws:ecr-public::557062710055:repository/garden-containers-prod'
+ECR_REPO_ARN_DEV = 'arn:aws:ecr-public::557062710055:repository/garden-containers-dev'
 ECR_ROLE_ARN_PROD = 'arn:aws:iam::557062710055:role/ecr_puller_prod'
 ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:role/ecr_puller_dev'
 
