@@ -13,8 +13,6 @@ resource "aws_iam_policy" "ecr_backend_write" {
       {
         Effect    = "Allow",
         Action    = [
-          "ecr-public:GetDownloadUrlForLayer",
-          "ecr-public:BatchGetImage",
           "ecr-public:BatchCheckLayerAvailability",
           "ecr-public:PutImage",
           "ecr-public:InitiateLayerUpload",

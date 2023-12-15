@@ -5,8 +5,8 @@ from utils import get_environment_from_arn
 
 ECR_REPO_ARN_PROD = 'arn:aws:ecr-public::557062710055:repository/garden-containers-prod'
 ECR_REPO_ARN_DEV = 'arn:aws:ecr-public::557062710055:repository/garden-containers-dev'
-ECR_ROLE_ARN_PROD = 'arn:aws:iam::557062710055:role/ecr_puller_prod'
-ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:role/ecr_puller_dev'
+ECR_ROLE_ARN_PROD = 'arn:aws:iam::557062710055:role/ecr_pusher_prod'
+ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:role/ecr_pusher_dev'
 
 STS_TOKEN_TIMEOUT = 60 * 30 # 30 minute timeout
 

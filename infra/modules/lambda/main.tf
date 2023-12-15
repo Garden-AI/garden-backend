@@ -73,7 +73,7 @@ resource "aws_iam_role" "lambda_exec" {
 }
 
 resource "aws_iam_role" "assumable_role" {
-  name = "ecr_puller_${var.env}"
+  name = "ecr_pusher_${var.env}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
