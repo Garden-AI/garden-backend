@@ -20,9 +20,15 @@ resource "aws_iam_policy" "ecr_backend_write" {
           "ecr-public:InitiateLayerUpload",
           "ecr-public:CompleteLayerUpload",
           "ecr-public:UploadLayerPart",
-          "ecr-public:GetAuthorizationToken",
         ],
         Resource = aws_ecrpublic_repository.ecr_repo.arn,
+      },
+      {
+        Effect    = "Allow",
+        Action    = [
+          "ecr-public:GetAuthorizationToken",
+        ],
+        Resource = "*"
       },
       {
         Effect    = "Allow",

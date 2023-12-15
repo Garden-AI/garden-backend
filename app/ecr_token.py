@@ -30,9 +30,15 @@ def create_ecr_sts_token(event, _context, _kwargs):
                     "ecr-public:InitiateLayerUpload",
                     "ecr-public:UploadLayerPart",
                     "ecr-public:CompleteLayerUpload",
-                    "ecr-public:GetAuthorizationToken", # so user can get auth token for docker login
                 ],
                 "Resource": ECR_REPO_ARN
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ecr-public:GetAuthorizationToken",  # so user can get auth token for docker login
+                ],
+                "Resource": "*"
             },
             {
                 "Effect": "Allow",
