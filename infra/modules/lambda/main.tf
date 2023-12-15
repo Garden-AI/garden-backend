@@ -65,12 +65,27 @@ resource "aws_iam_role" "lambda_exec" {
     Statement = [{
       Action = "sts:AssumeRole"
       Effect = "Allow"
-      Sid    = ""
       Principal = {
         Service = "lambda.amazonaws.com"
       }
-      }
-    ]
+    }]
+  })
+}
+
+resource "aws_iam_role" "assumable_role" {
+  name = "ecr_puller_${var.env}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          AWS = aws_iam_role.lambda_exec.arn
+        },
+      },
+    ],
   })
 }
 
@@ -84,7 +99,7 @@ resource "aws_iam_role_policy_attachment" "s3_access_attach" {
   policy_arn = var.s3_access_policy_arn
 }
 
-resource "aws_iam_role_policy_attachment" "ecr_access_attach" {
-  role       = aws_iam_role.lambda_exec.name
-  policy_arn = var.ecr_access_policy_arn
-}
+  resource "aws_iam_role_policy_attachment" "ecr_access_attach" {
+    role       = aws_iam_role.assumable_role.name
+    policy_arn = var.ecr_access_policy_arn
+  }

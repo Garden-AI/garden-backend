@@ -5,8 +5,8 @@ from utils import get_environment_from_arn
 
 ECR_REPO_ARN_PROD = 'arn:aws:ecr-public::128137667265:repository/garden-containers-prod'
 ECR_REPO_ARN_DEV = 'arn:aws:ecr-public::128137667265:repository/garden-containers-dev'
-ECR_ROLE_ARN_PROD = 'arn:aws:iam::557062710055:policy/ECRBackendWriteAccess-prod'
-ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:policy/ECRBackendWriteAccess-dev'
+ECR_ROLE_ARN_PROD = 'arn:aws:iam::557062710055:role/ecr_puller_prod'
+ECR_ROLE_ARN_DEV = 'arn:aws:iam::557062710055:role/ecr_puller_dev'
 
 STS_TOKEN_TIMEOUT = 60 * 30 # 30 minute timeout
 
@@ -31,9 +31,16 @@ def create_ecr_sts_token(event, _context, _kwargs):
                     "ecr-public:UploadLayerPart",
                     "ecr-public:CompleteLayerUpload",
                     "ecr-public:GetAuthorizationToken", # so user can get auth token for docker login
-                    "sts:GetServiceBearerToken" # needed for ecr-public:GetAuthorizationToken
                 ],
                 "Resource": ECR_REPO_ARN
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "sts:GetServiceBearerToken",  # needed for ecr-public:GetAuthorizationToken
+                    "sts:AssumeRole"
+                ],
+                "Resource": "*"
             }
         ]
     })
