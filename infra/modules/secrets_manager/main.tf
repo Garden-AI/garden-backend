@@ -1,26 +1,26 @@
 data "aws_secretsmanager_secret" "datacite_endpoint" {
-  name = "datacite/endpoint"
+  name = "datacite/endpoint-${var.env}"
 }
 data "aws_secretsmanager_secret_version" "datacite_endpoint" {
   secret_id = data.aws_secretsmanager_secret.datacite_endpoint.id
 }
 
 data "aws_secretsmanager_secret" "datacite_password" {
-  name = "datacite/password"
+  name = "datacite/password-${var.env}"
 }
 data "aws_secretsmanager_secret_version" "datacite_password" {
   secret_id = data.aws_secretsmanager_secret.datacite_password.id
 }
 
 data "aws_secretsmanager_secret" "datacite_prefix" {
-  name = "datacite/prefix"
+  name = "datacite/prefix-${var.env}"
 }
 data "aws_secretsmanager_secret_version" "datacite_prefix" {
   secret_id = data.aws_secretsmanager_secret.datacite_prefix.id
 }
 
 data "aws_secretsmanager_secret" "datacite_repo_id" {
-  name = "datacite/repo_id"
+  name = "datacite/repo_id-${var.env}"
 }
 data "aws_secretsmanager_secret_version" "datacite_repo_id" {
   secret_id = data.aws_secretsmanager_secret.datacite_repo_id.id
@@ -40,10 +40,10 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
           "secretsmanager:GetSecretValue"
         ],
         "Resource" : [
-          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-ePlB1w",
-          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-FFLiwt",
-          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-06aepz",
-          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-K6GdzM",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/endpoint-${var.env}-*",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/password-${var.env}-*",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/prefix-${var.env}-*",
+          "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:datacite/repo_id-${var.env}-*",
           "arn:aws:secretsmanager:us-east-1:${var.aws_account_id}:secret:garden/globus_api-2YYuTW"
         ]
       }
