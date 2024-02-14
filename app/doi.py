@@ -13,32 +13,29 @@ def get_datacite_secrets() -> dict[str, str]:
     conf = {}
     if get_environment_from_arn() == "dev":
         conf["REPOSITORY_ID"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/repo_id-ePlB1w"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/repo_id-dev-r1txQS"
         )
         conf["PASSWORD"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/password-FFLiwt"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/password-dev-2evQsM"
         )
         conf["ENDPOINT"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/endpoint-06aepz"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/endpoint-dev-dAYfsL"
         )
         conf["PREFIX"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/prefix-K6GdzM"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/prefix-dev-FLku4X"
         )
     elif get_environment_from_arn() == "prod":
-        # N.B. these are currently identical b/c we don't want to be using the
-        # real id/password yet, but we can just update this block as soon as
-        # those secrets exist in AWS
         conf["REPOSITORY_ID"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/repo_id-ePlB1w"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/repo_id-prod-KKaDJ2"
         )
         conf["PASSWORD"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/password-FFLiwt"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/password-prod-k3VfYZ"
         )
         conf["ENDPOINT"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/endpoint-06aepz"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/endpoint-prod-81cMhT"
         )
         conf["PREFIX"] = get_secret(
-            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/prefix-K6GdzM"
+            "arn:aws:secretsmanager:us-east-1:557062710055:secret:datacite/prefix-prod-APeKjd"
         )
     return conf
 
