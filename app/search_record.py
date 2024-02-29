@@ -60,7 +60,7 @@ def _format_response_from_task_result(task_id, search_client):
             "body": task_result.text,
         }
 
-def publish(event, _context, _kwargs):
+def publish_search_record(event, _context, _kwargs):
     GARDEN_INDEX_UUID = (
         PROD_INDEX if get_environment_from_arn() == "prod" else DEV_INDEX
     )
@@ -79,7 +79,7 @@ def publish(event, _context, _kwargs):
     return response
 
 
-def delete(event, _context, _kwargs):
+def delete_search_record(event, _context, _kwargs):
     GARDEN_INDEX_UUID = (
         PROD_INDEX if get_environment_from_arn() == "prod" else DEV_INDEX
     )
