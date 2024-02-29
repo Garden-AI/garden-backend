@@ -1,7 +1,7 @@
 import json
 
 from doi import call_datacite
-from search_record import publish
+from search_record import publish_search_record, delete_search_record
 from notebooks import upload_notebook
 from tiny_router import TinyLambdaRouter
 from ecr_token import create_ecr_sts_token
@@ -26,9 +26,8 @@ def hello(event, context, kwargs):
     }
 
 
-app.route("/doi", methods=["POST", "PUT"])(
-    call_datacite
-)  # equivalent to decorator syntax
-app.route("/garden-search-record", methods=["POST"])(publish)
+app.route("/doi", methods=["POST", "PUT"])(call_datacite)
+app.route("/garden-search-record", methods=["POST"])(publish_search_record)
+app.route("/garden-search-record", methods=["DELETE"])(delete_search_record)
 app.route("/notebook", methods=["POST"])(upload_notebook)
 app.route("/docker-push-token", methods=["GET"])(create_ecr_sts_token)
