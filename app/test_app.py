@@ -47,9 +47,21 @@ def test_doi(mocker) -> None:
     assert (res:=lambda_handler(events[1], None))["statusCode"] == 200 and not json.loads(res["body"])
 
 
-def test_garden_search_record(mocker) -> None:
+def test_publish_garden_search_record(mocker) -> None:
     mocker.patch("globus_sdk.SearchClient.create_entry", return_value={"task_id": None})
     event = {"path": "/garden-search-record", "httpMethod": "POST", "body": json.dumps({"doi": "10.23677/fake-doi"})}
+    mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "PENDING", "task_id": "uuid-here", "fatal_error": "Globus error"})
+    assert lambda_handler(event, None)["statusCode"] == 408
+    failure_response = DictWithText(initial_dict={"state": "FAILED", "task_id": "uuid-here", "fatal_error": "Globus error"}, text="Globus error")
+    mocker.patch("globus_sdk.SearchClient.get_task", return_value=failure_response)
+    assert lambda_handler(event, None)["statusCode"] == 500
+    mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "SUCCESS", "task_id": "uuid-here", "fatal_error": "Globus error"})
+    assert lambda_handler(event, None)["statusCode"] == 200
+
+
+def test_delete_garden_search_record(mocker) -> None:
+    mocker.patch("globus_sdk.SearchClient.delete_entry", return_value={"task_id": None})
+    event = {"path": "/garden-search-record", "httpMethod": "DELETE", "body": json.dumps({"doi": "10.23677/fake-doi"})}
     mocker.patch("globus_sdk.SearchClient.get_task", return_value={"state": "PENDING", "task_id": "uuid-here", "fatal_error": "Globus error"})
     assert lambda_handler(event, None)["statusCode"] == 408
     failure_response = DictWithText(initial_dict={"state": "FAILED", "task_id": "uuid-here", "fatal_error": "Globus error"}, text="Globus error")
