@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IMAGE_NAME="garden-service-dev"
+IMAGE_NAME="garden-service:dev"
 
 # Build the Docker image with dev dependencies
 echo "Building Docker image with development dependencies..."
