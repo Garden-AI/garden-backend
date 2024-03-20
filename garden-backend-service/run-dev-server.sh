@@ -14,13 +14,15 @@ else
     exit 1
 fi
 
-# Run the normal Docker container with the following options:
-# - mount ./app as shared volume (instead of COPY) so local changes propagate into the container
+# Run like the deployment Docker container with the following tweaks:
+# - mount ./src as shared volume (instead of COPY) so local changes propagate into the container
+# - also mount ./tests so you can run pytest
 # - run uvicorn with --reload so those changes get picked up
 echo "Running the Docker container with live reload at http://localhost:5500 ..."
 docker run -p 5500:80 \
-    -v $(pwd)/app:/app/app \
+    -v $(pwd)/src:/app/src \
+    -v $(pwd)/tests:/app/tests \
     --name garden-service-dev-container \
     --rm \
     $IMAGE_NAME \
-    uvicorn app.main:app --host 0.0.0.0 --port 80 --reload
+    uvicorn src.main:app --host 0.0.0.0 --port 80 --reload
