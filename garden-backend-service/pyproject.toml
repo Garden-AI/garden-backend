@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "garden-backend-service"
+version = "0.1.0"
+description = "Source code for the garden backend API"
+authors = ["Owen Price Skelly <owenpriceskelly@uchicago.edu>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pydantic = "^1.10.13"  # same as garden sdk
+fastapi = "^0.110.0"
+uvicorn = {extras = ["standard"], version = "^0.29.0"}
+gunicorn = "^21.2.0"
+
+[tool.poetry.group.develop]
+optional = true
+
+[tool.poetry.group.develop.dependencies]
+pytest = "^7.2.0"
+pytest-mock = "^3.10.0"
+pytest-cov = "^4.0.0"
+flake8 = "^5.0.4"
+pre-commit = "^3.1.1"
+black = "^24.1.0"
+isort = "^5.12.0"
+mypy = "^1.9.0"
+httpx = "^0.27.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
