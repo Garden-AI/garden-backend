@@ -59,3 +59,8 @@ module "ecr" {
 
   env    = var.env
 }
+
+module "lightsail" {
+  source = "../modules/lightsail"
+  env = var.env
+}
