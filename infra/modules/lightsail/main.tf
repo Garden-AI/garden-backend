@@ -10,4 +10,3 @@ resource "aws_lightsail_container_service" "garden_service" {
     Environment = "${var.env}"
   }
 }
-
