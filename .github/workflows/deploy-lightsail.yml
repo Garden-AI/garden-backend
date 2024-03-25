@@ -1,9 +1,12 @@
 name: Build and Push Docker Image to Lightsail
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
+      inputs:
+        version:
+          description: 'Image version tag'
+          required: true
+          default: 'latest'
 
 permissions:
   id-token: write
