@@ -53,10 +53,10 @@ jobs:
       id: read_config
       run: |
         CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json)
-        echo "::set-output name=config::$CONFIG_JSON"
+        echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
 
     - name:  Deploy new image to lightsail container service
       run: |
         aws lightsail create-container-service-deployment \
           --service-name garden-service-${{ steps.vars.outputs.env }} \
-          --cli-input-json '${{ steps.read_config.outputs.config }}'
+          --cli-input-json "${{ steps.read_config.outputs.config }}"
