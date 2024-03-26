@@ -1,7 +1,14 @@
 
 resource "aws_api_gateway_rest_api" "garden_api" {
-  name               = "garden_gateway_${var.env}"
-  binary_media_types = ["application/octet-stream"]
+  name                      = "garden_gateway_${var.env}"
+  binary_media_types        = ["application/octet-stream"]
+  lifecycle {
+    ignore_changes = [
+      minimum_compression_size,
+      # ^this attribute default changed when we bumped aws provider 4.x -> 5.x;
+      # ignore this attribute change until we can fully remove this module
+    ]
+  }
 }
 
 resource "aws_api_gateway_stage" "garden_api" {

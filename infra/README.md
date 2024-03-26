@@ -10,12 +10,16 @@ Code deployment.
 Deploying changes to the Lambda code is out of Terraform's purview. 
 If you're making a new API endpoint that has the same auth requirements as an existing one, you probably shouldn't have need to change anything here.
 
+Likewise, building/deploying new docker images for the backend app to the lightsail container service is handled by a github action (see ./github/workflows/deploy-lightsail.yml) rather than terraform. 
+
 ## What infra is there?
 
 - An AWS API Gateway
 - Authorizer Lambda
 - App Lambda
-- S3 buckets for storing model binaries
+- S3 buckets for storing user notebook contents
+- ECR public repository for storing user images
+- Lightsail container service for running the new backend app
 
 ### Subdirectory structure / modules
 Almost all resources are configured in dedicated modules under the `modules/` subdirectory. Currently the only exception to this are resources pertaining to the custom `api.thegardens.ai` domain, which live in `prod/main.tf`. 
@@ -34,6 +38,11 @@ Almost all resources are configured in dedicated modules under the `modules/` su
 - `modules/s3`
   - configures the s3 buckets for model binaries for both dev and prod together 
   - also configures the `"s3_full_access"` IAM policy if we want to change that based on env, but currently keeps it the same for both. 
+- `modules/lightsail`
+  - configures the lightsail container service(s), but does not configure any actual deployments. 
+  - instead, deploying/running a container on the container service is handled by a github action that triggers on push to `dev` or `prod` branches. 
+    - The deployment is configured in `modules/lightsail/deployment-config.json` rather than terraform so it can be more easily read by the aws lightsail CLI in the github action. 
+    
 
 ## Making changes to the existing deployment
 
@@ -52,7 +61,7 @@ Steps:
 
 ## Deploying from scratch
 
-We don't want to use Terraform for our routine code deploys, but also Terraform reasonably refuses to create lambdas without code ot run on them.
+We don't want to use Terraform for our routine code deploys, but also Terraform reasonably refuses to create lambdas without code to run on them.
 So if you're deploying from scratch, you will need to place an `authorizer.zip` and `app.zip` in the `infra/dev` or `infra/prod` directory.
 You can follow the shell commands in the GH Action yaml to see how to zip it up properly, but also you could just use dummy files and it would be fine.
 
