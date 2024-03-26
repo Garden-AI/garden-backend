@@ -1,12 +1,10 @@
 name: Build and Push Docker Image to Lightsail
 
 on:
-  workflow_dispatch:
-      inputs:
-        version:
-          description: 'Image version tag'
-          required: true
-          default: 'latest'
+  push:
+    branches:
+      - dev
+      - prod
 
 permissions:
   id-token: write
@@ -49,10 +47,9 @@ jobs:
         role-to-assume: arn:aws:iam::557062710055:role/GH-action-garden-backend-lightsail-deployer
         aws-region: us-east-1
 
-    - name:  Deploy new image to lightsail container service
+    - name:  (re-)deploy image to lightsail container service
       run: |
         CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json | jq -c .)
-        echo $CONFIG_JSON
         aws lightsail create-container-service-deployment \
           --service-name garden-service-${{ steps.vars.outputs.env }} \
           --cli-input-json $CONFIG_JSON
