@@ -2,7 +2,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0.0"
+      version = "~> 5.0"
     }
   }
   required_version = "~> 1.3.0"
@@ -60,6 +60,10 @@ module "ecr" {
   env    = var.env
 }
 
+module "lightsail" {
+  source = "../modules/lightsail"
+  env = var.env
+}
 
 /* (prod only) connect api.thegardens.ai to the gateway */
 
