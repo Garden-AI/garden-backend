@@ -25,9 +25,9 @@ jobs:
       id: vars
       run: |
         if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
-          echo "::set-output name=env::prod"
+          echo "env=prod" >> $GITHUB_OUTPUT
         else
-          echo "::set-output name=env::dev"
+          echo "env=dev" >> $GITHUB_OUTPUT
         fi
 
     - name: Login to Docker Hub
@@ -52,7 +52,8 @@ jobs:
     - name: Read lightsail deployment config
       id: read_config
       run: |
-        CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json)
+        CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json | jq -c .)
+        echo $CONFIG_JSON
         echo "config=$CONFIG_JSON" >> $GITHUB_OUTPUT
 
     - name:  Deploy new image to lightsail container service
