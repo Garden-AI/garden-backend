@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from fastapi import APIRouter, Depends
 from src.api.dependencies.auth import authenticated, AuthenticationState
 
