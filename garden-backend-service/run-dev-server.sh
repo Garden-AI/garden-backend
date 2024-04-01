@@ -17,11 +17,13 @@ fi
 # Run like the deployment Docker container with the following tweaks:
 # - mount ./src as shared volume (instead of COPY) so local changes propagate into the container
 # - also mount ./tests so you can run pytest
+# - also mount ./.env file (if it exists - not checked into vc) so app can read e.g. API_CLIENT_SECRET vars
 # - run uvicorn with --reload so those changes get picked up
 echo "Running the Docker container with live reload at http://localhost:5500 ..."
 docker run -p 5500:80 \
     -v $(pwd)/src:/app/src \
     -v $(pwd)/tests:/app/tests \
+    -v $(pwd)/.env:/app/.env \
     --name garden-service-dev-container \
     --rm \
     $IMAGE_NAME \
