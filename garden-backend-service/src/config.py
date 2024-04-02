@@ -10,9 +10,8 @@ class Settings(BaseSettings):
     API_CLIENT_ID: str = "API_CLIENT_ID"
     API_CLIENT_SECRET: str = "API_CLIENT_SECRET"
 
-    # TODO change to action_all?
     GARDEN_DEFAULT_SCOPE = (
-        "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/test_scope"
+        "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/action_all"
     )
 
     class Config:

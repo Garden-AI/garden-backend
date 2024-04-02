@@ -3,10 +3,8 @@ import uuid
 
 import globus_sdk
 from fastapi import HTTPException
-
-from src.config import settings
-
 from src.auth.globus_auth import introspect_token
+from src.config import settings
 
 
 class AuthenticationState:
@@ -29,7 +27,7 @@ class AuthenticationState:
     def __init__(
         self, token: t.Optional[str], *, assert_default_scope: bool = True
     ) -> None:
-        self.garden_action_all_scope: str = settings.GARDEN_DEFAULT_SCOPE
+        self.garden_default_scope: str = settings.GARDEN_DEFAULT_SCOPE
         self.token = token
 
         self.introspect_data: t.Optional[globus_sdk.GlobusHTTPResponse] = None
@@ -66,18 +64,8 @@ class AuthenticationState:
             )
 
     def assert_has_scope(self, scope: str) -> None:
-        # the user may be thought of as "not properly authorized" if they do not have
-        # required scopes
-        # this leaves a question of whether this should be a 401 (Unauthorized) or
-        # 403 (Forbidden)
-        #
-        # the answer is that it must be a 403
-        # this requirement is set by the OAuth2 spec
-        #
-        # for more detail, see
-        #   https://datatracker.ietf.org/doc/html/rfc6750#section-3.1
         if scope not in self.scopes:
             raise HTTPException(status_code=403, detail="Missing Scopes")
 
     def assert_has_default_scope(self) -> None:
-        self.assert_has_scope(self.garden_action_all_scope)
+        self.assert_has_scope(self.garden_default_scope)

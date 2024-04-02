@@ -4,7 +4,6 @@ from functools import lru_cache
 import globus_sdk
 from cachetools import TTLCache, cached
 from fastapi import HTTPException
-
 from src.config import settings
 
 logger = logging.getLogger()
