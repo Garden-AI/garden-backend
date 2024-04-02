@@ -44,6 +44,7 @@ jobs:
 
       - name: Install dependencies (new app)
         run: |
+          cd ./garden-backend-service
           poetry install --no-interaction --no-ansi --with=develop
 
       - name: Test with pytest (new app)
