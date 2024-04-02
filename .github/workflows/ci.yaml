@@ -26,16 +26,30 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.10"
 
-      - name: Install dependencies
+      - name: Install dependencies (old app)
         run: |
           pip install --upgrade pip
           python -m pip install -r ./app/requirements.txt && python -m pip install -r ./app/test-requirements.txt
 
-      - name: Test with pytest
+      - name: Test with pytest (old app)
         run: |
           pytest ./app/test_app.py
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.4.1
+
+      - name: Install dependencies (new app)
+        run: |
+          poetry install --no-interaction --no-ansi --with=develop
+
+     - name: Test with pytest (new app)
+       run: |
+         cd ./garden-backend-service
+         poetry run pytest
 
       - name: Check for vulnerable libraries with safety
         run: |
