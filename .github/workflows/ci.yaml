@@ -46,10 +46,10 @@ jobs:
         run: |
           poetry install --no-interaction --no-ansi --with=develop
 
-     - name: Test with pytest (new app)
-       run: |
-         cd ./garden-backend-service
-         poetry run pytest
+      - name: Test with pytest (new app)
+        run: |
+          cd ./garden-backend-service
+          poetry run pytest
 
       - name: Check for vulnerable libraries with safety
         run: |
