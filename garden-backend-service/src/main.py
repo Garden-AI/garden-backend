@@ -1,9 +1,9 @@
 from fastapi import FastAPI
-from src.api.routes import greetings
+from src.api.routes import greet
 
 app = FastAPI()
 
-app.include_router(greetings.router)
+app.include_router(greet.router)
 
 
 @app.get("/")
