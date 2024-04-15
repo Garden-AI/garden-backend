@@ -5,6 +5,8 @@ on:
     branches:
       - dev
       - prod
+  workflow_dispatch:
+
 
 permissions:
   id-token: write
@@ -47,9 +49,23 @@ jobs:
         role-to-assume: arn:aws:iam::557062710055:role/GH-action-garden-backend-lightsail-deployer
         aws-region: us-east-1
 
+      # injects AWS credentials for "garden_lightsail_user_{dev, prod}" IAM user
     - name:  (re-)deploy image to lightsail container service
       run: |
-        CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json | jq -c .)
-        aws lightsail create-container-service-deployment \
-          --service-name garden-service-${{ steps.vars.outputs.env }} \
-          --cli-input-json $CONFIG_JSON
+        if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
+          CONFIG_JSON=$(jq '.containers["garden-backend-service"].environment = {
+            "AWS_ACCESS_KEY_ID": "${{ secrets.PROD_AWS_ACCESS_KEY_ID }}",
+            "AWS_SECRET_ACCESS_KEY": "${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}"
+          }' ./infra/modules/lightsail/deployment-config.json)
+          aws lightsail create-container-service-deployment \
+            --service-name garden-service-${{ steps.vars.outputs.env }} \
+            --cli-input-json $CONFIG_JSON
+        else
+          CONFIG_JSON=$(jq '.containers["garden-backend-service"].environment = {
+            "AWS_ACCESS_KEY_ID": "${{ secrets.DEV_AWS_ACCESS_KEY_ID }}",
+            "AWS_SECRET_ACCESS_KEY": "${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}"
+          }' ./infra/modules/lightsail/deployment-config.json)
+          aws lightsail create-container-service-deployment \
+            --service-name garden-service-${{ steps.vars.outputs.env }} \
+            --cli-input-json $CONFIG_JSON
+        fi

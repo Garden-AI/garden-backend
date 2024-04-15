@@ -12,3 +12,8 @@ variable "lambda_exec_role_name" {
   description = "The IAM role name that will be assumed by the Lambda functions."
   type        = string
 }
+
+variable "lightsail_iam_user_name" {
+  description = "The IAM user name for the lightsail deployment"
+  type = string
+}
