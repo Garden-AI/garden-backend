@@ -53,7 +53,10 @@ jobs:
     - name:  (re-)deploy image to lightsail container service
       run: |
         if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
-          CONFIG_JSON=$(cat ./infra/modules/lightsail/deployment-config.json | jq -c .)
+          CONFIG_JSON=$(jq '.containers["garden-backend-service"].environment = {
+            "AWS_ACCESS_KEY_ID": "${{ secrets.PROD_AWS_ACCESS_KEY_ID }}",
+            "AWS_SECRET_ACCESS_KEY": "${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}"
+          }' ./infra/modules/lightsail/deployment-config.json)
           aws lightsail create-container-service-deployment \
             --service-name garden-service-${{ steps.vars.outputs.env }} \
             --cli-input-json $CONFIG_JSON
