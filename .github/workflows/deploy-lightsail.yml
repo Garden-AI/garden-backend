@@ -5,6 +5,8 @@ on:
     branches:
       - dev
       - prod
+  workflow_dispatch:
+
 
 permissions:
   id-token: write
