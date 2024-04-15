@@ -27,6 +27,7 @@ module "secrets_manager" {
   env                  = var.env
   aws_account_id       = var.aws_account_id
   lambda_exec_role_name = module.lambda.lambda_exec_role_name
+  lightsail_iam_user_name = module.lightsail.lightsail_iam_user_name
 }
 
 module "api_gateway" {

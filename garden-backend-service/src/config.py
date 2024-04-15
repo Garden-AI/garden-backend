@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     API_CLIENT_ID: str = "API_CLIENT_ID"
     API_CLIENT_SECRET: str = "API_CLIENT_SECRET"
 
+    AWS_ACCESS_KEY_ID: str = "AWS_ACCESS_KEY_ID"
+    AWS_SECRET_ACCESS_KEY: str = "AWS_SECRET_ACCESS_KEY"
+
     GARDEN_DEFAULT_SCOPE = (
         "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/action_all"
     )
