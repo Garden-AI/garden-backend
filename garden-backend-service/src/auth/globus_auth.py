@@ -4,7 +4,7 @@ from functools import lru_cache
 import globus_sdk
 from cachetools import TTLCache, cached
 from fastapi import HTTPException
-from src.config import settings
+from src.config import get_settings
 
 logger = logging.getLogger()
 
@@ -36,6 +36,7 @@ def introspect_token(token: str, log: bool = True) -> globus_sdk.GlobusHTTPRespo
 @lru_cache
 def get_auth_client() -> globus_sdk.ConfidentialAppAuthClient:
     """Create an AuthClient for the service."""
+    settings = get_settings()
     return globus_sdk.ConfidentialAppAuthClient(
         settings.API_CLIENT_ID, settings.API_CLIENT_SECRET
     )

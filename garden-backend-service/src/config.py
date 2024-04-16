@@ -71,6 +71,7 @@ def _aws_secretsmanager_settings_source(settings: BaseSettings) -> dict[str, Any
     return secrets
 
 
+# for use as dependency with `Depends(get_settings)`
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
