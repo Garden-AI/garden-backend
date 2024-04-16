@@ -22,16 +22,16 @@ provider "aws" {
 
 
 module "secrets_manager" {
-  source               = "../modules/secrets_manager"
+  source = "../modules/secrets_manager"
 
-  env                  = var.env
-  aws_account_id       = var.aws_account_id
-  lambda_exec_role_name = module.lambda.lambda_exec_role_name
+  env                     = var.env
+  aws_account_id          = var.aws_account_id
+  lambda_exec_role_name   = module.lambda.lambda_exec_role_name
   lightsail_iam_user_name = module.lightsail.lightsail_iam_user_name
 }
 
 module "api_gateway" {
-  source                          = "../modules/api_gateway"
+  source = "../modules/api_gateway"
 
   env                             = var.env
   garden_app_invoke_arn           = module.lambda.garden_app_invoke_arn
@@ -43,27 +43,28 @@ module "api_gateway" {
 module "lambda" {
   source = "../modules/lambda"
 
-  env = var.env
+  env                       = var.env
   api_gateway_execution_arn = module.api_gateway.api_execution_arn
-  s3_access_policy_arn = module.s3.full_access_arn
-  ecr_access_policy_arn = module.ecr.ecr_backend_write_policy_arn
+  s3_access_policy_arn      = module.s3.full_access_arn
+  ecr_access_policy_arn     = module.ecr.ecr_backend_write_policy_arn
 }
 
 module "s3" {
   source = "../modules/s3"
 
-  env    = var.env
+  env = var.env
 }
 
 module "ecr" {
   source = "../modules/ecr"
 
-  env    = var.env
+  env = var.env
 }
 
 module "lightsail" {
-  source = "../modules/lightsail"
-  env = var.env
+  source         = "../modules/lightsail"
+  aws_account_id = var.aws_account_id
+  env            = var.env
 }
 
 /* (prod only) connect api.thegardens.ai to the gateway */
