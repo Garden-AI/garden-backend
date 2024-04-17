@@ -726,7 +726,7 @@ class RelatedItem(BaseModel):
 class DoiPropertiesMetadata(BaseModel):
     creators: Optional[List[Creator]] = None
     titles: Optional[List[Title]] = None
-    publisher: Optional[Publisher] = None
+    publisher: Optional[str] = None
     container: Optional[Container] = None
     publicationYear: Optional[int] = None
     subjects: Optional[List[Subject]] = None
