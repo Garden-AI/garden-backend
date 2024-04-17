@@ -56,8 +56,10 @@ jobs:
           CONFIG_JSON=$(jq --arg akid "${{ secrets.PROD_AWS_ACCESS_KEY_ID }}" \
                             --arg sak "${{ secrets.PROD_AWS_SECRET_ACCESS_KEY }}" \
             '.containers["garden-backend-service"].environment = {
+              "GARDEN_ENV": "prod",
               "AWS_ACCESS_KEY_ID": $akid,
-              "AWS_SECRET_ACCESS_KEY": $sak
+              "AWS_SECRET_ACCESS_KEY": $sak,
+              "AWS_SECRET_NAME": "garden-backend-env-vars/prod"
             }' ./infra/modules/lightsail/deployment-config.json)
           aws lightsail create-container-service-deployment \
             --service-name garden-service-${{ steps.vars.outputs.env }} \
@@ -66,8 +68,10 @@ jobs:
           CONFIG_JSON=$(jq --arg akid "${{ secrets.DEV_AWS_ACCESS_KEY_ID }}" \
                             --arg sak "${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}" \
             '.containers["garden-backend-service"].environment = {
+              "GARDEN_ENV": "dev",
               "AWS_ACCESS_KEY_ID": $akid,
-              "AWS_SECRET_ACCESS_KEY": $sak
+              "AWS_SECRET_ACCESS_KEY": $sak,
+              "AWS_SECRET_NAME": "garden-backend-env-vars/dev"
             }' ./infra/modules/lightsail/deployment-config.json)
           aws lightsail create-container-service-deployment \
             --service-name garden-service-${{ steps.vars.outputs.env }} \

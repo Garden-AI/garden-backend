@@ -13,6 +13,9 @@ garden-backend-service/
 │   │   │   ├── __init__.py
 │   │   │   ├── ....
 │   │   │   └── auth.py
+│   │   ├── schemas       # pydantic models used for request/response validation
+│   │   │   ├── __init__.py
+│   │   │   ├── ....
 │   │   └── routes        # route prefixes should match module names
 │   │       ├── __init__.py
 │   │       ├── ...
@@ -34,9 +37,17 @@ garden-backend-service/
 #### Requirements:
 - poetry 
 - docker
-- a .env file in this directory setting API_CLIENT_ID and API_CLIENT_SECRET appropriately for auth purposes 
-    - values from `garden/globus_api` secret in aws
-    - you can set the env vars in the container another way if you want, especially if you're not using `./run-dev-server.sh` to run the container 
+- a .env file in this directory for setting environment variables as wanted/needed. 
+
+Our persistent config/environment variables are read from an aws secret at startup. For your local container to have the same config/settings as the live dev deployment, you need to at least set the following in the .env file:
+
+    AWS_ACCESS_KEY_ID=... 
+    AWS_SECRET_ACCESS_KEY=...
+    AWS_SECRET_NAME=garden-backend-env-vars/dev
+    GARDEN_ENV=dev
+    
+where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority. 
+
 
 ### Testing
 Running `./run-dev-server.sh` will spin up the app at http://localhost:5500 in a container almost exactly like the one used for deployment, with the following tweaks:

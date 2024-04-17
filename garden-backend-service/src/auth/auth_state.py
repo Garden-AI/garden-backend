@@ -4,7 +4,7 @@ import uuid
 import globus_sdk
 from fastapi import HTTPException
 from src.auth.globus_auth import introspect_token
-from src.config import settings
+from src.config import get_settings
 
 
 class AuthenticationState:
@@ -27,6 +27,7 @@ class AuthenticationState:
     def __init__(
         self, token: t.Optional[str], *, assert_default_scope: bool = True
     ) -> None:
+        settings = get_settings()
         self.garden_default_scope: str = settings.GARDEN_DEFAULT_SCOPE
         self.token = token
 
