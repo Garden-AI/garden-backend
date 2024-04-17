@@ -19,13 +19,20 @@ def mock_auth_state():
     return mock_auth
 
 
+@pytest.fixture(autouse=True)
+def mock_base_settings():
+    with patch("pydantic.env_settings.BaseSettings._build_values") as mock:
+        yield mock
+
+
 @pytest.fixture
-def mock_settings():
+def mock_settings(mock_base_settings):
     mock_settings = MagicMock(spec=Settings)
     mock_settings.DATACITE_PREFIX = "PREFIX"
     mock_settings.DATACITE_ENDPOINT = "http://localhost:8000"
     mock_settings.DATACITE_REPO_ID = "REPO_ID"
     mock_settings.DATACITE_PASSWORD = "PASSWORD"
+    mock_settings.__getitem__.side_effect = mock_base_settings.__getitem__
     return mock_settings
 
 
