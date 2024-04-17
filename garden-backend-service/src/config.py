@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_SECRET_NAME: str
-    GARDEN_ENV: str = "dev"
+    GARDEN_ENV: str
 
     # for globus auth confidential client
     API_CLIENT_ID: str
