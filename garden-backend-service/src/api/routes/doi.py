@@ -55,4 +55,4 @@ async def update_datacite(
         )
 
     result = datacite.Doi(**resp.json())
-    return result
+    return result.dict(exclude_defaults=True)
