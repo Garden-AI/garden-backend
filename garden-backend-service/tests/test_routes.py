@@ -20,19 +20,29 @@ def mock_auth_state():
 
 
 @pytest.fixture(autouse=True)
-def mock_base_settings():
-    with patch("pydantic.env_settings.BaseSettings._build_values") as mock:
-        yield mock
+def mock_boto3_get_secret_value():
+    # Typical secret response format
+    mock_secret_value_response = {
+        "ARN": "arn:aws:secretsmanager:us-east-1:1234567890:secret:test",
+        "Name": "test",
+        "VersionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
+        "SecretString": '{"DATACITE_PREFIX": "PREFIX", "DATACITE_ENDPOINT": "ENDPOINT", "DATACITE_REPO_ID": "REPO_ID", "DATACITE_PASSWORD": "PASSWORD"}',
+        "VersionStages": ["AWSCURRENT"],
+        "CreatedDate": "2021-01-22T21:46:32.725000+08:00",
+    }
+    with patch("boto3.session.Session.client") as mock_client:
+        mock_client_instance = mock_client.return_value
+        mock_client_instance.get_secret_value.return_value = mock_secret_value_response
+        yield
 
 
 @pytest.fixture
-def mock_settings(mock_base_settings):
+def mock_settings():
     mock_settings = MagicMock(spec=Settings)
     mock_settings.DATACITE_PREFIX = "PREFIX"
     mock_settings.DATACITE_ENDPOINT = "http://localhost:8000"
     mock_settings.DATACITE_REPO_ID = "REPO_ID"
     mock_settings.DATACITE_PASSWORD = "PASSWORD"
-    mock_settings.__getitem__.side_effect = mock_base_settings.__getitem__
     return mock_settings
 
 

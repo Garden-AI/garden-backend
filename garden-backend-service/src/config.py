@@ -75,6 +75,3 @@ def _aws_secretsmanager_settings_source(settings: BaseSettings) -> dict[str, Any
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
-
-
-settings = get_settings()
