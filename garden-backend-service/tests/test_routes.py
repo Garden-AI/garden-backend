@@ -20,32 +20,6 @@ def mock_auth_state():
     return mock_auth
 
 
-@pytest.fixture(autouse=True)
-def mock_boto3_get_secret_value():
-    # dummy values for config read from secrets
-    MOCK_SECRETS_CONFIG_SETTINGS = {
-        "DATACITE_PREFIX": "PREFIX",
-        "DATACITE_ENDPOINT": "ENDPOINT",
-        "DATACITE_REPO_ID": "REPO_ID",
-        "DATACITE_PASSWORD": "PASSWORD",
-        "ECR_REPO_ARN": "ECR_REPO_ARN",
-        "ECR_ROLE_ARN": "ECR_ROLE_ARN",
-    }
-    # Typical secret response format
-    mock_secret_value_response = {
-        "ARN": "arn:aws:secretsmanager:us-east-1:1234567890:secret:test",
-        "Name": "test",
-        "VersionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
-        "SecretString": json.dumps(MOCK_SECRETS_CONFIG_SETTINGS),
-        "VersionStages": ["AWSCURRENT"],
-        "CreatedDate": "2021-01-22T21:46:32.725000+08:00",
-    }
-    with patch("boto3.session.Session.client") as mock_client:
-        mock_client_instance = mock_client.return_value
-        mock_client_instance.get_secret_value.return_value = mock_secret_value_response
-        yield
-
-
 @pytest.fixture
 def mock_settings():
     mock_settings = MagicMock(spec=Settings)
@@ -55,13 +29,8 @@ def mock_settings():
     mock_settings.DATACITE_PASSWORD = "PASSWORD"
     mock_settings.ECR_REPO_ARN = "ECR_REPO_ARN"
     mock_settings.ECR_ROLE_ARN = "ECR_ROLE_ARN"
-    mock_settings.STS_TOKEN_TIMEOUT = 0
+    mock_settings.STS_TOKEN_TIMEOUT = 1234
     return mock_settings
-
-
-@pytest.fixture(autouse=True)
-def mock_get_settings(monkeypatch, mock_settings):
-    monkeypatch.setattr("src.config.get_settings", lambda: mock_settings)
 
 
 @pytest.fixture
@@ -165,5 +134,13 @@ def test_get_push_session(
         response = client.get("/docker-push-token/")
 
     assert response.status_code == 200
+    assert response.json() == {
+        "AccessKeyId": "testAccessKey",
+        "SecretAccessKey": "testSecretKey",
+        "SessionToken": "testSessionToken",
+        "ECRRepo": "ECR_REPO_ARN",
+        "RegionName": "us-east-1",
+    }
+
     for key in ["AccessKeyId", "SecretAccessKey", "SessionToken", "ECRRepo"]:
         assert key in response.json()

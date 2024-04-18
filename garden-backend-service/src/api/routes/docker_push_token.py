@@ -4,8 +4,8 @@ import boto3
 from fastapi import APIRouter, Depends, status
 from src.config import Settings, get_settings
 
-from ..dependencies.auth import AuthenticationState, authenticated
-from ..schemas.docker import ECRPushCredentials
+from src.api.dependencies.auth import AuthenticationState, authenticated
+from src.api.schemas.docker import ECRPushCredentials
 
 router = APIRouter(prefix="/docker-push-token")
 
@@ -15,7 +15,6 @@ async def get_push_session(
     settings: Settings = Depends(get_settings),
     _auth: AuthenticationState = Depends(authenticated),
 ) -> ECRPushCredentials:
-
     sts_client = boto3.client("sts")
     user_policy = _build_user_policy(settings.ECR_REPO_ARN)
 
@@ -28,7 +27,7 @@ async def get_push_session(
     )
 
     credentials = assumed_role["Credentials"]
-    return ECRPushCredentials(**credentials)
+    return ECRPushCredentials(**credentials, ECRRepo=settings.ECR_REPO_ARN)
 
 
 def _build_user_policy(ecr_repo_arn: str) -> str:
