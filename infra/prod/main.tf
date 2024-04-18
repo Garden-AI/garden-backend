@@ -62,9 +62,10 @@ module "ecr" {
 }
 
 module "lightsail" {
-  source         = "../modules/lightsail"
-  aws_account_id = var.aws_account_id
-  env            = var.env
+  source                = "../modules/lightsail"
+  aws_account_id        = var.aws_account_id
+  env                   = var.env
+  ecr_access_policy_arn = module.ecr.ecr_backend_write_policy_arn
 }
 
 /* (prod only) connect api.thegardens.ai to the gateway */
