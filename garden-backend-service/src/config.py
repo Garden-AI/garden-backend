@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     DATACITE_ENDPOINT: str
     DATACITE_PREFIX: str
 
+    ECR_REPO_ARN: str
+    ECR_ROLE_ARN: str
+    STS_TOKEN_TIMEOUT: int = 30 * 60  # 30 min timeout for ecr push
+
     class Config:
         case_sensitive = True
         env_file = _dotenv_path
