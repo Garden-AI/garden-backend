@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     ECR_ROLE_ARN: str
     STS_TOKEN_TIMEOUT: int = 30 * 60  # 30 min timeout for ecr push
 
+    NOTEBOOKS_S3_BUCKET: str
+
     class Config:
         case_sensitive = True
         env_file = _dotenv_path
