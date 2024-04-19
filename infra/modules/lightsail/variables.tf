@@ -12,3 +12,8 @@ variable "ecr_access_policy_arn" {
   description = "The ARN for the ECR access policy to attach."
   type        = string
 }
+
+variable "s3_access_policy_arn" {
+  description = "The ARN for the S3 access policy to attach."
+  type        = string
+}
