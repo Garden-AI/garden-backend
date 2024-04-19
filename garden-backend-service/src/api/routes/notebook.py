@@ -1,3 +1,4 @@
+from logging import getLogger
 import boto3
 import json
 import hashlib
@@ -8,6 +9,7 @@ from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
 
 router = APIRouter(prefix="/notebook")
+logger = getLogger()
 
 
 @router.post("/", status_code=status.HTTP_200_OK)
@@ -16,9 +18,13 @@ async def upload_notebook(
     settings: Settings = Depends(get_settings),
     auth: AuthenticationState = Depends(authenticated),
 ) -> UploadNotebookResponse:
-    # make sure we're writing to the right folder
-    if auth.username != body.folder:
-        raise Exception()
+    if auth.username and (auth.username != body.folder):
+        # paranoia due to "everyone is willengler@uchicago.edu" sdk bug
+        logger.warn(
+            f"S3 folder ({body.folder}) does not match the authenticated user ({auth.username}). "
+            f"Using {auth.username} instead."
+        )
+        body.folder = auth.username
 
     raw_payload: bytes = body.json().encode()
     hash_object = hashlib.sha256(raw_payload)
