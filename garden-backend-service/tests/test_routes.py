@@ -1,5 +1,6 @@
 import pytest
 import requests
+import json
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
 
@@ -19,23 +20,6 @@ def mock_auth_state():
     return mock_auth
 
 
-@pytest.fixture(autouse=True)
-def mock_boto3_get_secret_value():
-    # Typical secret response format
-    mock_secret_value_response = {
-        "ARN": "arn:aws:secretsmanager:us-east-1:1234567890:secret:test",
-        "Name": "test",
-        "VersionId": "a1b2c3d4-5678-90ab-cdef-EXAMPLE11111",
-        "SecretString": '{"DATACITE_PREFIX": "PREFIX", "DATACITE_ENDPOINT": "ENDPOINT", "DATACITE_REPO_ID": "REPO_ID", "DATACITE_PASSWORD": "PASSWORD"}',
-        "VersionStages": ["AWSCURRENT"],
-        "CreatedDate": "2021-01-22T21:46:32.725000+08:00",
-    }
-    with patch("boto3.session.Session.client") as mock_client:
-        mock_client_instance = mock_client.return_value
-        mock_client_instance.get_secret_value.return_value = mock_secret_value_response
-        yield
-
-
 @pytest.fixture
 def mock_settings():
     mock_settings = MagicMock(spec=Settings)
@@ -43,6 +27,9 @@ def mock_settings():
     mock_settings.DATACITE_ENDPOINT = "http://localhost:8000"
     mock_settings.DATACITE_REPO_ID = "REPO_ID"
     mock_settings.DATACITE_PASSWORD = "PASSWORD"
+    mock_settings.ECR_REPO_ARN = "ECR_REPO_ARN"
+    mock_settings.ECR_ROLE_ARN = "ECR_ROLE_ARN"
+    mock_settings.STS_TOKEN_TIMEOUT = 1234
     return mock_settings
 
 
@@ -127,3 +114,33 @@ def test_update_datacite(
 
     assert response.status_code == 200
     assert response.json() == mock_request_body
+
+
+def test_get_push_session(
+    override_get_settings_dependency, override_authenticated_dependency
+):
+    mock_assume_role = {
+        "Credentials": {
+            "AccessKeyId": "testAccessKey",
+            "SecretAccessKey": "testSecretKey",
+            "SessionToken": "testSessionToken",
+        }
+    }
+
+    with patch("boto3.client") as mock_client:
+        client_instance = mock_client.return_value
+        client_instance.assume_role.return_value = mock_assume_role
+
+        response = client.get("/docker-push-token/")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "AccessKeyId": "testAccessKey",
+        "SecretAccessKey": "testSecretKey",
+        "SessionToken": "testSessionToken",
+        "ECRRepo": "ECR_REPO_ARN",
+        "RegionName": "us-east-1",
+    }
+
+    for key in ["AccessKeyId", "SecretAccessKey", "SessionToken", "ECRRepo"]:
+        assert key in response.json()

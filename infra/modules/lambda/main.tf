@@ -99,7 +99,7 @@ resource "aws_iam_role_policy_attachment" "s3_access_attach" {
   policy_arn = var.s3_access_policy_arn
 }
 
-  resource "aws_iam_role_policy_attachment" "ecr_access_attach" {
-    role       = aws_iam_role.assumable_role.name
-    policy_arn = var.ecr_access_policy_arn
-  }
+resource "aws_iam_role_policy_attachment" "ecr_access_attach" {
+  role       = aws_iam_role.assumable_role.name
+  policy_arn = var.ecr_access_policy_arn
+}
