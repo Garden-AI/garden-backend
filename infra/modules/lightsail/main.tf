@@ -85,3 +85,7 @@ resource "aws_iam_user_policy_attachment" "allow_assume_role_attachment" {
   policy_arn = aws_iam_policy.allow_assume_role_policy.arn
 }
 
+resource "aws_iam_user_policy_attachment" "s3_access_attachment" {
+  user = aws_iam_user.lightsail_user.name
+  policy_arn = var.s3_access_policy_arn
+}

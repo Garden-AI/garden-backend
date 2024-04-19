@@ -1,5 +1,6 @@
 import pytest
 import requests
+import hashlib
 import json
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
@@ -7,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from src.main import app
 from src.config import Settings, get_settings
 from src.api.dependencies.auth import authenticated, AuthenticationState
+from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
 
 
 client = TestClient(app)
@@ -16,7 +18,7 @@ client = TestClient(app)
 def mock_auth_state():
     # Mock auth state for authenticated user
     mock_auth = MagicMock(spec=AuthenticationState)
-    mock_auth.username = "Monsieur Sartre"
+    mock_auth.username = "Monsieur.Sartre@ens-paris.fr"
     return mock_auth
 
 
@@ -30,6 +32,7 @@ def mock_settings():
     mock_settings.ECR_REPO_ARN = "ECR_REPO_ARN"
     mock_settings.ECR_ROLE_ARN = "ECR_ROLE_ARN"
     mock_settings.STS_TOKEN_TIMEOUT = 1234
+    mock_settings.NOTEBOOKS_S3_BUCKET = "test-bucket"
     return mock_settings
 
 
@@ -57,7 +60,7 @@ def test_greet_authed_user(override_authenticated_dependency):
     response = client.get("/greet/")
     assert response.status_code == 200
     assert response.json() == {
-        "Welcome, Monsieur Sartre": "you're looking very... authentic today."
+        "Welcome, Monsieur.Sartre@ens-paris.fr": "you're looking very... authentic today."
     }
 
 
@@ -144,3 +147,42 @@ def test_get_push_session(
 
     for key in ["AccessKeyId", "SecretAccessKey", "SessionToken", "ECRRepo"]:
         assert key in response.json()
+
+
+def test_upload_notebook(
+    override_authenticated_dependency, override_get_settings_dependency
+):
+    request_data = dict(
+        notebook_name="test_notebook",
+        notebook_json=json.dumps(
+            {
+                "cells": [
+                    {
+                        "cell_type": "interlinked",
+                        "within_cells": "interlinked",
+                        "source": "print('dreadfully distinct')",
+                    }
+                ]
+            }
+        ),
+        folder="Monsieur.Sartre@ens-paris.fr",  # not a commentary on nabokov, just needs to match the auth mock lol
+    )
+    request_obj = UploadNotebookRequest(**request_data)
+    test_hash = hashlib.sha256(request_obj.json().encode()).hexdigest()
+
+    with patch("boto3.client") as mock_boto_client:
+        mock_s3 = mock_boto_client.return_value
+        response = client.post("/notebook/", json=request_data)
+
+        assert response.status_code == 200
+        assert (
+            "test-bucket.s3.amazonaws.com/Monsieur.Sartre@ens-paris.fr"
+            in response.json()["notebook_url"]
+        )
+        mock_s3.put_object.assert_called_once_with(
+            Body=request_data["notebook_json"],
+            Bucket="test-bucket",
+            Key=f"{request_obj.folder}/{request_obj.notebook_name}-{test_hash}.ipynb",
+        )
+
+    pass

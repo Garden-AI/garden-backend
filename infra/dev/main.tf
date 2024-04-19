@@ -66,4 +66,5 @@ module "lightsail" {
   aws_account_id        = var.aws_account_id
   env                   = var.env
   ecr_access_policy_arn = module.ecr.ecr_backend_write_policy_arn
+  s3_access_policy_arn  = module.s3.full_access_arn
 }
