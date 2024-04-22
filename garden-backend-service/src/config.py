@@ -41,6 +41,8 @@ class Settings(BaseSettings):
 
     NOTEBOOKS_S3_BUCKET: str
 
+    GLOBUS_SEARCH_INDEX_ID: str
+
     class Config:
         case_sensitive = True
         env_file = _dotenv_path
