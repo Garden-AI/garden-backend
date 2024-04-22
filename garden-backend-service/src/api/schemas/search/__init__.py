@@ -1,9 +1,5 @@
 from pydantic import BaseModel
-from ._garden_sdk_schema import _PublishedGarden
-
-
-class PublishSearchRecordRequest(_PublishedGarden):
-    pass
+from ._garden_sdk_schema import _PublishedGarden as PublishSearchRecordRequest
 
 
 class DeleteSearchRecordRequest(BaseModel):
