@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.auth.auth_state import AuthenticationState
 
 
-logger = logging.getLogger("app")
+logger = logging.getLogger()
 
 
 def _get_auth_token(

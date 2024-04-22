@@ -66,7 +66,7 @@ class AuthenticationState:
 
     def assert_has_scope(self, scope: str) -> None:
         if scope not in self.scopes:
-            raise HTTPException(status_code=403, detail="Missing Scopes")
+            raise HTTPException(status_code=403, detail=f"Missing Scope: {scope}")
 
     def assert_has_default_scope(self) -> None:
         self.assert_has_scope(self.garden_default_scope)
