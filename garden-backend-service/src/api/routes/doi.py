@@ -14,12 +14,11 @@ async def mint_draft_doi(
     _auth: AuthenticationState = Depends(authenticated),
 ):
     body.data.attributes.prefix = settings.DATACITE_PREFIX
-
     try:
         resp: requests.Response = requests.post(
             settings.DATACITE_ENDPOINT,
             headers={"Content-Type": "application/vnd.api+json"},
-            json=body.dict(exclude_unset=True),
+            json=body.model_dump(exclude_unset=True),
             auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
         )
         resp.raise_for_status()
@@ -45,7 +44,7 @@ async def update_datacite(
         resp: requests.Response = requests.put(
             f"{settings.DATACITE_ENDPOINT}/{doi}",
             headers={"Content-Type": "application/vnd.api+json"},
-            json=body.dict(exclude_unset=True),
+            json=body.model_dump(exclude_unset=True),
             auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
         )
         resp.raise_for_status()

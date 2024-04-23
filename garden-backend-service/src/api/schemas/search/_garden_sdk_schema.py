@@ -1,8 +1,29 @@
 """Pydantic schemas equivalent to their counterparts in the garden-ai sdk, as of v1.0.10"""
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-from uuid import UUID
 import datetime
+from typing import Annotated, Dict, List, Optional, TypeVar
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+# pydantic v2 compatibility stuff:
+# see: https://github.com/pydantic/pydantic-core/pull/820#issuecomment-1670475909
+from pydantic import AfterValidator
+from pydantic_core import PydanticCustomError
+
+T = TypeVar("T")
+
+
+def _validate_unique_list(v: list[T]) -> list[T]:
+    if len(v) != len(set(v)):
+        raise PydanticCustomError("unique_list", "List must be unique")
+    return v
+
+
+UniqueList = Annotated[
+    List[T],
+    AfterValidator(_validate_unique_list),
+    Field(json_schema_extra={"uniqueItems": True}, default_factory=list),
+]
 
 
 class _Repository(BaseModel):
@@ -46,7 +67,7 @@ class _EntrypointMetadata(BaseModel):
     short_name: Optional[str] = Field(None)
     description: Optional[str] = Field(None)
     year: str = Field(default_factory=lambda: str(datetime.now().year))
-    tags: List[str] = Field(default_factory=list, unique_items=True)
+    tags: UniqueList[str] = Field(default_factory=list)
     models: List[_ModelMetadata] = Field(default_factory=list)
     repositories: List[_Repository] = Field(default_factory=list)
     papers: List[_Paper] = Field(default_factory=list)
@@ -74,13 +95,17 @@ class _RegisteredEntrypoint(_EntrypointMetadata):
 class _PublishedGarden(BaseModel):
     title: str = Field(...)
     authors: List[str] = Field(...)
-    contributors: List[str] = Field(default_factory=list, unique_items=True)
+    contributors: UniqueList
     doi: str = Field(...)
     description: Optional[str] = Field(None)
     publisher: str = "Garden-AI"
     year: str = Field(default_factory=lambda: str(datetime.now().year))
     language: str = "en"
-    tags: List[str] = Field(default_factory=list, unique_items=True)
+    tags: UniqueList
     version: str = "0.0.1"
     entrypoints: List[_RegisteredEntrypoint] = Field(...)
     entrypoint_aliases: Dict[str, str] = Field(default_factory=dict)
+
+
+# pydantic v2 compat
+#
