@@ -3,7 +3,7 @@ import datetime
 from typing import Annotated, Dict, List, Optional, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 # pydantic v2 compatibility stuff:
 # see: https://github.com/pydantic/pydantic-core/pull/820#issuecomment-1670475909
@@ -54,6 +54,7 @@ class _DatasetConnection(BaseModel):
 
 
 class _ModelMetadata(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     model_identifier: str = Field(...)
     model_repository: str = Field(...)
     model_version: Optional[str] = Field(None)
@@ -105,7 +106,3 @@ class _PublishedGarden(BaseModel):
     version: str = "0.0.1"
     entrypoints: List[_RegisteredEntrypoint] = Field(...)
     entrypoint_aliases: Dict[str, str] = Field(default_factory=dict)
-
-
-# pydantic v2 compat
-#
