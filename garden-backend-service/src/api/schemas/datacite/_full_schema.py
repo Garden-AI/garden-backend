@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, RootModel
 
@@ -67,7 +67,7 @@ class Activity(BaseModel):
     data: Optional[Data2] = None
 
 
-class Type(Enum):
+class Type(str, Enum):
     dois = 'dois'
 
 
@@ -76,7 +76,7 @@ class Links(BaseModel):
     next: Optional[str] = None
 
 
-class Event(Enum):
+class Event(str, Enum):
     publish = 'publish'
     register = 'register'
     hide = 'hide'
@@ -163,7 +163,7 @@ class Subject(BaseModel):
     classificationCode: Optional[str] = None
 
 
-class DateType(Enum):
+class DateType(str, Enum):
     Accepted = 'Accepted'
     Available = 'Available'
     Copyrighted = 'Copyrighted'
@@ -183,7 +183,7 @@ class Date(BaseModel):
     dateInformation: Optional[str] = None
 
 
-class NumberType(Enum):
+class NumberType(str, Enum):
     Article = 'Article'
     Chapter = 'Chapter'
     Report = 'Report'
@@ -199,7 +199,7 @@ class RightsListItem(BaseModel):
     lang: Optional[str] = None
 
 
-class DescriptionType(Enum):
+class DescriptionType(str, Enum):
     Abstract = 'Abstract'
     Methods = 'Methods'
     SeriesInformation = 'SeriesInformation'
@@ -232,7 +232,7 @@ class GeoLocation(BaseModel):
     geoLocationPlace: Optional[str] = None
 
 
-class FunderIdentifierType(Enum):
+class FunderIdentifierType(str, Enum):
     Crossref_Funder_ID = 'Crossref Funder ID'
     GRID = 'GRID'
     ISNI = 'ISNI'
@@ -285,7 +285,7 @@ class DoiMetaArray(RootModel[List[DoiMetaObject]]):
     root: List[DoiMetaObject]
 
 
-class MessageAction(Enum):
+class MessageAction(str, Enum):
     create = 'create'
     delete = 'delete'
 
@@ -399,7 +399,7 @@ class Report(BaseModel):
     data: Optional[Data8] = None
 
 
-class RelationType(Enum):
+class RelationType(str, Enum):
     IsCitedBy = 'IsCitedBy'
     Cites = 'Cites'
     IsSupplementTo = 'IsSupplementTo'
@@ -438,7 +438,7 @@ class RelationType(Enum):
     Collects = 'Collects'
 
 
-class ResourceTypeGeneral(Enum):
+class ResourceTypeGeneral(str, Enum):
     Audiovisual = 'Audiovisual'
     Book = 'Book'
     BookChapter = 'BookChapter'
@@ -471,7 +471,7 @@ class ResourceTypeGeneral(Enum):
     Other = 'Other'
 
 
-class ContributorType(Enum):
+class ContributorType(str, Enum):
     ContactPerson = 'ContactPerson'
     DataCollector = 'DataCollector'
     DataCurator = 'DataCurator'
@@ -495,7 +495,7 @@ class ContributorType(Enum):
     Other = 'Other'
 
 
-class RelatedIdentifierType(Enum):
+class RelatedIdentifierType(str, Enum):
     ARK = 'ARK'
     arXiv = 'arXiv'
     bibcode = 'bibcode'
@@ -517,14 +517,14 @@ class RelatedIdentifierType(Enum):
     w3id = 'w3id'
 
 
-class TitleType(Enum):
+class TitleType(str, Enum):
     AlternativeTitle = 'AlternativeTitle'
     Subtitle = 'Subtitle'
     TranslatedTitle = 'TranslatedTitle'
     Other = 'Other'
 
 
-class NameType(Enum):
+class NameType(str, Enum):
     Personal = 'Personal'
     Organizational = 'Organizational'
 
@@ -700,7 +700,7 @@ class RelatedItem(BaseModel):
 class DoiPropertiesMetadata(BaseModel):
     creators: Optional[List[Creator]] = None
     titles: Optional[List[Title]] = None
-    publisher: Optional[Publisher] = None
+    publisher: Union[Publisher, str, None] = None
     container: Optional[Container] = None
     publicationYear: Optional[int] = None
     subjects: Optional[List[Subject]] = None
