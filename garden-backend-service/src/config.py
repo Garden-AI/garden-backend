@@ -1,11 +1,16 @@
 import json
 import os
 from functools import lru_cache
-from typing import Any
+from typing import Any, Type
 
 import boto3
 from dotenv import find_dotenv, load_dotenv
-from pydantic import BaseSettings
+from pydantic.fields import FieldInfo
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+)
 
 # read from .env if it exists (local development only)
 _dotenv_path = find_dotenv()
@@ -26,7 +31,7 @@ class Settings(BaseSettings):
     API_CLIENT_ID: str
     API_CLIENT_SECRET: str
 
-    GARDEN_DEFAULT_SCOPE = (
+    GARDEN_DEFAULT_SCOPE: str = (
         "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/action_all"
     )
 
@@ -43,40 +48,59 @@ class Settings(BaseSettings):
 
     GLOBUS_SEARCH_INDEX_ID: str
 
-    class Config:
-        case_sensitive = True
-        env_file = _dotenv_path
+    model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True)
 
-        @classmethod
-        def customise_sources(
-            cls,
-            init_settings,
-            env_settings,
-            file_secret_settings,
-        ):
-            # populate values from secretsmanager helper as well as env variables
-            return (
-                init_settings,
-                env_settings,
-                file_secret_settings,
-                _aws_secretsmanager_settings_source,  # see below
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: Type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ):
+        aws_secrets_settings = SecretsmanagerSettingsSource(settings_cls)
+        # determines precedence for settings sources
+        # i.e. env and dotenv values have priority over settings read from aws;
+        # init_settings and file_secret_settings are ignored
+        return env_settings, dotenv_settings, aws_secrets_settings
+
+
+class SecretsmanagerSettingsSource(PydanticBaseSettingsSource):
+    """Customise settings to also read configuration variables from an aws secret"""
+
+    def __init__(self, *args, **kwargs):
+        session = boto3.session.Session()
+        client = session.client(
+            service_name="secretsmanager",
+            region_name="us-east-1",
+        )
+        secret_name = os.getenv("AWS_SECRET_NAME")
+        response = client.get_secret_value(SecretId=secret_name)
+        self.secrets: dict = json.loads(response["SecretString"])
+        super().__init__(*args, **kwargs)
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple:
+        """Get the value, the key for model creation, and a flag to determine whether value is complex."""
+        field_value = self.secrets.get(field_name)
+        # False means don't try to parse values as json
+        return field_value, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        # see: https://docs.pydantic.dev/latest/concepts/pydantic_settings/#customise-settings-sources
+        settings_dict = {}
+
+        for field_name, field in self.settings_cls.model_fields.items():
+            field_value, field_name, _is_complex = self.get_field_value(
+                field, field_name
             )
+            field_value = self.prepare_field_value(
+                field_name, field, field_value, _is_complex
+            )
+            if field_value is not None:
+                settings_dict[field_name] = field_value
 
-
-def _aws_secretsmanager_settings_source(settings: BaseSettings) -> dict[str, Any]:
-    """Helper: read json from AWS secretsmanager to populate Settings object.
-
-    Requires aws credentials to have been set by appropriate env vars.
-    """
-    session = boto3.session.Session()
-    client = session.client(
-        service_name="secretsmanager",
-        region_name="us-east-1",
-    )
-    secret_name = os.getenv("AWS_SECRET_NAME")
-    response = client.get_secret_value(SecretId=secret_name)
-    secrets: dict = json.loads(response["SecretString"])
-    return secrets
+        return settings_dict
 
 
 # for use as dependency with `Depends(get_settings)`
