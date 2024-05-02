@@ -10,7 +10,7 @@ from src.api.schemas.docker import ECRPushCredentials
 router = APIRouter(prefix="/docker-push-token")
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("", status_code=status.HTTP_200_OK)
 async def get_push_session(
     settings: Settings = Depends(get_settings),
     _auth: AuthenticationState = Depends(authenticated),

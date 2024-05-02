@@ -11,7 +11,7 @@ from src.config import Settings, get_settings
 router = APIRouter(prefix="/garden-search-record")
 
 
-@router.post("/", status_code=status.HTTP_200_OK)
+@router.post("", status_code=status.HTTP_200_OK)
 async def publish_search_record(
     garden_meta: PublishSearchRecordRequest,
     settings: Settings = Depends(get_settings),
@@ -30,7 +30,7 @@ async def publish_search_record(
     return await _poll_globus_search_task(task_id, search_client)
 
 
-@router.delete("/", status_code=status.HTTP_200_OK)
+@router.delete("", status_code=status.HTTP_200_OK)
 async def delete_search_record(
     body: DeleteSearchRecordRequest,
     settings: Settings = Depends(get_settings),
