@@ -4,6 +4,15 @@ resource "aws_lightsail_container_service" "garden_service" {
   scale       = 1
   is_disabled = false
 
+  public_domain_names {
+    certificate {
+      certificate_name = aws_lightsail_certificate.api_cert.name
+      domain_names = [
+        aws_lightsail_certificate.api_cert.domain_name,
+      ]
+    }
+  }
+
   tags = {
     Component   = "Lightsail Container Service"
     Project     = "Garden"
@@ -11,6 +20,10 @@ resource "aws_lightsail_container_service" "garden_service" {
   }
 }
 
+resource "aws_lightsail_certificate" "api_cert" {
+  name                      = var.lightsail_certificate_name
+  domain_name               = var.lightsail_certificate_domain_name
+}
 
 # IAM stuff
 # note: lightsail can't assume iam roles, so we define an iam user here to attach policies to
@@ -69,23 +82,23 @@ resource "aws_iam_role_policy_attachment" "ecr_access_attach" {
 # make and attach policy allowing lightsail IAM user to assume role
 data "aws_iam_policy_document" "assume_role_policy" {
   statement {
-    effect = "Allow"
-    actions = ["sts:AssumeRole"]
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
     resources = [aws_iam_role.assumable_role.arn]
   }
 }
 
 resource "aws_iam_policy" "allow_assume_role_policy" {
-  name = "allow_assume_role_policy_${var.env}"
+  name   = "allow_assume_role_policy_${var.env}"
   policy = data.aws_iam_policy_document.assume_role_policy.json
 }
 
 resource "aws_iam_user_policy_attachment" "allow_assume_role_attachment" {
-  user = aws_iam_user.lightsail_user.name
+  user       = aws_iam_user.lightsail_user.name
   policy_arn = aws_iam_policy.allow_assume_role_policy.arn
 }
 
 resource "aws_iam_user_policy_attachment" "s3_access_attachment" {
-  user = aws_iam_user.lightsail_user.name
+  user       = aws_iam_user.lightsail_user.name
   policy_arn = var.s3_access_policy_arn
 }
