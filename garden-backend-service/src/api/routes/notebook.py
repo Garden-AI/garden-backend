@@ -12,7 +12,7 @@ router = APIRouter(prefix="/notebook")
 logger = getLogger()
 
 
-@router.post("/", status_code=status.HTTP_200_OK)
+@router.post("", status_code=status.HTTP_200_OK)
 async def upload_notebook(
     body: UploadNotebookRequest,
     settings: Settings = Depends(get_settings),
