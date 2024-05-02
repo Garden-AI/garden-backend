@@ -24,15 +24,5 @@ class Doi(_Doi):
     # make data field non-optional
     data: DoiData
 
-    model_config = {
-        "json_schema_extra": {
-            "examples": [
-                {
-                    "data": {"type": "dois", "attributes": {}},
-                },
-            ]
-        }
-    }
-
 
 __all__ = ["Doi", "DoiAttributes"]
