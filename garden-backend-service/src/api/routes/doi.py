@@ -1,5 +1,5 @@
 import requests
-from fastapi import APIRouter, Depends, exceptions, status
+from fastapi import APIRouter, Depends, exceptions, status, Body
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas import datacite
 from src.config import Settings, get_settings
@@ -7,9 +7,15 @@ from src.config import Settings, get_settings
 router = APIRouter(prefix="/doi")
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def mint_draft_doi(
-    body: datacite.Doi,
+    body: datacite.Doi = Body(
+        examples=[
+            {
+                "data": {"type": "dois", "attributes": {}},
+            }
+        ]
+    ),
     settings: Settings = Depends(get_settings),
     _auth: AuthenticationState = Depends(authenticated),
 ):
@@ -32,9 +38,48 @@ async def mint_draft_doi(
     return {"doi": result.data.attributes.doi}
 
 
-@router.put("/", status_code=status.HTTP_200_OK)
+@router.put("", status_code=status.HTTP_200_OK)
 async def update_datacite(
-    body: datacite.Doi,
+    body: datacite.Doi = Body(
+        examples=[
+            {
+                "data": {
+                    "type": "dois",
+                    "attributes": {
+                        "types": {
+                            "resourceType": "AI/ML Garden",
+                            "resourceTypeGeneral": "Software",
+                        },
+                        "identifiers": [
+                            {
+                                "identifier": "10.23677/fakedoi-1234",
+                                "identifierType": "DOI",
+                            }
+                        ],
+                        "creators": [
+                            {
+                                "name": "Mendel, Gregor",
+                            }
+                        ],
+                        "titles": [
+                            {
+                                "title": "GPT Garden (Generative Pea-trained Transformers)",
+                            }
+                        ],
+                        "publisher": "thegardens.ai",
+                        "publicationYear": "2024",
+                        "subjects": [],
+                        "contributors": [],
+                        "language": "en",
+                        "version": "0.0.1",
+                        "schemaVersion": "http://datacite.org/schema/kernel-4",
+                        # "event": "publish",
+                        # "url": "https://thegardens.ai/10.23677/fakedoi-1234",
+                    },
+                }
+            }
+        ]
+    ),
     settings: Settings = Depends(get_settings),
     _auth: AuthenticationState = Depends(authenticated),
 ):
