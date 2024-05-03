@@ -38,4 +38,5 @@ jobs:
 
       - name: Check for vulnerable libraries with safety
         run: |
+          cd ./garden-backend-service
           poetry run safety check
