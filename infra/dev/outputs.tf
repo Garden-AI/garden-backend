@@ -1,11 +1,5 @@
 # Output value definitions
 
-output "base_url" {
-  description = "Base URL for lightsail deployment."
-
-  value = module.lightsail.container_service_domain
-}
-
 output "container_service_name" {
   description = "The name of the Lightsail container service."
   value       = module.lightsail.container_service_name
