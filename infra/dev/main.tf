@@ -74,11 +74,11 @@ module "lightsail" {
 /* point api-dev.thegardens.ai to the lightsail deployment */
 
 data "aws_route53_zone" "hosted_zone" {
-  name = "thegardens.ai"
+  name = var.root_domain_name
 }
 
 data "aws_acm_certificate" "api_cert" {
-  domain = "api-dev.thegardens.ai"
+  domain = "${var.subdomain_prefix}.${var.root_domain_name}"
 }
 
 resource "aws_route53_record" "api_record" {
