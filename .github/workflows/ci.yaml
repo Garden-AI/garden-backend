@@ -14,13 +14,6 @@ jobs:
     timeout-minutes: 10
     name: build
     steps:
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: arn:aws:iam::557062710055:role/GH_Actions_Garden_Secret_Reader
-          role-session-name: garden-backend-tester
-          aws-region: us-east-1
-
       - uses: actions/checkout@v2
 
       - name: Set up Python
@@ -28,30 +21,24 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies (old app)
-        run: |
-          pip install --upgrade pip
-          python -m pip install -r ./app/requirements.txt && python -m pip install -r ./app/test-requirements.txt
-
-      - name: Test with pytest (old app)
-        run: |
-          pytest ./app/test_app.py
-
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.4.1
 
-      - name: Install dependencies (new app)
+      - name: Install dependencies
         run: |
           cd ./garden-backend-service
+          pip install --upgrade pip && \
+          poetry config virtualenvs.create false && \
           poetry install --no-interaction --no-ansi --with=develop
 
-      - name: Test with pytest (new app)
+      - name: Test with pytest
         run: |
           cd ./garden-backend-service
           poetry run pytest
 
       - name: Check for vulnerable libraries with safety
         run: |
-          safety check
+          cd ./garden-backend-service
+          poetry run safety check

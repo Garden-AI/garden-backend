@@ -51,11 +51,6 @@ resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "globus_secret_policy" {
-  role       = var.lambda_exec_role_name
-  policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
-}
-
 resource "aws_iam_user_policy_attachment" "globus_secret_policy" {
   user       = var.lightsail_iam_user_name
   policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn

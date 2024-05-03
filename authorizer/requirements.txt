@@ -1,2 +1,0 @@
-globus-sdk==3.1.0
-urllib3<2

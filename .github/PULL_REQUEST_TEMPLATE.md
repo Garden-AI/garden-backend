@@ -1,4 +1,4 @@
-Link to any related issues, companion PRs, or blockers. eg, `Fixes #37`
+Link to any related issues, companion PRs, or blockers. eg, fixes #37
 
 ## Overview
 
