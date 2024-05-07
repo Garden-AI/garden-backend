@@ -48,6 +48,8 @@ class Settings(BaseSettings):
 
     GLOBUS_SEARCH_INDEX_ID: str
 
+    SQLALCHEMY_DATABASE_URL: str
+
     model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True)
 
     @classmethod
