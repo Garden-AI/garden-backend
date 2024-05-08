@@ -55,3 +55,14 @@ resource "aws_iam_user_policy_attachment" "globus_secret_policy" {
   user       = var.lightsail_iam_user_name
   policy_arn = aws_iam_policy.allow_globus_api_key_access_policy.arn
 }
+
+# note: this secret is read directly by the backend app to set its environment
+# variables; these data sources are here to grab the DB_USERNAME/DB_PASSWORD
+# values we can then pass to the terraform resources for the database itself
+data "aws_secretsmanager_secret" "backend_env_vars" {
+  name = "garden-backend-env-vars/${var.env}"
+}
+
+data "aws_secretsmanager_secret_version" "current" {
+  secret_id = data.aws_secretsmanager_secret.backend_env_vars.id
+}
