@@ -5,7 +5,7 @@ data "aws_vpc" "default" {
 # security group for rds in default vpc
 # allowing connections from lightsail container(s)
 resource "aws_security_group" "garden_db_sg" {
-  name        = "garden-db-sg"
+  name        = "garden-db-sg-${var.env}"
   description = "Allow Lightsail resources to access RDS instance"
   vpc_id      = data.aws_vpc.default.id
 
@@ -27,6 +27,10 @@ resource "aws_security_group" "garden_db_sg" {
 
   tags = {
     Environment = var.env
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
