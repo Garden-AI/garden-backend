@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     GLOBUS_SEARCH_INDEX_ID: str
 
-    DB_USER: str
+    DB_USERNAME: str
     DB_PASSWORD: str
     DB_ENDPOINT: str
 
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:
         db_name = f""
-        return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_ENDPOINT}/garden_db_{self.GARDEN_ENV}"
+        return f"postgresql://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_ENDPOINT}/garden_db_{self.GARDEN_ENV}"
 
     model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True)
 

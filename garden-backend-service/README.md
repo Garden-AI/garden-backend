@@ -48,7 +48,7 @@ Our persistent config/environment variables are read from an aws secret at start
     AWS_SECRET_NAME=garden-backend-env-vars/dev
     GARDEN_ENV=dev
     # see below
-    DB_USER="garden_dev"
+    DB_USERNAME="garden_dev"
     DB_PASSWORD="your_password"
     DB_ENDPOINT="host.docker.internal"
     
@@ -85,12 +85,12 @@ GRANT
 host    all             all             172.17.0.0/16           md5
 ```
 
-4. Add `DB_USER, DB_PASSWORD,` and `DB_ENDPOINT` to your `.env` file:
+4. Add `DB_USERNAME, DB_PASSWORD,` and `DB_ENDPOINT` to your `.env` file:
 
 ``` sh
 # garden-backend/garden-backend-service/.env
 ...
-    DB_USER="your_username"
+    DB_USERNAME="your_username"
     DB_PASSWORD="your_password"
     DB_ENDPOINT="host.docker.internal"
 ```
