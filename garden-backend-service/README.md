@@ -47,7 +47,10 @@ Our persistent config/environment variables are read from an aws secret at start
     AWS_SECRET_ACCESS_KEY=...
     AWS_SECRET_NAME=garden-backend-env-vars/dev
     GARDEN_ENV=dev
-    SQLALCHEMY_DATABASE_URL=postgresql+asyncpg://garden_dev:<your_password>@host.docker.internal/garden_ai 
+    # see below
+    DB_USER="garden_dev"
+    DB_PASSWORD="your_password"
+    DB_ENDPOINT="host.docker.internal"
     
 where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority. 
 
@@ -55,19 +58,19 @@ where the AWS access key variables correspond to the `garden_lightsail_user_dev`
 You'll need postgres installed locally and configured to allow connections from the docker container. 
 
 0. install/start postgres server
-  - on mac, [Postgres.app](https://postgresapp.com/downloads.html) is probably the easiest option 
-1. create a `garden_ai` database and `garden_dev` user with the postgres CLI:
+  - on mac, [Postgres.app](https://postgresapp.com/downloads.html) is probably the easiest option. Make sure the CLI tools installed with the app are on your path. 
+1. create a `garden_db_dev` database and a privileged user with the postgres CLI:
 
 ``` sql
 $ psql postgres
 psql (16.2 (Homebrew))
 Type "help" for help.
 
-postgres=# CREATE DATABASE garden_ai;
+postgres=# CREATE DATABASE garden_db_dev;
 CREATE DATABASE
 postgres=# CREATE USER garden_dev WITH ENCRYPTED PASSWORD 'your_password';
 CREATE ROLE
-postgres=# GRANT ALL PRIVILEGES ON DATABASE garden_ai TO garden_dev;
+postgres=# GRANT ALL PRIVILEGES ON DATABASE garden_db_dev TO garden_dev;
 GRANT
 ```
 
@@ -82,12 +85,14 @@ GRANT
 host    all             all             172.17.0.0/16           md5
 ```
 
-4. Add a `SQLALCHEMY_DATABASE_URL` to your `.env` file:
+4. Add `DB_USER, DB_PASSWORD,` and `DB_ENDPOINT` to your `.env` file:
 
 ``` sh
 # garden-backend/garden-backend-service/.env
 ...
-SQLALCHEMY_DATABASE_URL=postgresql+asyncpg://garden_dev:<your_password>@host.docker.internal/garden_ai 
+    DB_USER="your_username"
+    DB_PASSWORD="your_password"
+    DB_ENDPOINT="host.docker.internal"
 ```
 
 ### Testing
@@ -95,7 +100,7 @@ Running `./run-dev-server.sh` will spin up the app at http://localhost:5500 in a
 
 - mounts ./src as shared volume (instead of COPY) so local changes propagate into the container
 - also mounts ./.env file so the app can read e.g. API_CLIENT_SECRET vars. The .env file does not exist in the (public) image we deploy from.
-  - your .env file should also set the `SQLALCHEMY_DATABASE_URL` var to point at your local postgres (see above)
+  - your .env file should also set the `DB_*` environent variables to point at your local postgres (see above)
 - runs uvicorn with --reload so changes you make in ./src get picked up immediately
 
 In addition to curl, postman etc you can also visit http://localhost:5500/docs in a browser for interactive docs that let you exercise specific endpoints.
