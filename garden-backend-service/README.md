@@ -37,6 +37,8 @@ garden-backend-service/
 #### Requirements:
 - poetry 
 - docker
+- postgres
+  - see "Local PostgreSQL setup" below
 - a .env file in this directory for setting environment variables as wanted/needed. 
 
 Our persistent config/environment variables are read from an aws secret at startup. For your local container to have the same config/settings as the live dev deployment, you need to at least set the following in the .env file:
@@ -45,15 +47,60 @@ Our persistent config/environment variables are read from an aws secret at start
     AWS_SECRET_ACCESS_KEY=...
     AWS_SECRET_NAME=garden-backend-env-vars/dev
     GARDEN_ENV=dev
+    # see below
+    DB_USERNAME="garden_dev"
+    DB_PASSWORD="your_password"
+    DB_ENDPOINT="host.docker.internal"
     
 where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority. 
 
+### Local PostgreSQL setup 
+You'll need postgres installed locally and configured to allow connections from the docker container. 
+
+0. install/start postgres server
+  - on mac, [Postgres.app](https://postgresapp.com/downloads.html) is probably the easiest option. Make sure the CLI tools installed with the app are on your path. 
+1. create a `garden_db_dev` database and a privileged user with the postgres CLI:
+
+``` sql
+$ psql postgres
+psql (16.2 (Homebrew))
+Type "help" for help.
+
+postgres=# CREATE DATABASE garden_db_dev;
+CREATE DATABASE
+postgres=# CREATE USER garden_dev WITH ENCRYPTED PASSWORD 'your_password';
+CREATE ROLE
+postgres=# GRANT ALL PRIVILEGES ON DATABASE garden_db_dev TO garden_dev;
+GRANT
+```
+
+2. edit your `postgresql.conf` to set `listen_addresses`:
+  - the location of this file depends on how you installed postgres; you can find it in Postgress.app via "server settings" or at `/opt/homebrew/var/postgresql@16/postgresql.conf` if installed with homebrew.
+  - uncomment the line `listen_addresses = 'localhost'` and set it to `'*'` to allow connections from any IP. 
+    - Alternatively, you can set it to `'localhost,172.17.0.1'` to allow connections only from localhost and docker containers (where 172.17.0.1 is the docker subnet gateway -- run `docker network inspect bridge`to double check).
+3. edit `pg_hba.conf` (same dir as `postgresql.conf`) to add a connection rule for docker containers:
+  - paste the following line at the bottom (assuming default docker subnet 172.17.0.0/16):
+
+```
+host    all             all             172.17.0.0/16           md5
+```
+
+4. Add `DB_USERNAME, DB_PASSWORD,` and `DB_ENDPOINT` to your `.env` file:
+
+``` sh
+# garden-backend/garden-backend-service/.env
+...
+    DB_USERNAME="your_username"
+    DB_PASSWORD="your_password"
+    DB_ENDPOINT="host.docker.internal"
+```
 
 ### Testing
 Running `./run-dev-server.sh` will spin up the app at http://localhost:5500 in a container almost exactly like the one used for deployment, with the following tweaks:
 
 - mounts ./src as shared volume (instead of COPY) so local changes propagate into the container
 - also mounts ./.env file so the app can read e.g. API_CLIENT_SECRET vars. The .env file does not exist in the (public) image we deploy from.
+  - your .env file should also set the `DB_*` environent variables to point at your local postgres (see above)
 - runs uvicorn with --reload so changes you make in ./src get picked up immediately
 
 In addition to curl, postman etc you can also visit http://localhost:5500/docs in a browser for interactive docs that let you exercise specific endpoints.

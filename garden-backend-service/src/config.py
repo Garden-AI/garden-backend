@@ -5,6 +5,7 @@ from typing import Any, Type
 
 import boto3
 from dotenv import find_dotenv, load_dotenv
+from pydantic import computed_field
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -47,6 +48,15 @@ class Settings(BaseSettings):
     NOTEBOOKS_S3_BUCKET: str
 
     GLOBUS_SEARCH_INDEX_ID: str
+
+    DB_USERNAME: str
+    DB_PASSWORD: str
+    DB_ENDPOINT: str
+
+    @computed_field
+    @property
+    def SQLALCHEMY_DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_ENDPOINT}/garden_db_{self.GARDEN_ENV}"
 
     model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True)
 
