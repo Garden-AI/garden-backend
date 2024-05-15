@@ -51,6 +51,14 @@ module "lightsail" {
   lightsail_certificate_domain_name = data.aws_acm_certificate.api_cert.domain
 }
 
+module "rds" {
+  source = "../modules/rds"
+
+  env         = var.env
+  db_username = module.secrets_manager.db_username
+  db_password = module.secrets_manager.db_password
+}
+
 /* point api.thegardens.ai to the lightsail deployment */
 
 data "aws_route53_zone" "hosted_zone" {
