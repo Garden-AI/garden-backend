@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     def SQLALCHEMY_DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_ENDPOINT}/garden_db_{self.GARDEN_ENV}"
 
-    model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=_dotenv_path, case_sensitive=True, extra='ignore')
 
     @classmethod
     def settings_customise_sources(
