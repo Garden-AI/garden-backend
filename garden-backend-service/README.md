@@ -2,11 +2,11 @@
 I wanted to organize the repo so we'd have a good idea of where new code should go as we build it out, and I took inspiration from a few more mature fastAPI apps (esp. globus compute's) to do so.
 
 here's the Vision:
-``` 
+```
 garden-backend-service/
 ├── ...
 ├── README.md # you are here
-├── src       # what gets copied into the container 
+├── src       # what gets copied into the container
 │   ├── api     # any fastapi-specific code lives here
 │   │   ├── __init__.py
 │   │   ├── dependencies  # fastapi "Dependencies" here
@@ -20,13 +20,13 @@ garden-backend-service/
 │   │       ├── __init__.py
 │   │       ├── ...
 │   │       └── greet.py  # e.g. greet.py has the "/greet" routes
-│   │   ... 
+│   │   ...
 │   ├── auth              # modules that don't `import fastapi`
 │   │   ├── __init__.py
 │   │   ├── auth_state.py
 │   │   └── globus_auth.py
 │   ├── config.py         # settings/reads env vars
-│   └── main.py           # inits app/imports routers 
+│   └── main.py           # inits app/imports routers
 └── tests       # you guessed it
     ├── __init__.py
     └── test_routes.py
@@ -35,64 +35,63 @@ garden-backend-service/
 ## Local development
 
 #### Requirements:
-- poetry 
+- poetry
 - docker
-- postgres
-  - see "Local PostgreSQL setup" below
-- a .env file in this directory for setting environment variables as wanted/needed. 
+- a .env file in this directory for setting environment variables as wanted/needed.
 
 Our persistent config/environment variables are read from an aws secret at startup. For your local container to have the same config/settings as the live dev deployment, you need to at least set the following in the .env file:
 
-    AWS_ACCESS_KEY_ID=... 
+    AWS_ACCESS_KEY_ID=...
     AWS_SECRET_ACCESS_KEY=...
     AWS_SECRET_NAME=garden-backend-env-vars/dev
     GARDEN_ENV=dev
     # see below
     DB_USERNAME="garden_dev"
     DB_PASSWORD="your_password"
-    DB_ENDPOINT="host.docker.internal"
-    
-where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority. 
+    DB_ENDPOINT="dev-db" # hostname of the db container in compose.yaml
 
-### Local PostgreSQL setup 
-You'll need postgres installed locally and configured to allow connections from the docker container. 
 
-0. install/start postgres server
-  - on mac, [Postgres.app](https://postgresapp.com/downloads.html) is probably the easiest option. Make sure the CLI tools installed with the app are on your path. 
-1. create a `garden_db_dev` database and a privileged user with the postgres CLI:
+where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority.
 
-``` sql
-$ psql postgres
-psql (16.2 (Homebrew))
-Type "help" for help.
+You will also need a .env.postgres file for the postgres container:
 
-postgres=# CREATE DATABASE garden_db_dev;
-CREATE DATABASE
-postgres=# CREATE USER garden_dev WITH ENCRYPTED PASSWORD 'your_password';
-CREATE ROLE
-postgres=# GRANT ALL PRIVILEGES ON DATABASE garden_db_dev TO garden_dev;
-GRANT
-```
+    POSTGRES_DB="garden_db_dev"
+    POSTGRES_PASSWORD="your_password" #needs to be the same as DB_PASSWORD in .env
 
-2. edit your `postgresql.conf` to set `listen_addresses`:
-  - the location of this file depends on how you installed postgres; you can find it in Postgress.app via "server settings" or at `/opt/homebrew/var/postgresql@16/postgresql.conf` if installed with homebrew.
-  - uncomment the line `listen_addresses = 'localhost'` and set it to `'*'` to allow connections from any IP. 
-    - Alternatively, you can set it to `'localhost,172.17.0.1'` to allow connections only from localhost and docker containers (where 172.17.0.1 is the docker subnet gateway -- run `docker network inspect bridge`to double check).
-3. edit `pg_hba.conf` (same dir as `postgresql.conf`) to add a connection rule for docker containers:
-  - paste the following line at the bottom (assuming default docker subnet 172.17.0.0/16):
+POSTGRES variables are used by Docker to configure the database container.
 
-```
-host    all             all             172.17.0.0/16           md5
-```
-
-4. Add `DB_USERNAME, DB_PASSWORD,` and `DB_ENDPOINT` to your `.env` file:
+#### Docker
+Run the API and database containers locally  using `docker compose`:
 
 ``` sh
-# garden-backend/garden-backend-service/.env
-...
-    DB_USERNAME="your_username"
-    DB_PASSWORD="your_password"
-    DB_ENDPOINT="host.docker.internal"
+docker compose up
+
+# or run in the background
+docker compose up -d
+```
+
+Visit http://localhost:5500/docs and behold!
+
+Docker compose maps ./src, ./tests, and ./.env into the container so you can edit files locally
+and see the changes immediately reflected in the running container.
+
+Tear down and cleanup the containers:
+``` sh
+docker compose down
+```
+
+If you need to get in a run some database queries manually, connect to the running db container:
+
+``` sh
+docker exec -it garden-backend-service-dev-db-1 psql
+```
+
+Database data is persisted in a local docker volume defined in `compose.yaml`. If you need a completely fresh
+database, remove the volume and restart the containers.
+``` sh
+docker compose down
+docker volume rm garden-backend-service_db-data-volume
+docker compose up
 ```
 
 ### Testing
@@ -107,6 +106,5 @@ In addition to curl, postman etc you can also visit http://localhost:5500/docs i
 
 Unit tests live in `./tests/` and are run by github actions on PRs, or can be run locally w/ `poetry run pytest`
 
-## Deployments 
+## Deployments
 On a push to `dev` or `prod` branches, we run a GitHub action to build and push to the official (and public) `gardenai/garden-service:latest` dockerhub repo, which lightsail then pulls down for the deployment. Logs etc are visible through the [lightsail page](https://lightsail.aws.amazon.com/ls/webapp/home/containers). Note that we don't have any actual "lightsail instances", just a lightsail container service so you'll need to be on the "containers" page.
-
