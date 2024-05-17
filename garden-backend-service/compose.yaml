@@ -15,9 +15,9 @@ services:
 
   dev-db:
     hostname: dev-db
-    image: postgres:latest
+    image: postgres:16
     env_file:
-      - .env
+      - .env.postgres
     user: postgres
     volumes:
       - db-data-volume:/var/lib/postgresql/data

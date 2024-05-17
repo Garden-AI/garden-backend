@@ -49,10 +49,14 @@ Our persistent config/environment variables are read from an aws secret at start
     DB_USERNAME="garden_dev"
     DB_PASSWORD="your_password"
     DB_ENDPOINT="dev-db" # hostname of the db container in compose.yaml
-    POSTGRES_DB="garden_db_dev"
-    POSTGRES_PASSWORD=$DB_PASSWORD
+
 
 where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority.
+
+You will also need a .env.postgres file for the postgres container:
+
+    POSTGRES_DB="garden_db_dev"
+    POSTGRES_PASSWORD="your_password" #needs to be the same as DB_PASSWORD in .env
 
 POSTGRES variables are used by Docker to configure the database container.
 
