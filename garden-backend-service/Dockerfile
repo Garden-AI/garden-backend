@@ -12,10 +12,17 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
 # Copy poetry files
 COPY ./pyproject.toml ./poetry.lock* /app/
 
-# Allow installing dev dependencies (see ./run-dev-server.sh)
+# Allow installing dev dependencies
 ARG INSTALL_DEV=false
 RUN bash -c "if [ $INSTALL_DEV == 'true' ] ; then poetry install --no-root --with=develop; else poetry install --no-root --only main ; fi"
 
 COPY ./src /app/src
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "80"]
+# Copy alembic files
+COPY ./alembic.ini /app/
+COPY ./migrations /app/migrations
+
+COPY ./api-entrypoint.sh /app/
+ENTRYPOINT ["/app/api-entrypoint.sh"]
+
+EXPOSE 80
