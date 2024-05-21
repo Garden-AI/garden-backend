@@ -22,6 +22,7 @@ sqlalchemy = "^2.0.30"
 asyncpg = "^0.29.0"
 psycopg2 = "^2.9.9"
 alembic = "^1.13.1"
+greenlet = "^3.0.3"
 
 [tool.poetry.group.develop]
 optional = true
