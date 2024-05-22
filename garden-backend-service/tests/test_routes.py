@@ -6,10 +6,16 @@ from uuid import UUID
 import pytest
 import requests  # noqa
 from fastapi.testclient import TestClient
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.api.dependencies.auth import AuthenticationState, authenticated
+from src.api.dependencies.auth import (
+    AuthenticationState,
+    authenticated,
+    _get_auth_token,
+)
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
@@ -22,11 +28,22 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_auth_state():
-    # Mock auth state for authenticated user
+    # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
     mock_auth.username = "Monsieur.Sartre@ens-paris.fr"
     mock_auth.identity_id = UUID("00000000-0000-0000-0000-000000000000")
+    mock_auth.token = "tokentokentoken"
     return mock_auth
+
+
+@pytest.fixture
+def mock_missing_token():
+    def missing_auth_token_effect(authorization=Depends(HTTPBearer(auto_error=False))):
+        raise HTTPException(status_code=403, detail="Authorization header missing")
+
+    app.dependency_overrides[_get_auth_token] = missing_auth_token_effect
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -94,7 +111,7 @@ async def test_greet_authed_user(
     }
 
 
-def test_missing_auth_header():
+def test_missing_auth_header(mock_missing_token, override_get_db_session_dependency):
     response = client.get("/greet")
     assert response.status_code == 403
     assert response.json() == {"detail": "Authorization header missing"}
@@ -201,7 +218,7 @@ def test_upload_notebook(
                 ]
             }
         ),
-        folder="Monsieur.Sartre@ens-paris.fr",  # not a commentary on nabokov, just needs to match the auth mock lol
+        folder="Monsieur.Sartre@ens-paris.fr",  # not a commentary on nabokov, just needs to match the auth mock
     )
     request_obj = UploadNotebookRequest(**request_data)
     test_hash = hashlib.sha256(request_obj.json().encode()).hexdigest()
