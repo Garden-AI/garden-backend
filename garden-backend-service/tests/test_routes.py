@@ -1,25 +1,49 @@
-import pytest
-import requests
 import hashlib
 import json
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
-from src.main import app
+import pytest
+import requests  # noqa
+from fastapi.testclient import TestClient
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+from src.api.dependencies.auth import (
+    AuthenticationState,
+    authenticated,
+    _get_auth_token,
+)
+from src.api.dependencies.database import get_db_session
+from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
-from src.api.dependencies.auth import authenticated, AuthenticationState
-from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
-
+from src.main import app
+from src.models.base import Base
+from src.models.user import User  # noqa
 
 client = TestClient(app)
 
 
 @pytest.fixture
 def mock_auth_state():
-    # Mock auth state for authenticated user
+    # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
     mock_auth.username = "Monsieur.Sartre@ens-paris.fr"
+    mock_auth.identity_id = UUID("00000000-0000-0000-0000-000000000000")
+    mock_auth.token = "tokentokentoken"
     return mock_auth
+
+
+@pytest.fixture
+def mock_missing_token():
+    def missing_auth_token_effect(authorization=Depends(HTTPBearer(auto_error=False))):
+        raise HTTPException(status_code=403, detail="Authorization header missing")
+
+    app.dependency_overrides[_get_auth_token] = missing_auth_token_effect
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -33,6 +57,7 @@ def mock_settings():
     mock_settings.ECR_ROLE_ARN = "ECR_ROLE_ARN"
     mock_settings.STS_TOKEN_TIMEOUT = 1234
     mock_settings.NOTEBOOKS_S3_BUCKET = "test-bucket"
+    mock_settings.SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
     return mock_settings
 
 
@@ -50,22 +75,44 @@ def override_get_settings_dependency(mock_settings):
     app.dependency_overrides.clear()
 
 
-def test_greet_world():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"Hello there": "You must be World"}
+@pytest.fixture
+async def mock_db_session(mock_settings):
+    engine = create_async_engine(mock_settings.SQLALCHEMY_DATABASE_URL, echo=True)
+    SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with SessionLocal() as session:
+        yield session
+
+    await engine.dispose()
 
 
-def test_greet_authed_user(override_authenticated_dependency):
-    response = client.get("/greet/")
+@pytest.fixture
+def override_get_db_session_dependency(mock_db_session):
+    async def _get_test_db():
+        async for session in mock_db_session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = _get_test_db
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_greet_authed_user(
+    override_authenticated_dependency, override_get_db_session_dependency
+):
+    response = client.get("/greet")
     assert response.status_code == 200
     assert response.json() == {
         "Welcome, Monsieur.Sartre@ens-paris.fr": "you're looking very... authentic today."
     }
 
 
-def test_missing_auth_header():
-    response = client.get("/greet/")
+def test_missing_auth_header(mock_missing_token, override_get_db_session_dependency):
+    response = client.get("/greet")
     assert response.status_code == 403
     assert response.json() == {"detail": "Authorization header missing"}
 
@@ -149,6 +196,12 @@ def test_get_push_session(
         assert key in response.json()
 
 
+def test_greet_world():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"Hello there": "You must be World"}
+
+
 def test_upload_notebook(
     override_authenticated_dependency, override_get_settings_dependency
 ):
@@ -165,14 +218,14 @@ def test_upload_notebook(
                 ]
             }
         ),
-        folder="Monsieur.Sartre@ens-paris.fr",  # not a commentary on nabokov, just needs to match the auth mock lol
+        folder="Monsieur.Sartre@ens-paris.fr",  # not a commentary on nabokov, just needs to match the auth mock
     )
     request_obj = UploadNotebookRequest(**request_data)
     test_hash = hashlib.sha256(request_obj.json().encode()).hexdigest()
 
     with patch("boto3.client") as mock_boto_client:
         mock_s3 = mock_boto_client.return_value
-        response = client.post("/notebook/", json=request_data)
+        response = client.post("/notebook", json=request_data)
 
         assert response.status_code == 200
         assert (

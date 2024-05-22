@@ -2,13 +2,17 @@ services:
   dev-api:
     build:
       context: .
+      args:
+        INSTALL_DEV: true
     ports:
       - "5500:80"
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
       - ./.env:/app/.env
-    entrypoint: bash -c "uvicorn src.main:app --host 0.0.0.0 --port 80 --reload"
+      - ./alembic.ini:/app/alembic.ini
+      - ./migrations:/app/migrations
+    entrypoint: bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 80 --reload"
     depends_on:
       dev-db:
         condition: service_healthy
@@ -18,11 +22,10 @@ services:
     image: postgres:16
     env_file:
       - .env.postgres
-    user: postgres
     volumes:
       - db-data-volume:/var/lib/postgresql/data
     healthcheck:
-      test: "pg_isready -U postgres -h localhost -p 5432"
+      test: "pg_isready -U $${POSTGRES_USER} -h localhost -d $${POSTGRES_DB} -p 5432"
       timeout: 5s
       interval: 5s
 

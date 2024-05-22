@@ -1,6 +1,13 @@
 from fastapi import FastAPI
 
-from src.api.routes import docker_push_token, doi, garden_search_record, greet, notebook, hello_database
+from src.api.routes import (
+    docker_push_token,
+    doi,
+    garden_search_record,
+    greet,
+    notebook,
+    hello_database,
+)
 
 app = FastAPI()
 

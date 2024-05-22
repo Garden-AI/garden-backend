@@ -4,10 +4,12 @@ I wanted to organize the repo so we'd have a good idea of where new code should 
 here's the Vision:
 ```
 garden-backend-service/
+├── README.md             # you are here
+├── .env
+├── .postgres.env
 ├── ...
-├── README.md # you are here
-├── src       # what gets copied into the container
-│   ├── api     # any fastapi-specific code lives here
+├── src                   # what gets copied into the container
+│   ├── api               # any fastapi-specific code lives here
 │   │   ├── __init__.py
 │   │   ├── dependencies  # fastapi "Dependencies" here
 │   │   │   ├── __init__.py
@@ -25,9 +27,15 @@ garden-backend-service/
 │   │   ├── __init__.py
 │   │   ├── auth_state.py
 │   │   └── globus_auth.py
+│   └── models            # sqlalchemy orm models
+│       ├── __init__.py
+│       ├── base.py
+│       └── ....
 │   ├── config.py         # settings/reads env vars
 │   └── main.py           # inits app/imports routers
-└── tests       # you guessed it
+├── migrations            # alembic stuff 
+│   └── ...
+└── tests                 # you guessed it
     ├── __init__.py
     └── test_routes.py
 ```
@@ -60,14 +68,17 @@ You will also need a .env.postgres file for the postgres container:
 
 POSTGRES variables are used by Docker to configure the database container.
 
-#### Docker
-Run the API and database containers locally  using `docker compose`:
+### Testing
+Run the API and database containers locally using `docker compose`:
 
 ``` sh
 docker compose up
 
 # or run in the background
 docker compose up -d
+
+# force a rebuild
+docker compose up --build
 ```
 
 Visit http://localhost:5500/docs and behold!
@@ -80,31 +91,25 @@ Tear down and cleanup the containers:
 docker compose down
 ```
 
-If you need to get in a run some database queries manually, connect to the running db container:
+If you need to get in and run some database queries manually, connect to the running db container:
 
 ``` sh
-docker exec -it garden-backend-service-dev-db-1 psql
+docker compose exec dev-db psql
+```
+
+Similarly, if you need to run commands from the app container:
+
+``` sh
+docker compose exec dev-api bash
+root@17126a5147f9:/app# pytest    # for example
 ```
 
 Database data is persisted in a local docker volume defined in `compose.yaml`. If you need a completely fresh
 database, remove the volume and restart the containers.
 ``` sh
-docker compose down
-docker volume rm garden-backend-service_db-data-volume
-docker compose up
+docker compose down --volumes
+docker compose up 
 ```
 
-### Testing
-Running `./run-dev-server.sh` will spin up the app at http://localhost:5500 in a container almost exactly like the one used for deployment, with the following tweaks:
-
-- mounts ./src as shared volume (instead of COPY) so local changes propagate into the container
-- also mounts ./.env file so the app can read e.g. API_CLIENT_SECRET vars. The .env file does not exist in the (public) image we deploy from.
-  - your .env file should also set the `DB_*` environent variables to point at your local postgres (see above)
-- runs uvicorn with --reload so changes you make in ./src get picked up immediately
-
-In addition to curl, postman etc you can also visit http://localhost:5500/docs in a browser for interactive docs that let you exercise specific endpoints.
-
-Unit tests live in `./tests/` and are run by github actions on PRs, or can be run locally w/ `poetry run pytest`
-
 ## Deployments
-On a push to `dev` or `prod` branches, we run a GitHub action to build and push to the official (and public) `gardenai/garden-service:latest` dockerhub repo, which lightsail then pulls down for the deployment. Logs etc are visible through the [lightsail page](https://lightsail.aws.amazon.com/ls/webapp/home/containers). Note that we don't have any actual "lightsail instances", just a lightsail container service so you'll need to be on the "containers" page.
+On a push to `dev` or `prod` branches, we run a GitHub action to build and push to the official (and public) `gardenai/garden-service:latest` dockerhub repo, which lightsail then pulls down for the deployment. Logs etc are visible through the [lightsail page](https://lightsail.aws.amazon.com/ls/webapp/home/containers). Note that we don't have any actual "lightsail instances", just a lightsail container service so you'll need to be on the "containers" page to see the logs.
