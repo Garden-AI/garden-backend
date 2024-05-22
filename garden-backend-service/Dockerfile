@@ -23,6 +23,9 @@ COPY ./alembic.ini /app/
 COPY ./migrations /app/migrations
 
 COPY ./api-entrypoint.sh /app/
+# Make the entrypoint script executable
+RUN chmod +x /app/api-entrypoint.sh
+
 ENTRYPOINT ["/app/api-entrypoint.sh"]
 
 EXPOSE 80
