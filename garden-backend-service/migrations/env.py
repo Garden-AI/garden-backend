@@ -9,7 +9,16 @@ from alembic import context
 
 from src.config import get_settings
 from src.models.base import Base
-from src.models.user import User
+from src.models.user import User  # noqa
+from src.models.entrypoint import Entrypoint  # noqa
+from src.models.author import Author  # noqa
+from src.models.tag import Tag  # noqa
+from src.models.related_metadata import (  # noqa
+    DatasetMetadata,
+    RepositoryMetadata,
+    ModelMetadata,
+    PaperMetadata,
+)
 
 
 # this is the Alembic Config object, which provides
