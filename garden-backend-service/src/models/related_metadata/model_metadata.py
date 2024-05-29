@@ -19,4 +19,4 @@ class ModelMetadata(Base):
     model_version: Mapped[str | None]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_propagates="models")
+    entrypoint: Mapped[Entrypoint] = relationship(back_populates="models")

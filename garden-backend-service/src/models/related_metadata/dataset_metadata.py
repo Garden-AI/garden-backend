@@ -20,4 +20,4 @@ class DatasetMetadata(Base):
     repository: Mapped[str]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_propagates="datasets")
+    entrypoint: Mapped[Entrypoint] = relationship(back_populates="datasets")

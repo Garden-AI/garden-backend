@@ -19,4 +19,4 @@ class RepositoryMetadata(Base):
     contributors: Mapped[list[str]]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_propagates="repositories")
+    entrypoint: Mapped[Entrypoint] = relationship(back_populates="repositories")

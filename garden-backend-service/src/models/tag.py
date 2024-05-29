@@ -17,4 +17,4 @@ class Tag(Base):
     text: Mapped[str]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_propagates="tags")
+    entrypoint: Mapped[Entrypoint] = relationship(back_populates="tags")

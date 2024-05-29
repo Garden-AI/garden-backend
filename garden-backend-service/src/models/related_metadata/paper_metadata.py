@@ -19,4 +19,4 @@ class PaperMetadata(Base):
     citation: Mapped[str | None]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped["Entrypoint"] = relationship(back_propagates="papers")
+    entrypoint: Mapped["Entrypoint"] = relationship(back_populates="papers")

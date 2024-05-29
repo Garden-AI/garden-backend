@@ -17,4 +17,4 @@ class Author(Base):
     name: Mapped[str]
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_propagates="authors")
+    entrypoint: Mapped[Entrypoint] = relationship(back_populates="authors")
