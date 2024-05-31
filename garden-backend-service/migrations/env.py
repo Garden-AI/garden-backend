@@ -1,25 +1,13 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
-
 from src.config import get_settings
+from src.models import *  # noqa
 from src.models.base import Base
-from src.models.user import User  # noqa
-from src.models.entrypoint import Entrypoint  # noqa
-from src.models.author import Author  # noqa
-from src.models.tag import Tag  # noqa
-from src.models.related_metadata import (  # noqa
-    DatasetMetadata,
-    RepositoryMetadata,
-    ModelMetadata,
-    PaperMetadata,
-)
-
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

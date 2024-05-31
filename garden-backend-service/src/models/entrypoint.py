@@ -1,13 +1,12 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, UnicodeText
+from sqlalchemy import String
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base
 
 if TYPE_CHECKING:
-    from src.models.author import Author
-    from src.models.tag import Tag
     from src.models.related_metadata import (
         DatasetMetadata,
         ModelMetadata,
@@ -20,8 +19,6 @@ else:
     ModelMetadata = "ModelMetadata"
     PaperMetadata = "PaperMetadata"
     RepositoryMetadata = "RepositoryMetadata"
-    Author = "Author"
-    Tag = "Tag"
 
 
 class Entrypoint(Base):
@@ -39,26 +36,15 @@ class Entrypoint(Base):
     notebook_url: Mapped[str]
 
     short_name: Mapped[str]
-    function_text: Mapped[str] = mapped_column(UnicodeText)
+    function_text: Mapped[str]
 
-    authors: Mapped[List[Author]] = relationship(back_populates="entrypoint")
-    tags: Mapped[List[Tag]] = relationship(back_populates="entrypoint")
-    models: Mapped[List[ModelMetadata]] = relationship(back_populates="entrypoint")
-    repositories: Mapped[List[RepositoryMetadata]] = relationship(
+    authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
+    tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
+    test_functions: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
+
+    models: Mapped[list[ModelMetadata]] = relationship(back_populates="entrypoint")
+    repositories: Mapped[list[RepositoryMetadata]] = relationship(
         back_populates="entrypoint"
     )
-    papers: Mapped[List[PaperMetadata]] = relationship(back_populates="entrypoint")
-    datasets: Mapped[List[DatasetMetadata]] = relationship(back_populates="entrypoint")
-
-    test_functions: Mapped[List["TestFunction"]] = relationship(
-        cascade="all, delete-orphan", back_populates="entrypoint"
-    )
-
-
-class TestFunction(Base):
-    __tablename__ = "test_functions"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    function_text: Mapped[str] = mapped_column(UnicodeText)
-
-    entrypoint_id = mapped_column(ForeignKey("entrypoints.id"))
-    entrypoint: Mapped[Entrypoint] = relationship(back_populates="test_functions")
+    papers: Mapped[list[PaperMetadata]] = relationship(back_populates="entrypoint")
+    datasets: Mapped[list[DatasetMetadata]] = relationship(back_populates="entrypoint")

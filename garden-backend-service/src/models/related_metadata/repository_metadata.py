@@ -1,7 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects import postgresql
 
 from src.models.base import Base
 
@@ -16,6 +17,7 @@ class RepositoryMetadata(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     repo_name: Mapped[str]
     url: Mapped[str]
+    contributors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
 
     entrypoint_id: Mapped[int] = mapped_column(ForeignKey("entrypoints.id"))
     entrypoint: Mapped[Entrypoint] = relationship(back_populates="repositories")
