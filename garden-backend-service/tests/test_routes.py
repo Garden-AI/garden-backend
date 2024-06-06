@@ -21,9 +21,16 @@ from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
-from src.models.user import User  # noqa
+from src.models import *  # noqa
 
 client = TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def mock_entrypoint_create_request_json():
+    with open("fixtures/EntrypointCreateRequest.json", "r") as f_in:
+        contents: str = f_in.read()
+    return contents
 
 
 @pytest.fixture
@@ -77,7 +84,7 @@ def override_get_settings_dependency(mock_settings):
 
 @pytest.fixture
 async def mock_db_session(mock_settings):
-    engine = create_async_engine(mock_settings.SQLALCHEMY_DATABASE_URL, echo=True)
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
     SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
 
     async with engine.begin() as conn:

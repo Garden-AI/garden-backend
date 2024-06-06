@@ -1,0 +1,51 @@
+{
+    "doi": "10.26311/yb08-9248",
+    "title": "Oxide vacancy formation energy model",
+    "authors": ["Ryan Jacobs"],
+    "short_name": "predict_oxide_vacancy",
+    "description": "Random forest model to predict the formation energy of O vacancies in oxides",
+    "year": "2024",
+    "tags": ["scikit-learn", "mastml"],
+    "models": [
+        {
+            "model_identifier": "rjacobs3/model_oxide_vacancy",
+            "model_repository": "Hugging Face",
+            "model_version": "main"
+        }
+    ],
+    "repositories": [
+        {
+            "repo_name": "uw-cmg/MAST-ML",
+            "url": "https://github.com/uw-cmg/MAST-ML",
+            "contributors": ["rjacobs914"]
+        }
+    ],
+    "papers": [
+        {
+            "title": "Machine Learning Materials Properties with Accurate Predictions, Uncertainty Estimates, Domain Guidance, and Persistent Online Accessibility",
+            "authors": ["Ryan Jacobs"],
+            "doi": "10.1234/fake-paper-doi",
+            "citation": ""
+        }
+    ],
+    "datasets": [
+        {
+            "title": "Benchmark Dataset for Locating Atoms in STEM images",
+            "doi": "10.18126/e73h-3w6n",
+            "url": "https://foundry-ml.org/#/datasets/10.18126%2Fe73h-3w6n",
+            "data_type": "csv",
+            "repository": "foundry"
+        }
+    ],
+    "doi_is_draft": true,
+    "func_uuid": "daa1a8f5-30ea-4f14-80d1-318fea994101",
+    "container_uuid": "9cb2ae42-8b9d-4a68-8d91-0bf49181ac70",
+    "base_image_uri": "gardenai/base:python-3.11-wisconsin",
+    "full_image_uri": "public.ecr.aws/x2v7f8j4/garden-containers-prod:pushed-20240402-171837695950",
+    "notebook_url": "https://pipeline-notebooks-prod.s3.amazonaws.com/RJACOBS3@WISC.EDU/oxide_vacancy_notebook.ipynb-59980c4e38a2d2a536c2f8d4ab778d757c7af8529b0e8c58e6b2d8cc13f26809.ipynb",
+    "test_functions": [
+        "@entrypoint_test(predict_oxide_vacancy)\ndef test_the_model():\n    comps_list = ['Ac2O3', 'AcAgO3', 'AcAlO3']\n    result = predict_oxide_vacancy(comps_list)\n    return result\n"
+    ],
+    "requirements": [],
+    "function_text": "@garden_entrypoint(\n    metadata=model_entrypoint_meta,  \n    model_connectors=[github_connector], \n    garden_doi=my_garden_doi\n)\ndef predict_oxide_vacancy(comp_list):\n    import shutil, zipfile\n    import os\n    import sys\n    import warnings\n    warnings.filterwarnings(\"ignore\")\n    \n    if not os.path.exists('model_oxide_vacancy'):\n        download_path = github_connector.stage()\n        shutil.move('hf_model', 'model_oxide_vacancy')\n\n    sys.path.append('model_oxide_vacancy')\n\n    from predict_oxide_vacancy import make_predictions\n    \n    preds = make_predictions(comp_list)\n\n    return preds\n"
+}

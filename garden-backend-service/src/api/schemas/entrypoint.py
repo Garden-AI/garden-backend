@@ -5,7 +5,6 @@ from pydantic import Field
 from .base import BaseSchema, UniqueList, Url
 
 
-# Note: from_attributes=True allows instantiation from ORM model instances
 class _RepositoryMetadata(BaseSchema):
     repo_name: str
     url: Url
