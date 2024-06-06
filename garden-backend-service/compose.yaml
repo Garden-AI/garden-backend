@@ -1,5 +1,5 @@
 services:
-  dev-api:
+  api:
     build:
       context: .
       args:
@@ -21,7 +21,7 @@ services:
     hostname: dev-db
     image: postgres:16
     env_file:
-      - .env.postgres
+      - .postgres.env
     volumes:
       - db-data-volume:/var/lib/postgresql/data
     healthcheck:
@@ -29,5 +29,20 @@ services:
       timeout: 5s
       interval: 5s
 
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      # compose reads these from the default .env
+      - PGADMIN_DEFAULT_EMAIL=${DB_USERNAME}
+      - PGADMIN_DEFAULT_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pgadmin-data:/root/.pgadmin
+    ports:
+      - "8080:80"
+    depends_on:
+      - dev-db
+
 volumes:
   db-data-volume: # volume to persist database data between containers
+  pgadmin-data:

@@ -14,7 +14,8 @@ else:
 class DatasetMetadata(Base):
     __tablename__ = "dataset_metadata"
     id: Mapped[int] = mapped_column(primary_key=True)
-    doi: Mapped[str] = mapped_column(unique=True)
+    title: Mapped[str]
+    doi: Mapped[str]
     url: Mapped[str]
     data_type: Mapped[str | None]
     repository: Mapped[str]

@@ -1,7 +1,18 @@
-from typing import Annotated, List, TypeVar
+from typing import Annotated, List, TypeVar, AnyStr
 
-from pydantic import AfterValidator, Field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    HttpUrl,
+    PlainSerializer,
+)
 from pydantic_core import PydanticCustomError
+
+
+class BaseSchema(BaseModel, from_attributes=True):
+    pass
+
 
 T = TypeVar("T")
 
@@ -18,3 +29,4 @@ UniqueList = Annotated[
     AfterValidator(_validate_unique_list),
     Field(json_schema_extra={"uniqueItems": True}, default_factory=list),
 ]
+Url = Annotated[HttpUrl, PlainSerializer(lambda url: str(url), return_type=type(""))]

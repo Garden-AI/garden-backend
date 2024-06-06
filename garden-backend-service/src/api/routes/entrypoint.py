@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+import sqlalchemy
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.api.dependencies.auth import authed_user
@@ -10,10 +12,6 @@ from src.api.schemas.entrypoint import (
 from src.models import (
     User,
     Entrypoint,
-    ModelMetadata,
-    RepositoryMetadata,
-    PaperMetadata,
-    DatasetMetadata,
 )
 
 router = APIRouter(prefix="/entrypoint")
@@ -27,12 +25,12 @@ async def get_entrypoint(
     doi: str,
     db: AsyncSession = Depends(get_db_session),
 ):
-    entrypoint = await Entrypoint.get(db, doi=doi)
+    entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
     if entrypoint is None:
         raise HTTPException(
             status_code=404, detail=f"Entrypoint not found with DOI {doi}"
         )
-    return entrypoint
+    return entrypoint.to_dict()
 
 
 @router.post("", response_model=EntrypointMetadataResponse)
@@ -41,8 +39,7 @@ async def post_entrypoint(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(authed_user),
 ):
-    # NOTE: this doesn't work until we get the nested dicts into orm instances too
-    new_entrypoint = Entrypoint(**entrypoint.model_dump())
+    new_entrypoint = Entrypoint.from_dict(entrypoint.model_dump())
     db.add(new_entrypoint)
     try:
         await db.commit()
@@ -72,8 +69,3 @@ async def put_entrypoint(
 
     await db.commit()
     return existing_entrypoint
-
-
-# TODO figure out best way to convert nested payload to correct orm instances
-def _convert_payload_to_orm(entrypoint: EntrypointCreateRequest) -> Entrypoint:
-    pass
