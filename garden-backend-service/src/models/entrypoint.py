@@ -42,9 +42,26 @@ class Entrypoint(Base):
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     test_functions: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
 
-    models: Mapped[list[ModelMetadata]] = relationship(back_populates="entrypoint")
-    repositories: Mapped[list[RepositoryMetadata]] = relationship(
-        back_populates="entrypoint"
+    # lazy=selectin to load eagerly by default; cascade options are set to
+    # everything but "refresh-expire" for asyncio reasons.
+    # (see: https://docs.sqlalchemy.org/en/20/orm/cascades.html)
+    models: Mapped[list[ModelMetadata]] = relationship(
+        back_populates="entrypoint",
+        lazy="selectin",
+        cascade="save-update, merge, expunge, delete, delete-orphan",
     )
-    papers: Mapped[list[PaperMetadata]] = relationship(back_populates="entrypoint")
-    datasets: Mapped[list[DatasetMetadata]] = relationship(back_populates="entrypoint")
+    repositories: Mapped[list[RepositoryMetadata]] = relationship(
+        back_populates="entrypoint",
+        lazy="selectin",
+        cascade="save-update, merge, expunge, delete, delete-orphan",
+    )
+    papers: Mapped[list[PaperMetadata]] = relationship(
+        back_populates="entrypoint",
+        lazy="selectin",
+        cascade="save-update, merge, expunge, delete, delete-orphan",
+    )
+    datasets: Mapped[list[DatasetMetadata]] = relationship(
+        back_populates="entrypoint",
+        lazy="selectin",
+        cascade="save-update, merge, expunge, delete, delete-orphan",
+    )

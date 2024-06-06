@@ -74,26 +74,3 @@ class Base(AsyncAttrs, DeclarativeBase):
                         for item in value
                     ]
         return cls(**data)
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Convert an instance of the class to a dictionary, recursively handling nested instances.
-
-        Returns:
-            A dictionary representation of the instance.
-        """
-        result = {
-            key: value
-            for key, value in self.__dict__.items()
-            if not key.startswith("_")  # skips sqlalchemy attributes
-        }
-        for key, value in result.items():
-            if isinstance(value, Base):
-                # recursively convert a nested class instance
-                result[key] = value.to_dict()
-            elif isinstance(value, list):
-                # recurse into list if elements are class instances
-                result[key] = [
-                    item.to_dict() if isinstance(item, Base) else item for item in value
-                ]
-        return result
