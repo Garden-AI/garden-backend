@@ -12,7 +12,6 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.types import TypeDecorator, JSON
 
 from src.api.dependencies.auth import (
     AuthenticationState,
@@ -23,8 +22,7 @@ from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
 from src.main import app
-from src.models import Base, Entrypoint, PaperMetadata, RepositoryMetadata
-
+from src.models.base import Base
 from src.models import *  # noqa
 
 client = TestClient(app)
@@ -88,30 +86,6 @@ def override_get_settings_dependency(mock_settings):
 
 @pytest.fixture
 async def mock_db_session(mock_settings):
-    # HACK: can't use the postgres dialect's ARRAY(String) with the in-memory sqlite db used here
-    # so explicitly set the column types here as needed
-    class MockArrayType(TypeDecorator):
-        impl = JSON
-
-        def process_bind_param(self, value, dialect):
-            if value is None:
-                return value
-            if not isinstance(value, list):
-                raise ValueError("Only accepts lists")
-            return json.dumps(value)
-
-        def process_result_value(self, value, dialect):
-            if value is None:
-                return value
-            return json.loads(value)
-
-    Entrypoint.__table__.columns["authors"].type = MockArrayType()
-    Entrypoint.__table__.columns["tags"].type = MockArrayType()
-    Entrypoint.__table__.columns["test_functions"].type = MockArrayType()
-
-    PaperMetadata.__table__.columns["authors"].type = MockArrayType()
-    RepositoryMetadata.__table__.columns["contributors"].type = MockArrayType()
-
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
     SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
 
