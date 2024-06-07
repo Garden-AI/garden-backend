@@ -1,9 +1,11 @@
 import hashlib
+from pathlib import Path
 import json
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+
 import requests  # noqa
 from fastapi.testclient import TestClient
 from fastapi import HTTPException, Depends
@@ -27,10 +29,10 @@ client = TestClient(app)
 
 
 @pytest.fixture(scope="session")
-def mock_entrypoint_create_request_json():
-    with open("fixtures/EntrypointCreateRequest.json", "r") as f_in:
-        contents: str = f_in.read()
-    return contents
+def mock_entrypoint_create_request_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "EntrypointCreateRequest.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
 
 
 @pytest.fixture
