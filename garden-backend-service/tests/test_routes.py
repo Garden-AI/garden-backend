@@ -12,6 +12,7 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.types import TypeDecorator, JSON
 
 from src.api.dependencies.auth import (
     AuthenticationState,
@@ -22,7 +23,8 @@ from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
 from src.main import app
-from src.models.base import Base
+from src.models import Base, Entrypoint, PaperMetadata, RepositoryMetadata
+
 from src.models import *  # noqa
 
 client = TestClient(app)
@@ -86,6 +88,30 @@ def override_get_settings_dependency(mock_settings):
 
 @pytest.fixture
 async def mock_db_session(mock_settings):
+    # HACK: can't use the postgres dialect's ARRAY(String) with the in-memory sqlite db used here
+    # so explicitly set the column types here as needed
+    class MockArrayType(TypeDecorator):
+        impl = JSON
+
+        def process_bind_param(self, value, dialect):
+            if value is None:
+                return value
+            if not isinstance(value, list):
+                raise ValueError("Only accepts lists")
+            return json.dumps(value)
+
+        def process_result_value(self, value, dialect):
+            if value is None:
+                return value
+            return json.loads(value)
+
+    Entrypoint.__table__.columns["authors"].type = MockArrayType()
+    Entrypoint.__table__.columns["tags"].type = MockArrayType()
+    Entrypoint.__table__.columns["test_functions"].type = MockArrayType()
+
+    PaperMetadata.__table__.columns["authors"].type = MockArrayType()
+    RepositoryMetadata.__table__.columns["contributors"].type = MockArrayType()
+
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
     SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
 
@@ -248,3 +274,93 @@ def test_upload_notebook(
         )
 
     return
+
+
+@pytest.mark.asyncio
+async def test_add_entrypoint(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["doi"] == mock_entrypoint_create_request_json["doi"]
+    assert response_data["title"] == mock_entrypoint_create_request_json["title"]
+    assert (
+        response_data["description"]
+        == mock_entrypoint_create_request_json["description"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_add_entrypoint_duplicate_doi(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # First request to add entrypoint
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    # Second request with the same data should fail due to duplicate DOI
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Entrypoint with this DOI already exists"}
+
+
+@pytest.mark.asyncio
+async def test_get_entrypoint_by_doi(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # add the entrypoint
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    # get by DOI
+    doi = mock_entrypoint_create_request_json["doi"]
+    response = client.get(f"/entrypoint/{doi}")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["doi"] == mock_entrypoint_create_request_json["doi"]
+    assert response_data["title"] == mock_entrypoint_create_request_json["title"]
+    assert (
+        response_data["description"]
+        == mock_entrypoint_create_request_json["description"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_entrypoint_by_doi_not_found(
+    mock_db_session, override_get_db_session_dependency
+):
+    response = client.get("/entrypoint/10.fake/doi")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Entrypoint not found with DOI 10.fake/doi"}
+
+
+@pytest.mark.asyncio
+async def test_delete_entrypoint(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # add then delete
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    doi = mock_entrypoint_create_request_json["doi"]
+    response = client.delete(f"/entrypoint/{doi}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "detail": f"Successfully deleted entrypoint with DOI {doi}."
+    }
+    response = client.delete("/entrypoint/10.fake/doi")
+    assert response.status_code == 200
+    assert response.json() == {"detail": "No entrypoint found with DOI 10.fake/doi."}
