@@ -29,7 +29,7 @@ class Garden(Base):
     version: Mapped[str]
     entrypoint_aliases: Mapped[dict[str, str]] = mapped_column(postgresql.JSON)
 
-    # no back_populates; entrypoints don't point back at gardens
+    # no back_populates; entrypoints don't directly point back to gardens
     entrypoints: Mapped[list[Entrypoint]] = relationship(
         Entrypoint,
         secondary=gardens_entrypoints,
