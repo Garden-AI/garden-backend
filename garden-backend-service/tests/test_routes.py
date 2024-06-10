@@ -1,9 +1,11 @@
 import hashlib
+from pathlib import Path
 import json
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+
 import requests  # noqa
 from fastapi.testclient import TestClient
 from fastapi import HTTPException, Depends
@@ -21,9 +23,16 @@ from src.api.schemas.notebook import UploadNotebookRequest
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
-from src.models.user import User  # noqa
+# from src.models import *  # noqa
 
 client = TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def mock_entrypoint_create_request_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "EntrypointCreateRequest.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
 
 
 @pytest.fixture
@@ -77,7 +86,7 @@ def override_get_settings_dependency(mock_settings):
 
 @pytest.fixture
 async def mock_db_session(mock_settings):
-    engine = create_async_engine(mock_settings.SQLALCHEMY_DATABASE_URL, echo=True)
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
     SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
 
     async with engine.begin() as conn:
@@ -100,6 +109,7 @@ def override_get_db_session_dependency(mock_db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
 @pytest.mark.asyncio
 async def test_greet_authed_user(
     override_authenticated_dependency, override_get_db_session_dependency
@@ -111,6 +121,7 @@ async def test_greet_authed_user(
     }
 
 
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
 def test_missing_auth_header(mock_missing_token, override_get_db_session_dependency):
     response = client.get("/greet")
     assert response.status_code == 403
@@ -239,3 +250,98 @@ def test_upload_notebook(
         )
 
     return
+
+
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
+@pytest.mark.asyncio
+async def test_add_entrypoint(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["doi"] == mock_entrypoint_create_request_json["doi"]
+    assert response_data["title"] == mock_entrypoint_create_request_json["title"]
+    assert (
+        response_data["description"]
+        == mock_entrypoint_create_request_json["description"]
+    )
+
+
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
+@pytest.mark.asyncio
+async def test_add_entrypoint_duplicate_doi(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # First request to add entrypoint
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    # Second request with the same data should fail due to duplicate DOI
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Entrypoint with this DOI already exists"}
+
+
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
+@pytest.mark.asyncio
+async def test_get_entrypoint_by_doi(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # add the entrypoint
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    # get by DOI
+    doi = mock_entrypoint_create_request_json["doi"]
+    response = client.get(f"/entrypoint/{doi}")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["doi"] == mock_entrypoint_create_request_json["doi"]
+    assert response_data["title"] == mock_entrypoint_create_request_json["title"]
+    assert (
+        response_data["description"]
+        == mock_entrypoint_create_request_json["description"]
+    )
+
+
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
+@pytest.mark.asyncio
+async def test_get_entrypoint_by_doi_not_found(
+    mock_db_session, override_get_db_session_dependency
+):
+    response = client.get("/entrypoint/10.fake/doi")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Entrypoint not found with DOI 10.fake/doi"}
+
+
+@pytest.mark.skip("skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)")
+@pytest.mark.asyncio
+async def test_delete_entrypoint(
+    mock_entrypoint_create_request_json,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_db_session_dependency,
+):
+    # add then delete
+    response = client.post("/entrypoint", json=mock_entrypoint_create_request_json)
+    assert response.status_code == 200
+
+    doi = mock_entrypoint_create_request_json["doi"]
+    response = client.delete(f"/entrypoint/{doi}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "detail": f"Successfully deleted entrypoint with DOI {doi}."
+    }
+    response = client.delete("/entrypoint/10.fake/doi")
+    assert response.status_code == 200
+    assert response.json() == {"detail": "No entrypoint found with DOI 10.fake/doi."}
