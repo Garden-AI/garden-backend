@@ -13,12 +13,14 @@ if TYPE_CHECKING:
         PaperMetadata,
         RepositoryMetadata,
     )
+    from src.models.garden import Garden
 
 else:
     DatasetMetadata = "DatasetMetadata"
     ModelMetadata = "ModelMetadata"
     PaperMetadata = "PaperMetadata"
     RepositoryMetadata = "RepositoryMetadata"
+    Garden = "Garden"
 
 
 class Entrypoint(Base):
