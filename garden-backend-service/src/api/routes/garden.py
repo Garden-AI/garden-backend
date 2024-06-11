@@ -16,9 +16,10 @@ async def add_garden(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(authed_user),
 ):
+    # collect entrypoints by DOI
     stmt = select(Entrypoint).where(Entrypoint.doi.in_(garden.entrypoint_ids))
     result = await db.execute(stmt)
-    entrypoints = result.scalars().all()
+    entrypoints: list[Entrypoint] = result.scalars().all()
 
     if len(entrypoints) != len(garden.entrypoint_ids):
         missing_dois = [
@@ -68,6 +69,7 @@ async def delete_garden(
 ):
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is not None:
+        await db.delete(garden)
         try:
             await db.commit()
         except IntegrityError as e:
