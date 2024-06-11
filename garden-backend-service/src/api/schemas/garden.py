@@ -17,12 +17,11 @@ class GardenMetadata(BaseSchema):
     language: str = "en"
     tags: UniqueList[str] = Field(default_factory=list)
     version: str = "0.0.1"
-    entrypoint_ids: UniqueList[str] = Field(default_factory=list)
     entrypoint_aliases: dict[str, str] = Field(default_factory=dict)
 
 
 class GardenCreateRequest(GardenMetadata):
-    pass
+    entrypoint_ids: UniqueList[str] = Field(default_factory=list)
 
 
 class GardenMetadataResponse(GardenMetadata):

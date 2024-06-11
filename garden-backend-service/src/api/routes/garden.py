@@ -16,16 +16,17 @@ async def add_garden(
     db: AsyncSession = Depends(get_db_session),
     _user: User = Depends(authed_user),
 ):
-    entrypoints: list[Entrypoint] = await db.scalars(
-        select(Entrypoint).where(Entrypoint.doi._in(garden.entrypoint_ids))
-    )
+    stmt = select(Entrypoint).where(Entrypoint.doi.in_(garden.entrypoint_ids))
+    result = await db.execute(stmt)
+    entrypoints = result.scalars().all()
+
     if len(entrypoints) != len(garden.entrypoint_ids):
         missing_dois = [
             ep.doi for ep in entrypoints if ep.doi not in garden.entrypoint_ids
         ]
         raise HTTPException(
             status_code=404,
-            detail=f"Failed to find entrypoint(s) with DOIs: {missing_dois}",
+            detail=f"Failed to add garden. Could not find entrypoint(s) with DOIs: {missing_dois}",
         )
     new_garden: Garden = Garden.from_dict(garden.model_dump(exclude="entrypoint_ids"))
     new_garden.entrypoints = entrypoints
