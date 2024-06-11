@@ -1,0 +1,14 @@
+{
+    "title": "Garden that shares an entrypoint",
+    "authors": ["Owen"],
+    "contributors": ["Owen :)", "Et", "Al"],
+    "doi": "10.23677/shares-entrypoint-garden",
+    "description": "",
+    "publisher": "Garden-AI",
+    "year": "2023",
+    "language": "en",
+    "tags": [],
+    "version": "0.0.1",
+    "entrypoint_aliases": {},
+    "entrypoint_ids": ["10.23677/shared-entrypoint"]
+}

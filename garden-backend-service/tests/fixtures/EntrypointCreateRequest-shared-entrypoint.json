@@ -1,0 +1,37 @@
+{
+    "doi": "10.23677/shared-entrypoint",
+    "doi_is_draft": true,
+    "title": "Iris Classifier (with bonus data)",
+    "description": "A simple demonstration of how to host a scikit-learn model with Garden.",
+    "year": "2024",
+    "func_uuid": "f05b2dd7-2b5b-4f2a-860f-dd3b8bcd91b2",
+    "container_uuid": "953471b1-0345-4432-818a-0f81efa1190a",
+    "base_image_uri": "gardenai/base:python-3.10-sklearn",
+    "full_image_uri": "public.ecr.aws/x2v7f8j4/garden-containers-dev:pushed-20240528-152449935555",
+    "notebook_url": "https://pipeline-notebooks-dev.s3.amazonaws.com/owenpriceskelly@uchicago.edu/3096-Indigo-Dewy-Flowers.ipynb-e6b9977132ce2b0d32891bc3e17a7bd8d88bf2e3a77d026276dcc5573515a5d1.ipynb",
+    "short_name": "classify_irises",
+    "function_text": "@garden_entrypoint(\n    metadata=iris_entrypoint_meta,  \n    model_connectors=[hf_iris_connector], \n    garden_doi=my_garden_doi\n)\ndef classify_irises(input_array):\n    # The HFConnector.stage() method downloads the model weights from Hugging Face.\n    # Be sure to only call .stage inside of an entrypoint function!\n    download_path = hf_iris_connector.stage()\n    \n    # HFConnector.stage() returns the directory it downloaded the contents of the Hugging Face repo to. \n    # The serialized model file (model.joblib) is in the root of the repository.\n    model = joblib.load(f\"{download_path}/model.joblib\")\n    \n    # Call the model!\n    predictions = model.predict(input_array)\n\n    # Transform model output from ints to strings and send the end results to the user.\n    as_strings = [['setosa', 'versicolor', 'virginica'][prediction] for prediction in predictions]\n    return as_strings\n",
+    "authors": ["Owen :)"],
+    "tags": ["scikit-learn", "tutorial", "has-dataset"],
+    "test_functions": [
+        "@entrypoint_test(classify_irises)\ndef test_the_classifier():\n    data = [\n        [5.5, 2.4, 3.7, 1. ],\n        [6.3, 2.8, 5.1, 1.5],\n        [6.4, 3.1, 5.5, 1.8],\n        [6.6, 3. , 4.4, 1.4],\n        [5.1, 3.5, 1.4, 0.2],\n    ]\n\n    example_input = pd.DataFrame(data, columns = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']) \n    result = classify_irises(example_input)\n    return result\n"
+    ],
+    "models": [
+        {
+            "model_identifier": "Garden-AI/sklearn-iris",
+            "model_repository": "Hugging Face",
+            "model_version": null
+        }
+    ],
+    "repositories": [],
+    "papers": [],
+    "datasets": [
+        {
+            "title": "Benchmark Dataset for Locating Atoms in STEM images",
+            "doi": "10.18126/e73h-3w6n",
+            "url": "https://foundry-ml.org/#/datasets/10.18126%2Fe73h-3w6n",
+            "data_type": null,
+            "repository": "foundry"
+        }
+    ]
+}

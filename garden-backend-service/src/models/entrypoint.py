@@ -32,7 +32,7 @@ class Entrypoint(Base):
     description: Mapped[str | None]
     year: Mapped[str]
     func_uuid: Mapped[UUID] = mapped_column(unique=True)
-    container_uuid: Mapped[UUID] = mapped_column(unique=True)
+    container_uuid: Mapped[UUID]
     base_image_uri: Mapped[str]
     full_image_uri: Mapped[str]
     notebook_url: Mapped[str]
