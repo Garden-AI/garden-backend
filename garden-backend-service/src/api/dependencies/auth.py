@@ -2,10 +2,15 @@ import logging
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from src.models.user import User
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.api.dependencies.database import get_db_session
 from src.auth.auth_state import AuthenticationState
-from sqlalchemy.ext.asyncio import AsyncSession
+from src.auth.globus_groups import in_garden_group, add_user_to_garden_group
+from src.config import Settings, get_settings
+from src.models.user import User
+
 
 logger = logging.getLogger()
 
@@ -38,7 +43,21 @@ def authenticated(
 async def authed_user(
     db: AsyncSession = Depends(get_db_session),
     auth: AuthenticationState = Depends(authenticated),
+    settings: Settings = Depends(get_settings),
 ) -> User:
-    return await User.get_or_create(
-        db, username=auth.username, identity_id=auth.identity_id
+
+    user, created = await User.get_or_create(
+        db,
+        username=auth.username,
+        identity_id=auth.identity_id,
+        defaults={"group_added": false}
     )
+
+    if created or not user.group_added:
+        if not in_garden_group(auth, settings):
+            await add_user_to_garden_group(auth, settings)
+
+        user.group_added = True
+        await db.commit()
+
+    return user

@@ -10,3 +10,4 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str]
     identity_id: Mapped[UUID] = mapped_column(unique=True)
+    group_added: Mapped[bool]
