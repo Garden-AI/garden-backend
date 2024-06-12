@@ -12,6 +12,7 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
 
 from src.api.dependencies.auth import (
     AuthenticationState,
@@ -20,12 +21,14 @@ from src.api.dependencies.auth import (
 )
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
+from src.auth.globus_groups import add_user_to_garden_group, in_garden_group
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
 # from src.models import *  # noqa
 
 client = TestClient(app)
+
 
 
 @pytest.fixture(scope="session")
@@ -67,6 +70,7 @@ def mock_settings():
     mock_settings.STS_TOKEN_TIMEOUT = 1234
     mock_settings.NOTEBOOKS_S3_BUCKET = "test-bucket"
     mock_settings.SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    mock_settings.GARDEN_USERS_GROUP_ID = "GARDEN_GROUP_UUID"
     return mock_settings
 
 
@@ -96,6 +100,22 @@ async def mock_db_session(mock_settings):
         yield session
 
     await engine.dispose()
+
+
+# @pytest.fixture
+# async def mock_db_session():
+#     with PostgresContainer("postgres:16") as postgres:
+#         psql_url = postgres.get_connection_url()
+#         engine = create_async_engine(psql_url)
+#         SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
+
+#         async with engine.begin() as conn:
+#             await conn.run_sync(Base.metadata.create_all)
+
+#         async with SessionLocal() as session:
+#             yield session
+
+#         await engine.dispose()
 
 
 @pytest.fixture
@@ -345,3 +365,79 @@ async def test_delete_entrypoint(
     response = client.delete("/entrypoint/10.fake/doi")
     assert response.status_code == 200
     assert response.json() == {"detail": "No entrypoint found with DOI 10.fake/doi."}
+
+
+@pytest.mark.asyncio
+async def test_add_user_to_garden_group(
+    mocker,
+    mock_auth_state,
+    mock_settings,
+    caplog,
+):
+    module = "src.auth.globus_groups"
+
+    # The first time it should return false, i.e the user has not been added to the group yet
+    # The second time it should return True, i.e the user is a member of the group already
+    mocker.patch(
+        module + '.in_garden_group',
+        side_effect=[False, True],
+    )
+
+    mock_groups_manager = MagicMock()
+    mocker.patch(
+        module + "._get_service_groups_manager",
+        return_value=mock_groups_manager,
+    )
+
+    add_user_to_garden_group(mock_auth_state, mock_settings)
+
+    # The first time we should have added the user
+    mock_groups_manager.add_member.assert_called_with(
+        mock_settings.GARDEN_USERS_GROUP_ID,
+        mock_auth_state.identity_id,
+    )
+
+
+    # Reset the groups manager to a clean state
+    mock_groups_manager.reset_mock()
+
+    add_user_to_garden_group(mock_auth_state, mock_settings)
+
+    # It should skip adding the user if the user is already a member
+    mock_groups_manager.add_member.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_in_garden_group(
+    mocker,
+    mock_auth_state,
+    mock_settings,
+):
+    module = "src.auth.globus_groups"
+
+    # The id field of one group should match the Garden Users group UUID
+    mock_groups_data_good = [{"id": mock_settings.GARDEN_USERS_GROUP_ID}]
+    mock_groups_data_not_member = [{"id": "someothergroup"}]
+    mock_groups_data_invalid = [{}]
+
+    # Mock the groups client so it doesn't try to authenticate with Globus
+    mocker.patch(module + '._get_groups_client_for_token')
+
+    # Mock the group response data from Globus
+    mocker.patch(
+        module + '._get_groups',
+        side_effect=[
+            mock_groups_data_good,
+            mock_groups_data_not_member,
+            mock_groups_data_invalid,
+        ],
+    )
+
+    # Is in group
+    assert in_garden_group(mock_auth_state, mock_settings)
+
+    # Not in group
+    assert not in_garden_group(mock_auth_state, mock_settings)
+
+    # Invalid data
+    assert not in_garden_group(mock_auth_state, mock_settings)

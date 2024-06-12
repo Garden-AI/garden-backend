@@ -1,3 +1,5 @@
+import logging
+
 import globus_sdk as glb
 
 from src.models import User
@@ -5,6 +7,9 @@ from src.config import Settings
 
 from .auth_state import AuthenticationState
 from .globus_auth import get_auth_client
+
+logger = logging.getLogger(__name__)
+
 
 def add_user_to_garden_group(
     authed_user: AuthenticationState,
@@ -14,19 +19,26 @@ def add_user_to_garden_group(
 
     If the user is already in the group this function does nothing.
     """
-    if not in_garden_group(authed_user):
-        gm = _get_service_groups_manager()
-        gm.add_member(settings.GARDEN_USERS_GROUP_ID, authed_user.identity_id)
-
+    try:
+        if not in_garden_group(authed_user):
+            gm = _get_service_groups_manager()
+            gm.add_member(settings.GARDEN_USERS_GROUP_ID, authed_user.identity_id)
+    except glb.GlobusAPIError as e:
+        logger.error(f"Error adding user to Garden Users Group: {e}")
+        raise e
 
 def in_garden_group(
     authed_user: AuthenticationState,
     settings: Settings,
 ) -> bool:
     """Return true if authed_user is a member of the Garden Users Globus group specified in the settings."""
-    gc = _get_groups_client_for_token(authed_user.token)
-    groups = _get_groups(gc)
-    return any(group.get("id") == settings.GARDEN_USERS_GROUP_ID for group in groups)
+    try:
+        gc = _get_groups_client_for_token(authed_user.token)
+        groups = _get_groups(gc)
+        return any(group.get("id") == settings.GARDEN_USERS_GROUP_ID for group in groups)
+    except glb.GlobusAPIError as e:
+        logger.error(f"Error getting user Globus groups: {e}")
+        raise e
 
 
 def _get_groups(client: glb.GroupsClient) -> list[dict]:
@@ -56,7 +68,7 @@ def _get_groups_client_for_token(token: str) -> glb.GroupsClient:
     return glb.GroupsClient(authorizer=authorizer)
 
 
-#TODO DELETE ME BEFORE MAKING A PR!
+# #TODO DELETE ME BEFORE MAKING A PR!
 # def request_to_join():
 #     """One time function to have the backend service request to join the Garden Users group"""
 #     c = get_auth_client()

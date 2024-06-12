@@ -50,7 +50,7 @@ async def authed_user(
         db,
         username=auth.username,
         identity_id=auth.identity_id,
-        defaults={"group_added": false}
+        defaults={"group_added": False}
     )
 
     if created or not user.group_added:
