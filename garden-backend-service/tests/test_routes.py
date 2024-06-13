@@ -1,32 +1,20 @@
 import hashlib
-from pathlib import Path
 import json
-from unittest.mock import MagicMock, patch
-from uuid import UUID
+from unittest.mock import patch
 
 import pytest
 
 import requests  # noqa
 from fastapi.testclient import TestClient
-from fastapi import HTTPException, Depends
-from fastapi.security import HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from testcontainers.postgres import PostgresContainer
 
-from src.api.dependencies.auth import (
-    AuthenticationState,
-    authenticated,
-    _get_auth_token,
-)
-from src.api.dependencies.database import get_db_session
+
 from src.api.schemas.notebook import UploadNotebookRequest
 from src.auth.globus_groups import add_user_to_group
-from src.config import Settings, get_settings
-from src.main import app
-from src.models.base import Base
 
-# from src.models import *  # noqa
+from src.config import Settings, get_settings
+
+from src.main import app
+
 
 client = TestClient(app)
 
@@ -82,7 +70,6 @@ def create_garden_shares_entrypoint_json(
         / "fixtures"
         / "GardenCreateRequest-shares-entrypoint.json"
     )
-
 
 @pytest.mark.asyncio
 async def test_add_user_to_group(
