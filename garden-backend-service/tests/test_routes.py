@@ -12,7 +12,6 @@ from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from testcontainers.postgres import PostgresContainer
 
 from src.api.dependencies.auth import (
     AuthenticationState,
