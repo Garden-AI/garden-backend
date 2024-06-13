@@ -54,6 +54,6 @@ async def authed_user(
 
     # Add the user to Garden Users Globus group if they are new
     if created:
-        await add_user_to_group(auth, settings)
+        add_user_to_group(auth, settings)
 
     return user
