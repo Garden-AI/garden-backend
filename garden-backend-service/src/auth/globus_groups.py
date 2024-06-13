@@ -104,13 +104,3 @@ def _create_groups_client_with_token(token: str) -> glb.GroupsClient:
     """
     authorizer = glb.AccessTokenAuthorizer(token)
     return glb.GroupsClient(authorizer=authorizer)
-
-
-#TODO DELETE ME BEFORE MAKING A PR!
-def request_to_join():
-    """One time function to have the backend service request to join the Garden Users group"""
-    c = get_auth_client()
-    settings = get_settings()
-    gc = _fetch_user_groups_client()
-    gm = globus_sdk.GroupsManager(client=gc)
-    gm.request_join(settings.GARDEN_USERS_GROUP_ID, settings.API_CLIENT_ID)
