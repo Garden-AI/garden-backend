@@ -21,7 +21,7 @@ from src.api.dependencies.auth import (
 )
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
-from src.auth.globus_groups import add_user_to_garden_group, in_garden_group
+from src.auth.globus_groups import add_user_to_group, is_user_in_group
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -100,22 +100,6 @@ async def mock_db_session(mock_settings):
         yield session
 
     await engine.dispose()
-
-
-# @pytest.fixture
-# async def mock_db_session():
-#     with PostgresContainer("postgres:16") as postgres:
-#         psql_url = postgres.get_connection_url()
-#         engine = create_async_engine(psql_url)
-#         SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
-
-#         async with engine.begin() as conn:
-#             await conn.run_sync(Base.metadata.create_all)
-
-#         async with SessionLocal() as session:
-#             yield session
-
-#         await engine.dispose()
 
 
 @pytest.fixture
@@ -368,31 +352,30 @@ async def test_delete_entrypoint(
 
 
 @pytest.mark.asyncio
-async def test_add_user_to_garden_group(
+async def test_add_user_to_group(
     mocker,
     mock_auth_state,
     mock_settings,
-    caplog,
 ):
     module = "src.auth.globus_groups"
 
     # The first time it should return false, i.e the user has not been added to the group yet
     # The second time it should return True, i.e the user is a member of the group already
     mocker.patch(
-        module + '.in_garden_group',
+        module + '.is_user_in_group',
         side_effect=[False, True],
     )
 
     mock_groups_manager = MagicMock()
     mocker.patch(
-        module + "._get_service_groups_manager",
+        module + "._create_service_groups_manager",
         return_value=mock_groups_manager,
     )
 
-    add_user_to_garden_group(mock_auth_state, mock_settings)
+    add_user_to_group(mock_auth_state, mock_settings)
 
-    # The first time we should have added the user
-    mock_groups_manager.add_member.assert_called_with(
+    # Verify the user was added to the group the first time
+    mock_groups_manager.add_member.assert_called_once_with(
         mock_settings.GARDEN_USERS_GROUP_ID,
         mock_auth_state.identity_id,
     )
@@ -401,14 +384,14 @@ async def test_add_user_to_garden_group(
     # Reset the groups manager to a clean state
     mock_groups_manager.reset_mock()
 
-    add_user_to_garden_group(mock_auth_state, mock_settings)
+    add_user_to_group(mock_auth_state, mock_settings)
 
-    # It should skip adding the user if the user is already a member
+    # Verify the user was not added again
     mock_groups_manager.add_member.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_in_garden_group(
+async def test_is_user_in_group(
     mocker,
     mock_auth_state,
     mock_settings,
@@ -421,11 +404,11 @@ async def test_in_garden_group(
     mock_groups_data_invalid = [{}]
 
     # Mock the groups client so it doesn't try to authenticate with Globus
-    mocker.patch(module + '._get_groups_client_for_token')
+    mocker.patch(module + '._create_groups_client_with_token')
 
     # Mock the group response data from Globus
     mocker.patch(
-        module + '._get_groups',
+        module + '._fetch_user_groups',
         side_effect=[
             mock_groups_data_good,
             mock_groups_data_not_member,
@@ -434,10 +417,10 @@ async def test_in_garden_group(
     )
 
     # Is in group
-    assert in_garden_group(mock_auth_state, mock_settings)
+    assert is_user_in_group(mock_auth_state, mock_settings)
 
     # Not in group
-    assert not in_garden_group(mock_auth_state, mock_settings)
+    assert not is_user_in_group(mock_auth_state, mock_settings)
 
     # Invalid data
-    assert not in_garden_group(mock_auth_state, mock_settings)
+    assert not is_user_in_group(mock_auth_state, mock_settings)
