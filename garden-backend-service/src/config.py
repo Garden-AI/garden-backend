@@ -36,8 +36,6 @@ class Settings(BaseSettings):
         "https://auth.globus.org/scopes/0948a6b0-a622-4078-b0a4-bfd6d77d65cf/action_all"
     )
 
-    GARDEN_USERS_GROUP_ID: str
-
     DATACITE_REPO_ID: str
     DATACITE_PASSWORD: str
     DATACITE_ENDPOINT: str
