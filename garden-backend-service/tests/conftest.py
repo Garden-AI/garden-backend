@@ -3,9 +3,9 @@ from pathlib import Path
 
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
+from httpx import AsyncClient
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import create_engine
 from testcontainers.postgres import PostgresContainer
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -15,52 +15,52 @@ from src.api.dependencies.auth import (
     authenticated,
     _get_auth_token,
 )
-from src.api.dependencies.database import get_db_session
 
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
 
 
-@pytest.fixture(scope="session")
-def pg_container() -> PostgresContainer:
-    with PostgresContainer("postgres:16") as postgres:
-        yield postgres
+@pytest.fixture
+def client(patch_globus_groups):
+    client = AsyncClient(app=app, base_url="http://test")
+    return client
 
 
 @pytest.fixture
-async def mock_db_session(pg_container):
-    url = pg_container.get_connection_url()
-    async_url = url.replace("psycopg2", "asyncpg")
-    engine = create_async_engine(async_url)
-    SessionLocal = sessionmaker(bind=engine, class_=AsyncSession)
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with SessionLocal() as session:
-        yield session
-
-    await engine.dispose()
+def patch_globus_groups(mocker):
+    mocker.patch("src.api.dependencies.auth.add_user_to_group")
 
 
 @pytest.fixture
-def override_get_db_session_dependency(mock_db_session):
-    async def _get_test_db():
-        async for session in mock_db_session:
-            yield session
+def override_get_db_session_dependency(
+    override_get_settings_dependency,
+    mock_settings,
+):
+    """override_get_settings_dependency gives get_db_session the url of the pg_container.
+    To make sure tests don't interfere with each other we need to first initialize the schema,
+    then let the test run and drop the schema after the test.
+    """
+    url = mock_settings.SQLALCHEMY_DATABASE_URL.replace("asyncpg", "psycopg2")
+    engine = create_engine(url)
+    Base.metadata.create_all(engine)
+    yield
+    Base.metadata.drop_all(engine)
+    engine.dispose()
 
-    app.dependency_overrides[get_db_session] = _get_test_db
+
+@pytest.fixture
+def override_authenticated_dependency(mock_auth_state):
+    app.dependency_overrides[authenticated] = lambda: mock_auth_state
     yield
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="session")
-def mock_entrypoint_create_request_json() -> dict:
-    path = Path(__file__).parent / "fixtures" / "EntrypointCreateRequest.json"
-    assert path.exists()
-    with open(path, "r") as f_in:
-        return json.load(f_in)
+@pytest.fixture
+def override_get_settings_dependency(mock_settings):
+    app.dependency_overrides[get_settings] = lambda: mock_settings
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def mock_missing_token():
 
 
 @pytest.fixture
-def mock_settings():
+def mock_settings(db_url):
     mock_settings = MagicMock(spec=Settings)
     mock_settings.DATACITE_PREFIX = "PREFIX"
     mock_settings.DATACITE_ENDPOINT = "http://localhost:8000"
@@ -94,19 +94,84 @@ def mock_settings():
     mock_settings.ECR_ROLE_ARN = "ECR_ROLE_ARN"
     mock_settings.STS_TOKEN_TIMEOUT = 1234
     mock_settings.NOTEBOOKS_S3_BUCKET = "test-bucket"
-    mock_settings.SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+    mock_settings.SQLALCHEMY_DATABASE_URL = db_url
+    mock_settings.GARDEN_USERS_GROUP_ID = "fakeid"
     return mock_settings
 
 
-@pytest.fixture
-def override_authenticated_dependency(mock_auth_state):
-    app.dependency_overrides[authenticated] = lambda: mock_auth_state
-    yield
-    app.dependency_overrides.clear()
+@pytest.fixture(scope="session")
+def create_entrypoint_with_related_metadata_json() -> dict:
+    path = (
+        Path(__file__).parent
+        / "fixtures"
+        / "EntrypointCreateRequest-with-metadata.json"
+    )
+    with open(path, "r") as f_in:
+        return json.load(f_in)
 
 
-@pytest.fixture
-def override_get_settings_dependency(mock_settings):
-    app.dependency_overrides[get_settings] = lambda: mock_settings
-    yield
-    app.dependency_overrides.clear()
+@pytest.fixture(scope="session")
+def create_shared_entrypoint_json() -> dict:
+    path = (
+        Path(__file__).parent
+        / "fixtures"
+        / "EntrypointCreateRequest-shared-entrypoint.json"
+    )
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture(scope="session")
+def create_garden_two_entrypoints_json(
+    create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
+) -> dict:
+    """Request payload to create a garden referencing two other entrypoints by DOI.
+    Note: Trying to create the garden before these entrypoints exist in the DB will cause an error.
+    See:  create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
+    """
+    path = (
+        Path(__file__).parent / "fixtures" / "GardenCreateRequest-two-entrypoints.json"
+    )
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture(scope="session")
+def create_garden_shares_entrypoint_json(
+    create_entrypoint_with_related_metadata_json,
+    create_shared_entrypoint_json,
+    create_garden_two_entrypoints_json,
+) -> list[dict]:
+    """Request payload to create a garden referencing one of another garden's entrypoints.
+    See: create_garden_two_entrypoints_json, create_shared_entrypoint_json
+    """
+    path = (
+        Path(__file__).parent
+        / "fixtures"
+        / "GardenCreateRequest-shares-entrypoint.json"
+    )
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture(scope="session")
+def pg_container() -> PostgresContainer:
+    with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
+        yield postgres
+
+
+@pytest.fixture(scope="session")
+def db_url(pg_container):
+    return pg_container.get_connection_url()
+
+
+@pytest.fixture(scope="session")
+def mock_entrypoint_create_request_json() -> dict:
+    path = (
+        Path(__file__).parent
+        / "fixtures"
+        / "EntrypointCreateRequest-with-metadata.json"
+    )
+    assert path.exists()
+    with open(path, "r") as f_in:
+        return json.load(f_in)

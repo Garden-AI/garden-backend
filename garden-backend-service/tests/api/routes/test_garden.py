@@ -1,109 +1,14 @@
-import hashlib
-import json
-from unittest.mock import patch
-
 import pytest
-
-import requests  # noqa
-from fastapi.testclient import TestClient
-
-
-from src.api.schemas.notebook import UploadNotebookRequest
-from src.auth.globus_groups import add_user_to_group
-
-from src.config import Settings, get_settings
-
-from src.main import app
-
-
-client = TestClient(app)
-
-
-@pytest.fixture(scope="session")
-def create_entrypoint_with_related_metadata_json() -> dict:
-    path = (
-        Path(__file__).parent
-        / "fixtures"
-        / "EntrypointCreateRequest-with-metadata.json"
-    )
-    with open(path, "r") as f_in:
-        return json.load(f_in)
-
-
-@pytest.fixture(scope="session")
-def create_shared_entrypoint_json() -> dict:
-    path = (
-        Path(__file__).parent
-        / "fixtures"
-        / "EntrypointCreateRequest-shared-entrypoint.json"
-    )
-    with open(path, "r") as f_in:
-        return json.load(f_in)
-
-
-@pytest.fixture(scope="session")
-def create_garden_two_entrypoints_json(
-    create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
-) -> dict:
-    """Request payload to create a garden referencing two other entrypoints by DOI.
-    Note: Trying to create the garden before these entrypoints exist in the DB will cause an error.
-    See:  create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
-    """
-    path = (
-        Path(__file__).parent / "fixtures" / "GardenCreateRequest-two-entrypoints.json"
-    )
-    with open(path, "r") as f_in:
-        return json.load(f_in)
-
-
-@pytest.fixture(scope="session")
-def create_garden_shares_entrypoint_json(
-    create_entrypoint_with_related_metadata_json,
-    create_shared_entrypoint_json,
-    create_garden_two_entrypoints_json,
-) -> list[dict]:
-    """Request payload to create a garden referencing one of another garden's entrypoints.
-    See: create_garden_two_entrypoints_json, create_shared_entrypoint_json
-    """
-    path = (
-        Path(__file__).parent
-        / "fixtures"
-        / "GardenCreateRequest-shares-entrypoint.json"
-    )
-
-@pytest.mark.asyncio
-async def test_add_user_to_group(
-    mocker,
-    mock_auth_state,
-    mock_settings,
-):
-    module = "src.auth.globus_groups"
-
-    mock_groups_manager = MagicMock()
-    mocker.patch(
-        module + "._create_service_groups_manager",
-        return_value=mock_groups_manager,
-    )
-
-    add_user_to_group(mock_auth_state, mock_settings)
-
-    # Verify the user was added to the group
-    mock_groups_manager.add_member.assert_called_once_with(
-        mock_settings.GARDEN_USERS_GROUP_ID,
-        mock_auth_state.identity_id,
-    )
 
 
 # GPT-generated "stub" tests for /garden routes -- likely to be broken even
 # after get_db_session is fixed, if the test db state doesn't have the entrypoints
 # referred to by the fixture data present.
-@pytest.mark.skip(
-    "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
-)
+@pytest.mark.skip
 @pytest.mark.asyncio
 async def test_add_garden(
+    client,
     create_garden_two_entrypoints_json,
-    mock_db_session,
     override_authenticated_dependency,
     override_get_db_session_dependency,
 ):
@@ -123,8 +28,8 @@ async def test_add_garden(
 )
 @pytest.mark.asyncio
 async def test_add_garden_with_missing_entrypoint(
+    client,
     create_garden_two_entrypoints_json,
-    mock_db_session,
     override_authenticated_dependency,
     override_get_db_session_dependency,
 ):
@@ -142,8 +47,8 @@ async def test_add_garden_with_missing_entrypoint(
 )
 @pytest.mark.asyncio
 async def test_get_garden_by_doi(
+    client,
     create_garden_two_entrypoints_json,
-    mock_db_session,
     override_authenticated_dependency,
     override_get_db_session_dependency,
 ):
@@ -164,7 +69,7 @@ async def test_get_garden_by_doi(
 )
 @pytest.mark.asyncio
 async def test_get_garden_by_doi_not_found(
-    mock_db_session,
+    client,
     override_authenticated_dependency,
     override_get_db_session_dependency,
 ):
@@ -178,8 +83,8 @@ async def test_get_garden_by_doi_not_found(
 )
 @pytest.mark.asyncio
 async def test_delete_garden(
+    client,
     create_garden_two_entrypoints_json,
-    mock_db_session,
     override_authenticated_dependency,
     override_get_db_session_dependency,
 ):
