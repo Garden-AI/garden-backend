@@ -53,7 +53,13 @@ async def authed_user(
     )
 
     # Add the user to Garden Users Globus group if they are new
+    # Log the error if it fails and continue
     if created:
-        add_user_to_group(auth, settings)
+        try:
+            add_user_to_group(auth, settings)
+        except Exception as e:
+            logger.error(
+                f"Failed to add new user {auth.identity_id} to Garden Users Group: {e})"
+            )
 
     return user
