@@ -10,6 +10,7 @@ from src.api.schemas.entrypoint import (
     EntrypointMetadataResponse,
 )
 from src.models import Entrypoint, User
+from src.api.routes._utils import assert_deletable_by_user
 
 logger = getLogger(__name__)
 
@@ -82,16 +83,7 @@ async def delete_entrypoint(
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
     if entrypoint is not None:
-        if entrypoint.owner.identity_id != user.identity_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Failed to delete entrypoint (not owned by user {user.username})",
-            )
-        elif not entrypoint.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Can't delete entrypoint with findable DOI ({entrypoint.doi})",
-            )
+        assert_deletable_by_user(entrypoint, user)
         await db.delete(entrypoint)
         try:
             await db.commit()

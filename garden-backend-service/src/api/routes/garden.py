@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
+from src.api.routes._utils import assert_deletable_by_user
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.models import Entrypoint, Garden, User
 
@@ -90,16 +91,7 @@ async def delete_garden(
 ):
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is not None:
-        if garden.owner.identity_id != user.identity_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Failed to delete garden (not owned by user {user.username})",
-            )
-        elif not garden.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Can't delete garden with findable DOI ({garden.doi})",
-            )
+        assert_deletable_by_user(garden, user)
         await db.delete(garden)
         try:
             await db.commit()
