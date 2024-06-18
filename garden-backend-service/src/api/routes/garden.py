@@ -89,12 +89,17 @@ async def delete_garden(
     user: User = Depends(authed_user),
 ):
     garden: Garden | None = await Garden.get(db, doi=doi)
-    if garden.owner.identity_id != user.identity_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Failed to delete garden (not owned by user {user.username})",
-        )
     if garden is not None:
+        if garden.owner.identity_id != user.identity_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Failed to delete garden (not owned by user {user.username})",
+            )
+        elif not garden.doi_is_draft:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Can't delete garden with findable DOI ({garden.doi})",
+            )
         await db.delete(garden)
         try:
             await db.commit()
