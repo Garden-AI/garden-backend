@@ -1,4 +1,6 @@
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import Field
 
 from .base import BaseSchema, UniqueList
@@ -22,6 +24,7 @@ class GardenMetadata(BaseSchema):
 
 class GardenCreateRequest(GardenMetadata):
     entrypoint_ids: UniqueList[str] = Field(default_factory=list)
+    owner_identity_id: UUID | None = None
 
 
 class GardenMetadataResponse(GardenMetadata):
