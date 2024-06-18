@@ -13,12 +13,14 @@ if TYPE_CHECKING:
         PaperMetadata,
         RepositoryMetadata,
     )
+    from src.models.garden import Garden
 
 else:
     DatasetMetadata = "DatasetMetadata"
     ModelMetadata = "ModelMetadata"
     PaperMetadata = "PaperMetadata"
     RepositoryMetadata = "RepositoryMetadata"
+    Garden = "Garden"
 
 
 class Entrypoint(Base):
@@ -30,7 +32,7 @@ class Entrypoint(Base):
     description: Mapped[str | None]
     year: Mapped[str]
     func_uuid: Mapped[UUID] = mapped_column(unique=True)
-    container_uuid: Mapped[UUID] = mapped_column(unique=True)
+    container_uuid: Mapped[UUID]
     base_image_uri: Mapped[str]
     full_image_uri: Mapped[str]
     notebook_url: Mapped[str]

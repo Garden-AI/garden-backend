@@ -1,29 +1,11 @@
 """Pydantic schemas equivalent to their counterparts in the garden-ai sdk, as of v1.0.10"""
 import datetime
-from typing import Annotated, Dict, List, Optional, TypeVar
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
 
-# pydantic v2 compatibility stuff:
-# see: https://github.com/pydantic/pydantic-core/pull/820#issuecomment-1670475909
-from pydantic import AfterValidator
-from pydantic_core import PydanticCustomError
-
-T = TypeVar("T")
-
-
-def _validate_unique_list(v: list[T]) -> list[T]:
-    if len(v) != len(set(v)):
-        raise PydanticCustomError("unique_list", "List must be unique")
-    return v
-
-
-UniqueList = Annotated[
-    List[T],
-    AfterValidator(_validate_unique_list),
-    Field(json_schema_extra={"uniqueItems": True}, default_factory=list),
-]
+from src.api.schemas.base import UniqueList
 
 
 class _Repository(BaseModel):

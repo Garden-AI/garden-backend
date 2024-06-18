@@ -1,0 +1,17 @@
+{
+    "title": "Garden with two entrypoints",
+    "authors": ["Owen"],
+    "contributors": ["Owen :)", "Et", "Al"],
+    "doi": "10.23677/garden-two-entrypoints",
+    "description": "",
+    "publisher": "Garden-AI",
+    "year": "2023",
+    "language": "en",
+    "tags": [],
+    "version": "0.0.1",
+    "entrypoint_aliases": {},
+    "entrypoint_ids": [
+        "10.23677/shared-entrypoint",
+        "10.26311/entrypoint-with-related-metadata"
+    ]
+}
