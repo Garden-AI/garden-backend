@@ -1,19 +1,20 @@
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from src.models.base import Base
 
 if TYPE_CHECKING:
+    from src.models.garden import Garden
     from src.models.related_metadata import (
         DatasetMetadata,
         ModelMetadata,
         PaperMetadata,
         RepositoryMetadata,
     )
-    from src.models.garden import Garden
+    from src.models.user import User
 
 else:
     DatasetMetadata = "DatasetMetadata"
@@ -21,6 +22,7 @@ else:
     PaperMetadata = "PaperMetadata"
     RepositoryMetadata = "RepositoryMetadata"
     Garden = "Garden"
+    User = "User"
 
 
 class Entrypoint(Base):
@@ -67,3 +69,7 @@ class Entrypoint(Base):
         lazy="selectin",
         cascade="save-update, merge, expunge, delete, delete-orphan",
     )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped[User] = relationship(lazy="selectin")
+    owner: Mapped[User] = synonym("user")

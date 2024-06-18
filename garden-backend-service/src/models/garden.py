@@ -1,16 +1,18 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from src.models._associations import gardens_entrypoints
 from src.models.base import Base
 
 if TYPE_CHECKING:
     from src.models.entrypoint import Entrypoint
+    from src.models.user import User
 
 else:
     Entrypoint = "Entrypoint"
+    User = "User"
 
 
 class Garden(Base):
@@ -35,3 +37,7 @@ class Garden(Base):
         secondary=gardens_entrypoints,
         lazy="selectin",
     )
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user: Mapped[User] = relationship(lazy="selectin")
+    owner: Mapped[User] = synonym("user")
