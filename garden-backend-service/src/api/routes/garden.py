@@ -86,9 +86,14 @@ async def get_garden_by_doi(
 async def delete_garden(
     doi: str,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(authed_user),
+    user: User = Depends(authed_user),
 ):
     garden: Garden | None = await Garden.get(db, doi=doi)
+    if garden.owner.identity_id != user.identity_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to delete garden (not owned by user {user.username})",
+        )
     if garden is not None:
         await db.delete(garden)
         try:

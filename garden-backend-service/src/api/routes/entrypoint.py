@@ -1,3 +1,5 @@
+from logging import getLogger
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +10,6 @@ from src.api.schemas.entrypoint import (
     EntrypointMetadataResponse,
 )
 from src.models import Entrypoint, User
-from logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -76,10 +77,15 @@ async def get_entrypoint_by_doi(
 async def delete_entrypoint(
     doi: str,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(authed_user),
+    user: User = Depends(authed_user),
 ):
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
+    if entrypoint.owner.identity_id != user.identity_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to delete entrypoint (not owned by user {user.username})",
+        )
     if entrypoint is not None:
         await db.delete(entrypoint)
         try:
