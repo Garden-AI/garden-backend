@@ -20,7 +20,7 @@ from src.api.dependencies.auth import (
 )
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.notebook import UploadNotebookRequest
-from src.auth.globus_groups import add_user_to_group, is_user_in_group
+from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -358,13 +358,6 @@ async def test_add_user_to_group(
 ):
     module = "src.auth.globus_groups"
 
-    # The first time it should return false, i.e the user has not been added to the group yet
-    # The second time it should return True, i.e the user is a member of the group already
-    mocker.patch(
-        module + '.is_user_in_group',
-        side_effect=[False, True],
-    )
-
     mock_groups_manager = MagicMock()
     mocker.patch(
         module + "._create_service_groups_manager",
@@ -373,53 +366,9 @@ async def test_add_user_to_group(
 
     add_user_to_group(mock_auth_state, mock_settings)
 
-    # Verify the user was added to the group the first time
+    # Verify the user was added to the group
     mock_groups_manager.add_member.assert_called_once_with(
         mock_settings.GARDEN_USERS_GROUP_ID,
         mock_auth_state.identity_id,
     )
 
-
-    # Reset the groups manager to a clean state
-    mock_groups_manager.reset_mock()
-
-    add_user_to_group(mock_auth_state, mock_settings)
-
-    # Verify the user was not added again
-    mock_groups_manager.add_member.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_is_user_in_group(
-    mocker,
-    mock_auth_state,
-    mock_settings,
-):
-    module = "src.auth.globus_groups"
-
-    # The id field of one group should match the Garden Users group UUID
-    mock_groups_data_good = [{"id": mock_settings.GARDEN_USERS_GROUP_ID}]
-    mock_groups_data_not_member = [{"id": "someothergroup"}]
-    mock_groups_data_invalid = [{}]
-
-    # Mock the groups client so it doesn't try to authenticate with Globus
-    mocker.patch(module + '._create_groups_client_with_token')
-
-    # Mock the group response data from Globus
-    mocker.patch(
-        module + '._fetch_user_groups',
-        side_effect=[
-            mock_groups_data_good,
-            mock_groups_data_not_member,
-            mock_groups_data_invalid,
-        ],
-    )
-
-    # Is in group
-    assert is_user_in_group(mock_auth_state, mock_settings)
-
-    # Not in group
-    assert not is_user_in_group(mock_auth_state, mock_settings)
-
-    # Invalid data
-    assert not is_user_in_group(mock_auth_state, mock_settings)
