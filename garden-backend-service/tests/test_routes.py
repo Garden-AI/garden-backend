@@ -371,3 +371,4 @@ async def test_add_user_to_group(
         mock_settings.GARDEN_USERS_GROUP_ID,
         mock_auth_state.identity_id,
     )
+

@@ -26,6 +26,7 @@ def add_user_to_group(
     Raises:
         globus_sdk.GlobusAPIError: when there is an issue communicating with Globus services
     """
+
     groups_manager = _create_service_groups_manager()
     groups_manager.add_member(settings.GARDEN_USERS_GROUP_ID, authed_user.identity_id)
 
@@ -54,7 +55,7 @@ def _create_service_groups_client() -> glb.GroupsClient:
     token = auth_data.get("access_token")
     return _create_groups_client_with_token(token)
 
-
+  
 def _create_groups_client_with_token(token: str) -> glb.GroupsClient:
     """Return a globus_sdk GroupsClient acting as the user that provides the token.
 
