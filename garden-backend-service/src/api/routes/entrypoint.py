@@ -8,6 +8,9 @@ from src.api.schemas.entrypoint import (
     EntrypointMetadataResponse,
 )
 from src.models import Entrypoint, User
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 router = APIRouter(prefix="/entrypoint")
 
@@ -16,9 +19,26 @@ router = APIRouter(prefix="/entrypoint")
 async def add_entrypoint(
     entrypoint: EntrypointCreateRequest,
     db: AsyncSession = Depends(get_db_session),
-    _user: User = Depends(authed_user),
+    user: User = Depends(authed_user),
 ):
-    new_entrypoint = Entrypoint.from_dict(entrypoint.model_dump())
+    # default owner is authed_user unless owner_identity_id is explicitly provided
+    owner: User = user
+    if entrypoint.owner_identity_id is not None:
+        explicit_owner: User | None = await User.get(
+            db, identity_id=entrypoint.owner_identity_id
+        )
+        if explicit_owner is not None:
+            owner = explicit_owner
+        else:
+            logger.warning(
+                f"No user found with Globus identity ID {entrypoint.owner_identity_id}. "
+                f"Assigning default ownership to {user.identity_id} ({user.username}). "
+            )
+
+    new_entrypoint = Entrypoint.from_dict(
+        entrypoint.model_dump(exclude="owner_identity_id")
+    )
+    new_entrypoint.owner = owner
     db.add(new_entrypoint)
     try:
         await db.commit()
