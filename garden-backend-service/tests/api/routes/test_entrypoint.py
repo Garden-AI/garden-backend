@@ -2,6 +2,7 @@ import pytest
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_add_entrypoint(
     client,
     mock_entrypoint_create_request_json,
@@ -22,6 +23,7 @@ async def test_add_entrypoint(
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_add_entrypoint_duplicate_doi(
     client,
     mock_entrypoint_create_request_json,
@@ -43,6 +45,7 @@ async def test_add_entrypoint_duplicate_doi(
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_get_entrypoint_by_doi(
     client,
     mock_entrypoint_create_request_json,
@@ -71,6 +74,7 @@ async def test_get_entrypoint_by_doi(
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_get_entrypoint_by_doi_not_found(
     client,
     override_get_db_session_dependency,
@@ -81,6 +85,7 @@ async def test_get_entrypoint_by_doi_not_found(
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_delete_entrypoint(
     client,
     mock_entrypoint_create_request_json,

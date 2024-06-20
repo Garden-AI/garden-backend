@@ -2,6 +2,7 @@ import pytest
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_greet_authed_user(
     client,
     override_authenticated_dependency,
@@ -15,6 +16,7 @@ async def test_greet_authed_user(
 
 
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_missing_auth_header(
     client,
     mock_missing_token,

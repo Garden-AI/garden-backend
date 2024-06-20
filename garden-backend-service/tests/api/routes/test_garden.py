@@ -6,6 +6,7 @@ import pytest
 # referred to by the fixture data present.
 @pytest.mark.skip
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_add_garden(
     client,
     create_garden_two_entrypoints_json,
@@ -27,6 +28,7 @@ async def test_add_garden(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_add_garden_with_missing_entrypoint(
     client,
     create_garden_two_entrypoints_json,
@@ -46,6 +48,7 @@ async def test_add_garden_with_missing_entrypoint(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_get_garden_by_doi(
     client,
     create_garden_two_entrypoints_json,
@@ -68,6 +71,7 @@ async def test_get_garden_by_doi(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_get_garden_by_doi_not_found(
     client,
     override_authenticated_dependency,
@@ -82,6 +86,7 @@ async def test_get_garden_by_doi_not_found(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
+@pytest.mark.container
 async def test_delete_garden(
     client,
     create_garden_two_entrypoints_json,
