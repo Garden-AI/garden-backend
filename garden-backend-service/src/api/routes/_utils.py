@@ -1,8 +1,9 @@
 from fastapi import HTTPException, status
 from src.models import Entrypoint, Garden, User
+import httpx
 
 
-def assert_deletable_by_user(obj: Garden | Entrypoint, user: User):
+def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
     """Check that a given Garden or Entrypoint is safe to delete, i.e. has a draft DOI and is owned by the user.
 
     Raises:
@@ -20,3 +21,26 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User):
             detail=f"Failed to delete {type(obj)} (DOI {obj.doi} is registered as 'findable')",
         )
     return
+
+
+async def is_doi_registered(doi: str) -> bool:
+    """
+    Check if a DOI is registered in the real world by querying the doi.org resolver.
+
+    Parameters:
+    doi (str): The DOI to check.
+
+    Returns:
+    bool: True if the DOI resolves successfully, False otherwise.
+    """
+    url = f"https://doi.org/{doi}"
+
+    headers = {"Accept": "application/vnd.citationstyles.csl+json"}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers, allow_redirects=False)
+
+    # Check if the response status code is a redirect (300-399), indicating the DOI is registered
+    if 300 <= response.status_code < 400:
+        return True
+    else:
+        return False
