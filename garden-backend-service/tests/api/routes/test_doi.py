@@ -2,7 +2,6 @@ import pytest
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
 async def test_mint_draft_doi(
     client,
     mock_auth_state,
@@ -26,7 +25,6 @@ async def test_mint_draft_doi(
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
 async def test_update_datacite(
     client,
     mock_auth_state,

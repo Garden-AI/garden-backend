@@ -32,8 +32,19 @@ def patch_globus_groups(mocker):
     mocker.patch("src.api.dependencies.auth.add_user_to_group")
 
 
+@pytest.fixture(scope="session")
+def pg_container() -> PostgresContainer:
+    with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
+        yield postgres
+
+
+@pytest.fixture(scope="session")
+def db_url(pg_container):
+    return pg_container.get_connection_url()
+
+
 @pytest.fixture
-def override_get_db_session_dependency(
+def mock_db_session(
     override_get_settings_dependency,
     mock_settings,
 ):
@@ -154,15 +165,6 @@ def create_garden_shares_entrypoint_json(
         return json.load(f_in)
 
 
-@pytest.fixture(scope="session")
-def pg_container() -> PostgresContainer:
-    with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
-        yield postgres
-
-
-@pytest.fixture(scope="session")
-def db_url(pg_container):
-    return pg_container.get_connection_url()
 
 
 @pytest.fixture(scope="session")

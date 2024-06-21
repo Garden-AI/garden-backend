@@ -7,7 +7,7 @@ from src.api.schemas.notebook import UploadNotebookRequest
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_upload_notebook(
     client,
     override_authenticated_dependency,

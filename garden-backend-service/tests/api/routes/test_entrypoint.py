@@ -2,12 +2,12 @@ import pytest
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_add_entrypoint(
     client,
+    mock_db_session,
     mock_entrypoint_create_request_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     response = await client.post(
         "/entrypoint", json=mock_entrypoint_create_request_json
@@ -23,12 +23,12 @@ async def test_add_entrypoint(
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_add_entrypoint_duplicate_doi(
     client,
+    mock_db_session,
     mock_entrypoint_create_request_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     # First request to add entrypoint
     response = await client.post(
@@ -45,12 +45,12 @@ async def test_add_entrypoint_duplicate_doi(
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_get_entrypoint_by_doi(
     client,
+    mock_db_session,
     mock_entrypoint_create_request_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     # add the entrypoint
     response = await client.post(
@@ -74,10 +74,10 @@ async def test_get_entrypoint_by_doi(
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_get_entrypoint_by_doi_not_found(
     client,
-    override_get_db_session_dependency,
+    mock_db_session,
 ):
     response = await client.get("/entrypoint/10.fake/doi")
     assert response.status_code == 404
@@ -85,12 +85,12 @@ async def test_get_entrypoint_by_doi_not_found(
 
 
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_delete_entrypoint(
     client,
+    mock_db_session,
     mock_entrypoint_create_request_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     # add then delete
     response = await client.post(

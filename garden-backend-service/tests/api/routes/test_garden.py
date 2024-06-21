@@ -6,12 +6,12 @@ import pytest
 # referred to by the fixture data present.
 @pytest.mark.skip
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_add_garden(
     client,
+    mock_db_session,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     response = await client.post("/garden", json=create_garden_two_entrypoints_json)
     assert response.status_code == 200
@@ -28,12 +28,12 @@ async def test_add_garden(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_add_garden_with_missing_entrypoint(
     client,
+    mock_db_session,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     create_garden_two_entrypoints_json["entrypoint_ids"].append("10.missing/doi")
     response = await client.post("/garden", json=create_garden_two_entrypoints_json)
@@ -48,12 +48,12 @@ async def test_add_garden_with_missing_entrypoint(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_get_garden_by_doi(
     client,
+    mock_db_session,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     await client.post("/garden", json=create_garden_two_entrypoints_json)
     response = await client.get(f"/garden/{create_garden_two_entrypoints_json['doi']}")
@@ -71,11 +71,11 @@ async def test_get_garden_by_doi(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_get_garden_by_doi_not_found(
     client,
+    mock_db_session,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     response = await client.get("/garden/10.missing/doi")
     assert response.status_code == 404
@@ -86,12 +86,12 @@ async def test_get_garden_by_doi_not_found(
     "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
 )
 @pytest.mark.asyncio
-@pytest.mark.container
+@pytest.mark.integration
 async def test_delete_garden(
     client,
+    mock_db_session,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
-    override_get_db_session_dependency,
 ):
     await client.post("/garden", json=create_garden_two_entrypoints_json)
     doi = create_garden_two_entrypoints_json["doi"]
