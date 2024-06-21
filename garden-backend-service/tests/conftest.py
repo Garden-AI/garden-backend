@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Optional
 
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer
@@ -33,14 +34,20 @@ def patch_globus_groups(mocker):
 
 
 @pytest.fixture(scope="session")
-def pg_container() -> PostgresContainer:
-    with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
-        yield postgres
+def pg_container() -> Optional[PostgresContainer]:
+    try:
+        with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
+            yield postgres
+    except Exception as e:
+        yield None
 
 
 @pytest.fixture(scope="session")
-def db_url(pg_container):
-    return pg_container.get_connection_url()
+def db_url(pg_container) -> str:
+    if pg_container:
+        return pg_container.get_connection_url()
+    else:
+        return "sqlite+aiosqlite://"
 
 
 @pytest.fixture
@@ -48,12 +55,17 @@ def mock_db_session(
     override_get_settings_dependency,
     mock_settings,
 ):
-    """override_get_settings_dependency gives get_db_session the url of the pg_container.
+    """override_get_settings_dependency gives get_db_session the url of the database.
     To make sure tests don't interfere with each other we need to first initialize the schema,
     then let the test run and drop the schema after the test.
     """
-    url = mock_settings.SQLALCHEMY_DATABASE_URL.replace("asyncpg", "psycopg2")
-    engine = create_engine(url)
+    url = mock_settings.SQLALCHEMY_DATABASE_URL
+    if "postgres" not in url:
+        raise ValueError(f"Can only run tests aginst postgres, got: {url}")
+
+    # create synchronous engine so we can drop and rebuild the schema between tests
+    sync_url = url.replace("asyncpg", "psycopg2")
+    engine = create_engine(sync_url)
     Base.metadata.create_all(engine)
     yield
     Base.metadata.drop_all(engine)
