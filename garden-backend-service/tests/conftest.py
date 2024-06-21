@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 from typing import Optional
 
 from fastapi import HTTPException, Depends
@@ -33,12 +34,26 @@ def patch_globus_groups(mocker):
     mocker.patch("src.api.dependencies.auth.add_user_to_group")
 
 
+def docker_available():
+    available = shutil.which("docker")
+    return available
+
+
+def pytest_collection_modifyitems(session, config, items):
+    """Skip integration tests that rely on docker if docker is not availablie"""
+    if not docker_available():
+        skip_marker = pytest.mark.skip(reason="Unable to run integration tests: Docker is not available")
+        for item in items:
+            if "mock_db_session" in item.fixturenames:
+                item.add_marker(skip_marker)
+
+
 @pytest.fixture(scope="session")
 def pg_container() -> Optional[PostgresContainer]:
-    try:
+    if docker_available():
         with PostgresContainer("postgres:16", driver="asyncpg") as postgres:
             yield postgres
-    except Exception as e:
+    else:
         yield None
 
 
@@ -47,7 +62,7 @@ def db_url(pg_container) -> str:
     if pg_container:
         return pg_container.get_connection_url()
     else:
-        return "sqlite+aiosqlite://"
+        return "No database available."
 
 
 @pytest.fixture
@@ -56,12 +71,15 @@ def mock_db_session(
     mock_settings,
 ):
     """override_get_settings_dependency gives get_db_session the url of the database.
-    To make sure tests don't interfere with each other we need to first initialize the schema,
+    To make sure tests don't interfere with each other we first need to initialize the schema,
     then let the test run and drop the schema after the test.
     """
     url = mock_settings.SQLALCHEMY_DATABASE_URL
     if "postgres" not in url:
-        raise ValueError(f"Can only run tests aginst postgres, got: {url}")
+        raise ValueError(
+            f"Can only run integration tests against postgres, got: {url} "
+            "Try `pytest -m \"not integration\"`"
+        )
 
     # create synchronous engine so we can drop and rebuild the schema between tests
     sync_url = url.replace("asyncpg", "psycopg2")
