@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user
+from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.models import Entrypoint, Garden, User
 
@@ -20,6 +20,11 @@ async def add_garden(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
+    # if not specified, check draft status with the real world (doi.org)
+    if garden.doi_is_draft is None:
+        registered = await is_doi_registered(garden.doi)
+        garden.doi_is_draft = not registered
+
     # collect entrypoints by DOI
     stmt = select(Entrypoint).where(Entrypoint.doi.in_(garden.entrypoint_ids))
     result = await db.execute(stmt)
