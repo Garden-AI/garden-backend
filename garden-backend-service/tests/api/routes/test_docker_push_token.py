@@ -4,7 +4,6 @@ import pytest
 
 
 @pytest.mark.asyncio
-@pytest.mark.integration
 async def test_get_push_session(
     client,
     override_get_settings_dependency,
