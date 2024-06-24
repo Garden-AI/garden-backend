@@ -6,6 +6,7 @@ Create Date: 2024-06-18 20:01:12.749566
 
 """
 from typing import Sequence, Union
+from uuid import UUID
 
 from alembic import op
 import sqlalchemy as sa
@@ -24,14 +25,34 @@ def upgrade() -> None:
     # add column as nullable first
     op.add_column("entrypoints", sa.Column("user_id", sa.Integer(), nullable=True))
     op.add_column("gardens", sa.Column("user_id", sa.Integer(), nullable=True))
-    # get the default owner
-    owen_identity_id = "76024960-c68b-4fec-8cb8-b65b096f18da"
+
     conn = op.get_bind()
+    # ensure users has a row for the default owner (owen :))
+    owen_identity_id = UUID("76024960-c68b-4fec-8cb8-b65b096f18da")
     result = conn.execute(
         sa.text("SELECT id FROM users WHERE identity_id = :owen_identity_id"),
         {"owen_identity_id": owen_identity_id},
     )
     owen_user_id = result.scalar()
+
+    # add owen if not present
+    if owen_user_id is None:
+        conn.execute(
+            sa.text(
+                "INSERT INTO users (username, identity_id) VALUES (:username, :identity_id)"
+            ),
+            {
+                "username": "owenpriceskelly@uchicago.edu",
+                "identity_id": owen_identity_id,
+            },
+        )
+        result = conn.execute(
+            sa.text("SELECT id FROM users WHERE identity_id = :owen_identity_id"),
+            {"owen_identity_id": owen_identity_id},
+        )
+        owen_user_id = result.scalar()
+        assert owen_user_id is not None
+
     # make owen default owner
     conn.execute(
         sa.text("UPDATE entrypoints SET user_id = :owen_user_id WHERE user_id IS NULL"),
