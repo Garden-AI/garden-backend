@@ -36,8 +36,8 @@ async def is_doi_registered(doi: str) -> bool:
     url = f"https://doi.org/{doi}"
 
     headers = {"Accept": "application/vnd.citationstyles.csl+json"}
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers, allow_redirects=False)
+    async with httpx.AsyncClient(headers=headers) as client:
+        response = await client.get(url, follow_redirects=False)
 
     # Check if the response status code is a redirect (300-399), indicating the DOI is registered
     if 300 <= response.status_code < 400:
