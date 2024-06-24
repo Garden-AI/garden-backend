@@ -33,9 +33,14 @@ def upgrade() -> None:
     )
     owen_user_id = result.scalar()
     # make owen default owner
-    op.execute(f"UPDATE entrypoints SET user_id = {owen_user_id} WHERE user_id IS NULL")
-    op.execute(f"UPDATE gardens SET user_id = {owen_user_id} WHERE user_id IS NULL")
-
+    conn.execute(
+        sa.text("UPDATE entrypoints SET user_id = :owen_user_id WHERE user_id IS NULL"),
+        {"owen_user_id": owen_user_id},
+    )
+    conn.execute(
+        sa.text("UPDATE gardens SET user_id = :owen_user_id WHERE user_id IS NULL"),
+        {"owen_user_id": owen_user_id},
+    )
     # Alter columns to be non-nullable
     op.alter_column(
         "entrypoints", "user_id", existing_type=sa.Integer(), nullable=False
