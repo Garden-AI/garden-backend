@@ -13,12 +13,12 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
     if obj.owner.identity_id != user.identity_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Failed to delete {type(obj)} (not owned by user {user.username})",
+            detail=f"Failed to delete {str(type(obj).__name__).lower()} (not owned by user {user.username})",
         )
     elif not obj.doi_is_draft:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to delete {type(obj)} (DOI {obj.doi} is registered as 'findable')",
+            detail=f"Failed to delete {str(type(obj).__name__).lower()} (DOI {obj.doi} is registered as 'findable')",
         )
     return
 
