@@ -2,7 +2,6 @@ import logging
 
 import globus_sdk as glb
 
-from src.models import User
 from src.config import Settings
 
 from .auth_state import AuthenticationState
@@ -55,7 +54,7 @@ def _create_service_groups_client() -> glb.GroupsClient:
     token = auth_data.get("access_token")
     return _create_groups_client_with_token(token)
 
-  
+
 def _create_groups_client_with_token(token: str) -> glb.GroupsClient:
     """Return a globus_sdk GroupsClient acting as the user that provides the token.
 

@@ -1,4 +1,4 @@
-from typing import Annotated, List, TypeVar, AnyStr
+from typing import Annotated, List, TypeVar
 
 from pydantic import (
     AfterValidator,
