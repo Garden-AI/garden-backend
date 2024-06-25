@@ -1,18 +1,32 @@
 import pytest
+from copy import deepcopy
 
 
-# GPT-generated "stub" tests for /garden routes -- likely to be broken even
-# after get_db_session is fixed, if the test db state doesn't have the entrypoints
-# referred to by the fixture data present.
-@pytest.mark.skip
+async def post_entrypoints(client, *payloads):
+    """POST entrypoint fixture data to populate mock DB session.
+
+    NB: this is not a fixture!
+    """
+    for entrypoint_json in payloads:
+        response = await client.post("/entrypoint", json=entrypoint_json)
+        assert response.status_code == 200
+
+
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_garden(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
     override_authenticated_dependency,
+    create_entrypoint_with_related_metadata_json,
+    create_shared_entrypoint_json,
+    create_garden_two_entrypoints_json,
 ):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
     response = await client.post("/garden", json=create_garden_two_entrypoints_json)
     assert response.status_code == 200
     response_data = response.json()
@@ -24,19 +38,24 @@ async def test_add_garden(
     )
 
 
-@pytest.mark.skip(
-    "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
-)
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_garden_with_missing_entrypoint(
     client,
     mock_db_session,
+    create_entrypoint_with_related_metadata_json,
+    create_shared_entrypoint_json,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
 ):
-    create_garden_two_entrypoints_json["entrypoint_ids"].append("10.missing/doi")
-    response = await client.post("/garden", json=create_garden_two_entrypoints_json)
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    payload = deepcopy(create_garden_two_entrypoints_json)
+    payload["entrypoint_ids"].append("10.missing/doi")
+    response = await client.post("/garden", json=payload)
     assert response.status_code == 404
     assert (
         "Failed to add garden. Could not find entrypoint(s) with DOIs"
@@ -44,9 +63,6 @@ async def test_add_garden_with_missing_entrypoint(
     )
 
 
-@pytest.mark.skip(
-    "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
-)
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_garden_by_doi(
@@ -54,8 +70,17 @@ async def test_get_garden_by_doi(
     mock_db_session,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
 ):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+
     await client.post("/garden", json=create_garden_two_entrypoints_json)
+
     response = await client.get(f"/garden/{create_garden_two_entrypoints_json['doi']}")
     assert response.status_code == 200
     response_data = response.json()
@@ -67,9 +92,6 @@ async def test_get_garden_by_doi(
     )
 
 
-@pytest.mark.skip(
-    "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
-)
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_garden_by_doi_not_found(
@@ -82,17 +104,22 @@ async def test_get_garden_by_doi_not_found(
     assert response.json() == {"detail": "Garden not found with DOI 10.missing/doi"}
 
 
-@pytest.mark.skip(
-    "skip until get_db_session is fixed (https://github.com/Garden-AI/garden-backend/issues/94)"
-)
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_delete_garden(
     client,
     mock_db_session,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
     create_garden_two_entrypoints_json,
     override_authenticated_dependency,
 ):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+
     await client.post("/garden", json=create_garden_two_entrypoints_json)
     doi = create_garden_two_entrypoints_json["doi"]
     response = await client.delete(f"/garden/{doi}")

@@ -12,7 +12,7 @@ from src.config import Settings, get_settings
 from src.models.user import User
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 def _get_auth_token(
