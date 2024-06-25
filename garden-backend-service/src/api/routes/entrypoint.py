@@ -22,7 +22,6 @@ async def add_entrypoint(
     db.add(new_entrypoint)
     try:
         await db.commit()
-        await db.refresh(new_entrypoint)
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(

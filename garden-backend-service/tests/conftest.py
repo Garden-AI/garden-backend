@@ -1,26 +1,24 @@
 import json
-from pathlib import Path
 import shutil
+from pathlib import Path
 from typing import Optional
-
-from fastapi import HTTPException, Depends
-from fastapi.security import HTTPBearer
-from httpx import AsyncClient
-import pytest
-from sqlalchemy.engine import create_engine
-from testcontainers.postgres import PostgresContainer
 from unittest.mock import MagicMock
 from uuid import UUID
 
+import pytest
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer
+from httpx import AsyncClient
+from sqlalchemy.engine import create_engine
 from src.api.dependencies.auth import (
     AuthenticationState,
-    authenticated,
     _get_auth_token,
+    authenticated,
 )
-
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
+from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture
@@ -40,9 +38,11 @@ def docker_available():
 
 
 def pytest_collection_modifyitems(session, config, items):
-    """Skip integration tests that rely on docker if docker is not availablie"""
+    """Skip integration tests that rely on docker if docker is not available"""
     if not docker_available():
-        skip_marker = pytest.mark.skip(reason="Unable to run integration tests: Docker is not available")
+        skip_marker = pytest.mark.skip(
+            reason="Unable to run integration tests: Docker is not available"
+        )
         for item in items:
             if "mock_db_session" in item.fixturenames:
                 item.add_marker(skip_marker)
@@ -78,7 +78,7 @@ def mock_db_session(
     if "postgres" not in url:
         raise ValueError(
             f"Can only run integration tests against postgres, got: {url} "
-            "Try `pytest -m \"not integration\"`"
+            'Try `pytest -m "not integration"`'
         )
 
     # create synchronous engine so we can drop and rebuild the schema between tests
@@ -193,8 +193,6 @@ def create_garden_shares_entrypoint_json(
     )
     with open(path, "r") as f_in:
         return json.load(f_in)
-
-
 
 
 @pytest.fixture(scope="session")
