@@ -45,15 +45,20 @@ async def authed_user(
     auth: AuthenticationState = Depends(authenticated),
     settings: Settings = Depends(get_settings),
 ) -> User:
+    try:
+        user, created = await User.get_or_create(
+            db,
+            username=auth.username,
+            identity_id=auth.identity_id,
+        )
 
-    user, created = await User.get_or_create(
-        db,
-        username=auth.username,
-        identity_id=auth.identity_id,
-    )
+        # Add the user to Garden Users Globus group if they are new
+        if created:
+            add_user_to_group(auth, settings)
+            await db.commit()
 
-    # Add the user to Garden Users Globus group if they are new
-    if created:
-        add_user_to_group(auth, settings)
-
-    return user
+        return user
+    except Exception as e:
+        logger.error(f"Error in authed_user: {e}")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Internal Server Error")
