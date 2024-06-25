@@ -2,9 +2,7 @@ import logging
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.api.dependencies.database import get_db_session
 from src.auth.auth_state import AuthenticationState
 from src.auth.globus_groups import add_user_to_group

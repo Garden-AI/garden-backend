@@ -44,5 +44,3 @@ resource "aws_iam_policy" "ecr_backend_write" {
     ]
   })
 }
-
-

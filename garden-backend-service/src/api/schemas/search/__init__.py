@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+
 from ._garden_sdk_schema import _PublishedGarden as PublishSearchRecordRequest
 
 

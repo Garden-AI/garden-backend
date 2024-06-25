@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, Json, EmailStr
+from pydantic import BaseModel, EmailStr, HttpUrl, Json
 
 
 class UploadNotebookRequest(BaseModel):

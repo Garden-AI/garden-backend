@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.auth.globus_groups import add_user_to_group
 
 
