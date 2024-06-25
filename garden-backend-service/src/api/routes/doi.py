@@ -95,4 +95,4 @@ async def update_datacite(
         )
 
     result = datacite.Doi(**resp.json())
-    return result.dict(exclude_defaults=True)
+    return result.model_dump(exclude_defaults=True)

@@ -15,6 +15,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.routes._utils import is_doi_registered
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -163,9 +164,7 @@ def create_shared_entrypoint_json() -> dict:
 
 
 @pytest.fixture(scope="session")
-def create_garden_two_entrypoints_json(
-    create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
-) -> dict:
+def create_garden_two_entrypoints_json() -> dict:
     """Request payload to create a garden referencing two other entrypoints by DOI.
     Note: Trying to create the garden before these entrypoints exist in the DB will cause an error.
     See:  create_entrypoint_with_related_metadata_json, create_shared_entrypoint_json
@@ -178,11 +177,7 @@ def create_garden_two_entrypoints_json(
 
 
 @pytest.fixture(scope="session")
-def create_garden_shares_entrypoint_json(
-    create_entrypoint_with_related_metadata_json,
-    create_shared_entrypoint_json,
-    create_garden_two_entrypoints_json,
-) -> list[dict]:
+def create_garden_shares_entrypoint_json() -> dict:
     """Request payload to create a garden referencing one of another garden's entrypoints.
     See: create_garden_two_entrypoints_json, create_shared_entrypoint_json
     """
@@ -205,3 +200,11 @@ def mock_entrypoint_create_request_json() -> dict:
     assert path.exists()
     with open(path, "r") as f_in:
         return json.load(f_in)
+
+
+@pytest.fixture(autouse=True)
+def mock_is_doi_registered(mocker):
+    mock_garden = mocker.patch("src.api.routes.garden.is_doi_registered")
+    mock_garden.return_value = False
+
+    return mock_garden

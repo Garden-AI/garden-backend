@@ -59,7 +59,7 @@ class EntrypointMetadata(BaseSchema):
 
 
 class EntrypointCreateRequest(EntrypointMetadata):
-    pass
+    owner_identity_id: UUID | None = None
 
 
 class EntrypointMetadataResponse(EntrypointMetadata):
