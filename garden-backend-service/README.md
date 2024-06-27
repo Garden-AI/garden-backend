@@ -4,38 +4,38 @@ I wanted to organize the repo so we'd have a good idea of where new code should 
 here's the Vision:
 ```
 garden-backend-service/
-├── README.md             # you are here
+├── README.md               # you are here
 ├── .env
 ├── .postgres.env
 ├── ...
-├── src                   # what gets copied into the container
-│   ├── api               # any fastapi-specific code lives here
+├── src                     # what gets copied into the container
+│   ├── api                 # any fastapi-specific code lives here
 │   │   ├── __init__.py
-│   │   ├── dependencies  # fastapi "Dependencies" here
+│   │   ├── dependencies    # fastapi "Dependencies" here
 │   │   │   ├── __init__.py
 │   │   │   ├── ....
 │   │   │   └── auth.py
-│   │   ├── schemas       # pydantic models used for request/response validation
+│   │   ├── schemas         # pydantic models used for request/response validation
 │   │   │   ├── __init__.py
 │   │   │   ├── ....
-│   │   └── routes        # route prefixes should match module names
+│   │   └── routes          # route prefixes should match module names
 │   │       ├── __init__.py
-│   │       ├── ...
-│   │       └── greet.py  # e.g. greet.py has the "/greet" routes
+│   │       ├── gardens.py  # e.g. gardens.py has the "/gardens" routes
+│   │       └── ...
 │   │   ...
-│   ├── auth              # modules that don't `import fastapi`
+│   ├── auth                # modules that don't `import fastapi`
 │   │   ├── __init__.py
 │   │   ├── auth_state.py
 │   │   └── globus_auth.py
-│   └── models            # sqlalchemy orm models
+│   └── models              # sqlalchemy orm models
 │       ├── __init__.py
 │       ├── base.py
 │       └── ....
-│   ├── config.py         # settings/reads env vars
-│   └── main.py           # inits app/imports routers
-├── migrations            # alembic stuff
+│   ├── config.py           # settings/reads env vars
+│   └── main.py             # inits app/imports routers
+├── migrations              # alembic stuff
 │   └── ...
-└── tests                 # you guessed it
+└── tests                   # you guessed it
     ├── __init__.py
     └── test_routes.py
 ```

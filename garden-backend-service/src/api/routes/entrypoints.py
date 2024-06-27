@@ -14,7 +14,7 @@ from src.models import Entrypoint, User
 
 logger = getLogger(__name__)
 
-router = APIRouter(prefix="/entrypoint")
+router = APIRouter(prefix="/entrypoints")
 
 
 @router.post("", response_model=EntrypointMetadataResponse)

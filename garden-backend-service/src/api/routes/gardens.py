@@ -10,7 +10,7 @@ from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.models import Entrypoint, Garden, User
 
-router = APIRouter(prefix="/garden")
+router = APIRouter(prefix="/gardens")
 logger = getLogger(__name__)
 
 
