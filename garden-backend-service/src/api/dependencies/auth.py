@@ -9,7 +9,6 @@ from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
 from src.models.user import User
 
-
 logger = logging.getLogger(__name__)
 
 

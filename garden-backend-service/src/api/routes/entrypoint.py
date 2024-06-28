@@ -5,12 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
+from src.api.routes._utils import assert_deletable_by_user
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
 )
 from src.models import Entrypoint, User
-from src.api.routes._utils import assert_deletable_by_user
 
 logger = getLogger(__name__)
 
