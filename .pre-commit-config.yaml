@@ -6,12 +6,12 @@ repos:
     rev: v3.2.0
     hooks:
     -   id: trailing-whitespace
-        exclude: (migrations/|fixtures/)
+        exclude: (fixtures/)
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: no-commit-to-branch
-        args: ["--branch", "prod", "--branch", "dev"]
+        args: ["--branch", "dev"]
 
 -   repo: https://github.com/PyCQA/flake8
     rev: 7.0.0
@@ -25,11 +25,11 @@ repos:
     hooks:
     -   id: isort
         args: ["--profile", "black", "--multi-line", "3"]
-        exclude: (migrations/|fixtures/)
+        exclude: (fixtures/)
 
 -   repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
     -   id: black
         language_version: python3
-        exclude: (migrations/|fixtures/)
+        exclude: (fixtures/)
