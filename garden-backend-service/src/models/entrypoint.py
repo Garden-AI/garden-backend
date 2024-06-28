@@ -45,6 +45,7 @@ class Entrypoint(Base):
     authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     test_functions: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
+    requirements: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
 
     # lazy=selectin to load eagerly by default; cascade options are set to
     # everything but "refresh-expire" for asyncio reasons.
