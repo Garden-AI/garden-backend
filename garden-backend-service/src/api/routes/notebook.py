@@ -1,12 +1,12 @@
-from logging import getLogger
-import boto3
-import json
 import hashlib
-from fastapi import APIRouter, Depends, status
-from src.config import Settings, get_settings
+import json
+from logging import getLogger
 
+import boto3
+from fastapi import APIRouter, Depends, status
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
+from src.config import Settings, get_settings
 
 router = APIRouter(prefix="/notebook")
 logger = getLogger()

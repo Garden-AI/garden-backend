@@ -1,16 +1,16 @@
 # Garden Backend
 
-This directory includes the Terraform needed to deploy the Garden API infrastructure. 
+This directory includes the Terraform needed to deploy the Garden API infrastructure.
 You will likely need to use it if you are doing something like creating a new route or letting the app access a new AWS resource.
 
 ## What it does not include
 
 Code deployment.
 
-Deploying changes to the Lambda code is out of Terraform's purview. 
+Deploying changes to the Lambda code is out of Terraform's purview.
 If you're making a new API endpoint that has the same auth requirements as an existing one, you probably shouldn't have need to change anything here.
 
-Likewise, building/deploying new docker images for the backend app to the lightsail container service is handled by a github action (see ./github/workflows/deploy-lightsail.yml) rather than terraform. 
+Likewise, building/deploying new docker images for the backend app to the lightsail container service is handled by a github action (see ./github/workflows/deploy-lightsail.yml) rather than terraform.
 
 ## What infra is there?
 - S3 buckets for storing user notebook contents
@@ -18,22 +18,22 @@ Likewise, building/deploying new docker images for the backend app to the lights
 - Lightsail container service for hosting the API
 - AWS secrets/etc for the API to read .
   - Due to some lightsail constraints, these mostly live outside of terraform -- see the `garden-backend-env-vars/{dev, prod}` secrets in AWS.
-  - Respective deployments are authorized to read their AWS secrets with IAM user credentials (see `garden_lightsail_user_{dev, prod}`in IAM console), which are injected by the GH action at deployment time. 
+  - Respective deployments are authorized to read their AWS secrets with IAM user credentials (see `garden_lightsail_user_{dev, prod}`in IAM console), which are injected by the GH action at deployment time.
 
 ### Subdirectory structure / modules
-Almost all resources are configured in dedicated modules under the `modules/` subdirectory. Currently the only exception to this are resources pertaining to the custom `api.thegardens.ai` domain, which live in `prod/main.tf`. 
+Almost all resources are configured in dedicated modules under the `modules/` subdirectory. Currently the only exception to this are resources pertaining to the custom `api.thegardens.ai` domain, which live in `prod/main.tf`.
 
 - `modules/secrets_manager`
   - configuration for datacite endpoint/password/prefix secrets
 - `modules/s3`
-  - configures the s3 buckets for user-published notebook contents 
-  - allows browsers to read buckets 
+  - configures the s3 buckets for user-published notebook contents
+  - allows browsers to read buckets
   - allows api to write buckets
 - `modules/lightsail`
-  - provisions the lightsail container service(s) to run the deployed container, but does not configure the deployment itself. 
-  - instead, deploying/running a container on the container service is triggered on push to `dev` or `prod` branches. 
-    - The baseline configuration is in `modules/lightsail/deployment-config.json` rather than terraform so it can be more easily read by the aws lightsail CLI in the github action. 
-    
+  - provisions the lightsail container service(s) to run the deployed container, but does not configure the deployment itself.
+  - instead, deploying/running a container on the container service is triggered on push to `dev` or `prod` branches.
+    - The baseline configuration is in `modules/lightsail/deployment-config.json` rather than terraform so it can be more easily read by the aws lightsail CLI in the github action.
+
 
 ## Making changes to the existing deployment
 
@@ -52,6 +52,5 @@ Steps:
 
 ## Using Terraform
 
-If you're a member of the Garden team with admin AWS access, find the location of the S3 bucket and Dynamo table for doing Terraform updates. 
+If you're a member of the Garden team with admin AWS access, find the location of the S3 bucket and Dynamo table for doing Terraform updates.
 Refer to the secrets manager in us-east-1 for the location/
-

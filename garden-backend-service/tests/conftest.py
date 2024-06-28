@@ -15,7 +15,6 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
-from src.api.routes._utils import is_doi_registered
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base

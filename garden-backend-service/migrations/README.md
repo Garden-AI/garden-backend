@@ -2,7 +2,7 @@ Alembic migrations for Garden's PostgreSQL database.
 
 # Running `alembic` CLI
 
-You should invoke the `alembic` cli from within a local docker container started with `docker compose`, e.g. 
+You should invoke the `alembic` cli from within a local docker container started with `docker compose`, e.g.
 
 ``` sh
 docker compose up

@@ -48,17 +48,17 @@ class ClientPrefix(BaseModel):
 
 
 class Attributes2(BaseModel):
-    prov_wasGeneratedBy: Optional[str] = Field(None, alias='prov:wasGeneratedBy')
-    prov_generatedAtTime: Optional[str] = Field(None, alias='prov:generatedAtTime')
-    prov_wasDerivedFrom: Optional[str] = Field(None, alias='prov:wasDerivedFrom')
-    prov_wasAttributedTo: Optional[str] = Field(None, alias='prov:wasAttributedTo')
+    prov_wasGeneratedBy: Optional[str] = Field(None, alias="prov:wasGeneratedBy")
+    prov_generatedAtTime: Optional[str] = Field(None, alias="prov:generatedAtTime")
+    prov_wasDerivedFrom: Optional[str] = Field(None, alias="prov:wasDerivedFrom")
+    prov_wasAttributedTo: Optional[str] = Field(None, alias="prov:wasAttributedTo")
     action: Optional[str] = None
     version: Optional[float] = None
     changes: Optional[Dict[str, Any]] = None
 
 
 class Data2(BaseModel):
-    id: Optional[str] = Field(None, examples=['0000-0000-0000-0000'])
+    id: Optional[str] = Field(None, examples=["0000-0000-0000-0000"])
     type: Optional[str] = None
     attributes: Optional[Attributes2] = None
 
@@ -68,7 +68,7 @@ class Activity(BaseModel):
 
 
 class Type(str, Enum):
-    dois = 'dois'
+    dois = "dois"
 
 
 class Links(BaseModel):
@@ -77,9 +77,9 @@ class Links(BaseModel):
 
 
 class Event(str, Enum):
-    publish = 'publish'
-    register = 'register'
-    hide = 'hide'
+    publish = "publish"
+    register = "register"
+    hide = "hide"
 
 
 class Identifier(BaseModel):
@@ -164,17 +164,17 @@ class Subject(BaseModel):
 
 
 class DateType(str, Enum):
-    Accepted = 'Accepted'
-    Available = 'Available'
-    Copyrighted = 'Copyrighted'
-    Collected = 'Collected'
-    Created = 'Created'
-    Issued = 'Issued'
-    Submitted = 'Submitted'
-    Updated = 'Updated'
-    Valid = 'Valid'
-    Withdrawn = 'Withdrawn'
-    Other = 'Other'
+    Accepted = "Accepted"
+    Available = "Available"
+    Copyrighted = "Copyrighted"
+    Collected = "Collected"
+    Created = "Created"
+    Issued = "Issued"
+    Submitted = "Submitted"
+    Updated = "Updated"
+    Valid = "Valid"
+    Withdrawn = "Withdrawn"
+    Other = "Other"
 
 
 class Date(BaseModel):
@@ -184,10 +184,10 @@ class Date(BaseModel):
 
 
 class NumberType(str, Enum):
-    Article = 'Article'
-    Chapter = 'Chapter'
-    Report = 'Report'
-    Other = 'Other'
+    Article = "Article"
+    Chapter = "Chapter"
+    Report = "Report"
+    Other = "Other"
 
 
 class RightsListItem(BaseModel):
@@ -200,12 +200,12 @@ class RightsListItem(BaseModel):
 
 
 class DescriptionType(str, Enum):
-    Abstract = 'Abstract'
-    Methods = 'Methods'
-    SeriesInformation = 'SeriesInformation'
-    TableOfContents = 'TableOfContents'
-    TechnicalInfo = 'TechnicalInfo'
-    Other = 'Other'
+    Abstract = "Abstract"
+    Methods = "Methods"
+    SeriesInformation = "SeriesInformation"
+    TableOfContents = "TableOfContents"
+    TechnicalInfo = "TechnicalInfo"
+    Other = "Other"
 
 
 class Description(BaseModel):
@@ -233,11 +233,11 @@ class GeoLocation(BaseModel):
 
 
 class FunderIdentifierType(str, Enum):
-    Crossref_Funder_ID = 'Crossref Funder ID'
-    GRID = 'GRID'
-    ISNI = 'ISNI'
-    ROR = 'ROR'
-    Other = 'Other'
+    Crossref_Funder_ID = "Crossref Funder ID"
+    GRID = "GRID"
+    ISNI = "ISNI"
+    ROR = "ROR"
+    Other = "Other"
 
 
 class FundingReference(BaseModel):
@@ -286,8 +286,8 @@ class DoiMetaArray(RootModel[List[DoiMetaObject]]):
 
 
 class MessageAction(str, Enum):
-    create = 'create'
-    delete = 'delete'
+    create = "create"
+    delete = "delete"
 
 
 class Attributes3(BaseModel):
@@ -348,50 +348,50 @@ class Provider1(BaseModel):
 
 
 class Data8(BaseModel):
-    id: Optional[str] = Field(None, examples=['0000-0000-0000-0000'])
+    id: Optional[str] = Field(None, examples=["0000-0000-0000-0000"])
     report_name: Optional[str] = Field(
         None,
-        alias='report-name',
-        description='The long name of the report.',
-        examples=['Dataset Report'],
+        alias="report-name",
+        description="The long name of the report.",
+        examples=["Dataset Report"],
     )
     report_id: Optional[str] = Field(
         None,
-        alias='report-id',
-        description='The report ID or code or shortname. Typically this will be the same code provided in the Report parameter of the request.',
-        examples=['DSR'],
+        alias="report-id",
+        description="The report ID or code or shortname. Typically this will be the same code provided in the Report parameter of the request.",
+        examples=["DSR"],
     )
     release: Optional[str] = Field(
-        None, description='The release or version of the report.', examples=['RD1']
+        None, description="The release or version of the report.", examples=["RD1"]
     )
     created: Optional[str] = Field(
         None,
-        description='Time the report was prepared. Format as defined by date-time - RFC3339',
-        examples=['2016-09-08T22:47:31Z'],
+        description="Time the report was prepared. Format as defined by date-time - RFC3339",
+        examples=["2016-09-08T22:47:31Z"],
     )
     created_by: Optional[str] = Field(
         None,
-        alias='created-by',
-        description='Name of the organization producing the report.',
-        examples=['DataONE'],
+        alias="created-by",
+        description="Name of the organization producing the report.",
+        examples=["DataONE"],
     )
     report_filters: Optional[str] = Field(
         None,
-        alias='report-filters',
-        description='Zero or more report filters used for this report. Typically reflect filters provided on the Request. Filters limit the data to be reported on.',
+        alias="report-filters",
+        description="Zero or more report filters used for this report. Typically reflect filters provided on the Request. Filters limit the data to be reported on.",
     )
     report_attributes: Optional[str] = Field(
         None,
-        alias='report-attributes',
-        description='Zero or more additional attributes applied to the report. Attributes inform the level of detail in the report.',
+        alias="report-attributes",
+        description="Zero or more additional attributes applied to the report. Attributes inform the level of detail in the report.",
     )
     reporting_period: Optional[str] = Field(
-        None, alias='reporting-period', description='Time the report was prepared.'
+        None, alias="reporting-period", description="Time the report was prepared."
     )
     report_datasets: Optional[str] = Field(
         None,
-        alias='report-datasets',
-        description='Defines the output for the Report_Datasets being returned in a Dataset Report. Collection of datasets from the report.',
+        alias="report-datasets",
+        description="Defines the output for the Report_Datasets being returned in a Dataset Report. Collection of datasets from the report.",
     )
 
 
@@ -400,133 +400,133 @@ class Report(BaseModel):
 
 
 class RelationType(str, Enum):
-    IsCitedBy = 'IsCitedBy'
-    Cites = 'Cites'
-    IsSupplementTo = 'IsSupplementTo'
-    IsSupplementedBy = 'IsSupplementedBy'
-    IsContinuedBy = 'IsContinuedBy'
-    Continues = 'Continues'
-    IsDescribedBy = 'IsDescribedBy'
-    Describes = 'Describes'
-    HasMetadata = 'HasMetadata'
-    IsMetadataFor = 'IsMetadataFor'
-    HasVersion = 'HasVersion'
-    IsVersionOf = 'IsVersionOf'
-    IsNewVersionOf = 'IsNewVersionOf'
-    IsPreviousVersionOf = 'IsPreviousVersionOf'
-    IsPartOf = 'IsPartOf'
-    HasPart = 'HasPart'
-    IsPublishedIn = 'IsPublishedIn'
-    IsReferencedBy = 'IsReferencedBy'
-    References = 'References'
-    IsDocumentedBy = 'IsDocumentedBy'
-    Documents = 'Documents'
-    IsCompiledBy = 'IsCompiledBy'
-    Compiles = 'Compiles'
-    IsVariantFormOf = 'IsVariantFormOf'
-    IsOriginalFormOf = 'IsOriginalFormOf'
-    IsIdenticalTo = 'IsIdenticalTo'
-    IsReviewedBy = 'IsReviewedBy'
-    Reviews = 'Reviews'
-    IsDerivedFrom = 'IsDerivedFrom'
-    IsSourceOf = 'IsSourceOf'
-    IsRequiredBy = 'IsRequiredBy'
-    Requires = 'Requires'
-    IsObsoletedBy = 'IsObsoletedBy'
-    Obsoletes = 'Obsoletes'
-    IsCollectedBy = 'IsCollectedBy'
-    Collects = 'Collects'
+    IsCitedBy = "IsCitedBy"
+    Cites = "Cites"
+    IsSupplementTo = "IsSupplementTo"
+    IsSupplementedBy = "IsSupplementedBy"
+    IsContinuedBy = "IsContinuedBy"
+    Continues = "Continues"
+    IsDescribedBy = "IsDescribedBy"
+    Describes = "Describes"
+    HasMetadata = "HasMetadata"
+    IsMetadataFor = "IsMetadataFor"
+    HasVersion = "HasVersion"
+    IsVersionOf = "IsVersionOf"
+    IsNewVersionOf = "IsNewVersionOf"
+    IsPreviousVersionOf = "IsPreviousVersionOf"
+    IsPartOf = "IsPartOf"
+    HasPart = "HasPart"
+    IsPublishedIn = "IsPublishedIn"
+    IsReferencedBy = "IsReferencedBy"
+    References = "References"
+    IsDocumentedBy = "IsDocumentedBy"
+    Documents = "Documents"
+    IsCompiledBy = "IsCompiledBy"
+    Compiles = "Compiles"
+    IsVariantFormOf = "IsVariantFormOf"
+    IsOriginalFormOf = "IsOriginalFormOf"
+    IsIdenticalTo = "IsIdenticalTo"
+    IsReviewedBy = "IsReviewedBy"
+    Reviews = "Reviews"
+    IsDerivedFrom = "IsDerivedFrom"
+    IsSourceOf = "IsSourceOf"
+    IsRequiredBy = "IsRequiredBy"
+    Requires = "Requires"
+    IsObsoletedBy = "IsObsoletedBy"
+    Obsoletes = "Obsoletes"
+    IsCollectedBy = "IsCollectedBy"
+    Collects = "Collects"
 
 
 class ResourceTypeGeneral(str, Enum):
-    Audiovisual = 'Audiovisual'
-    Book = 'Book'
-    BookChapter = 'BookChapter'
-    Collection = 'Collection'
-    ComputationalNotebook = 'ComputationalNotebook'
-    ConferencePaper = 'ConferencePaper'
-    ConferenceProceeding = 'ConferenceProceeding'
-    DataPaper = 'DataPaper'
-    Dataset = 'Dataset'
-    Dissertation = 'Dissertation'
-    Event = 'Event'
-    Image = 'Image'
-    Instrument = 'Instrument'
-    InteractiveResource = 'InteractiveResource'
-    Journal = 'Journal'
-    JournalArticle = 'JournalArticle'
-    Model = 'Model'
-    OutputManagementPlan = 'OutputManagementPlan'
-    PeerReview = 'PeerReview'
-    PhysicalObject = 'PhysicalObject'
-    Preprint = 'Preprint'
-    Report = 'Report'
-    Service = 'Service'
-    Software = 'Software'
-    Sound = 'Sound'
-    Standard = 'Standard'
-    StudyRegistration = 'StudyRegistration'
-    Text = 'Text'
-    Workflow = 'Workflow'
-    Other = 'Other'
+    Audiovisual = "Audiovisual"
+    Book = "Book"
+    BookChapter = "BookChapter"
+    Collection = "Collection"
+    ComputationalNotebook = "ComputationalNotebook"
+    ConferencePaper = "ConferencePaper"
+    ConferenceProceeding = "ConferenceProceeding"
+    DataPaper = "DataPaper"
+    Dataset = "Dataset"
+    Dissertation = "Dissertation"
+    Event = "Event"
+    Image = "Image"
+    Instrument = "Instrument"
+    InteractiveResource = "InteractiveResource"
+    Journal = "Journal"
+    JournalArticle = "JournalArticle"
+    Model = "Model"
+    OutputManagementPlan = "OutputManagementPlan"
+    PeerReview = "PeerReview"
+    PhysicalObject = "PhysicalObject"
+    Preprint = "Preprint"
+    Report = "Report"
+    Service = "Service"
+    Software = "Software"
+    Sound = "Sound"
+    Standard = "Standard"
+    StudyRegistration = "StudyRegistration"
+    Text = "Text"
+    Workflow = "Workflow"
+    Other = "Other"
 
 
 class ContributorType(str, Enum):
-    ContactPerson = 'ContactPerson'
-    DataCollector = 'DataCollector'
-    DataCurator = 'DataCurator'
-    DataManager = 'DataManager'
-    Distributor = 'Distributor'
-    Editor = 'Editor'
-    HostingInstitution = 'HostingInstitution'
-    Producer = 'Producer'
-    ProjectLeader = 'ProjectLeader'
-    ProjectManager = 'ProjectManager'
-    ProjectMember = 'ProjectMember'
-    RegistrationAgency = 'RegistrationAgency'
-    RegistrationAuthority = 'RegistrationAuthority'
-    RelatedPerson = 'RelatedPerson'
-    Researcher = 'Researcher'
-    ResearchGroup = 'ResearchGroup'
-    RightsHolder = 'RightsHolder'
-    Sponsor = 'Sponsor'
-    Supervisor = 'Supervisor'
-    WorkPackageLeader = 'WorkPackageLeader'
-    Other = 'Other'
+    ContactPerson = "ContactPerson"
+    DataCollector = "DataCollector"
+    DataCurator = "DataCurator"
+    DataManager = "DataManager"
+    Distributor = "Distributor"
+    Editor = "Editor"
+    HostingInstitution = "HostingInstitution"
+    Producer = "Producer"
+    ProjectLeader = "ProjectLeader"
+    ProjectManager = "ProjectManager"
+    ProjectMember = "ProjectMember"
+    RegistrationAgency = "RegistrationAgency"
+    RegistrationAuthority = "RegistrationAuthority"
+    RelatedPerson = "RelatedPerson"
+    Researcher = "Researcher"
+    ResearchGroup = "ResearchGroup"
+    RightsHolder = "RightsHolder"
+    Sponsor = "Sponsor"
+    Supervisor = "Supervisor"
+    WorkPackageLeader = "WorkPackageLeader"
+    Other = "Other"
 
 
 class RelatedIdentifierType(str, Enum):
-    ARK = 'ARK'
-    arXiv = 'arXiv'
-    bibcode = 'bibcode'
-    DOI = 'DOI'
-    EAN13 = 'EAN13'
-    EISSN = 'EISSN'
-    Handle = 'Handle'
-    IGSN = 'IGSN'
-    ISBN = 'ISBN'
-    ISSN = 'ISSN'
-    ISTC = 'ISTC'
-    LISSN = 'LISSN'
-    LSID = 'LSID'
-    PMID = 'PMID'
-    PURL = 'PURL'
-    UPC = 'UPC'
-    URL = 'URL'
-    URN = 'URN'
-    w3id = 'w3id'
+    ARK = "ARK"
+    arXiv = "arXiv"
+    bibcode = "bibcode"
+    DOI = "DOI"
+    EAN13 = "EAN13"
+    EISSN = "EISSN"
+    Handle = "Handle"
+    IGSN = "IGSN"
+    ISBN = "ISBN"
+    ISSN = "ISSN"
+    ISTC = "ISTC"
+    LISSN = "LISSN"
+    LSID = "LSID"
+    PMID = "PMID"
+    PURL = "PURL"
+    UPC = "UPC"
+    URL = "URL"
+    URN = "URN"
+    w3id = "w3id"
 
 
 class TitleType(str, Enum):
-    AlternativeTitle = 'AlternativeTitle'
-    Subtitle = 'Subtitle'
-    TranslatedTitle = 'TranslatedTitle'
-    Other = 'Other'
+    AlternativeTitle = "AlternativeTitle"
+    Subtitle = "Subtitle"
+    TranslatedTitle = "TranslatedTitle"
+    Other = "Other"
 
 
 class NameType(str, Enum):
-    Personal = 'Personal'
-    Organizational = 'Organizational'
+    Personal = "Personal"
+    Organizational = "Organizational"
 
 
 class Client1(BaseModel):
@@ -722,7 +722,7 @@ class DoiPropertiesMetadata(BaseModel):
 class DoiAttributes(DoiPropertiesMetadata, DoiPropertiesOther, DoiPropertiesDates):
     doi: Optional[str] = None
     event: Optional[Event] = Field(
-        None, description='Can be set to trigger a DOI state change.'
+        None, description="Can be set to trigger a DOI state change."
     )
     prefix: Optional[str] = None
     suffix: Optional[str] = None
@@ -741,7 +741,7 @@ class DoiAttributes(DoiPropertiesMetadata, DoiPropertiesOther, DoiPropertiesDate
     versionCount: Optional[float] = None
     versionOfCount: Optional[float] = None
     landingPage: Optional[LandingPage] = Field(
-        None, description='Data describing the landing page, used by link checking.'
+        None, description="Data describing the landing page, used by link checking."
     )
 
 

@@ -33,7 +33,7 @@ garden-backend-service/
 │       └── ....
 │   ├── config.py         # settings/reads env vars
 │   └── main.py           # inits app/imports routers
-├── migrations            # alembic stuff 
+├── migrations            # alembic stuff
 │   └── ...
 └── tests                 # you guessed it
     ├── __init__.py
@@ -108,7 +108,7 @@ Database data is persisted in a local docker volume defined in `compose.yaml`. I
 database, remove the volume and restart the containers.
 ``` sh
 docker compose down --volumes
-docker compose up 
+docker compose up
 ```
 
 ## Deployments

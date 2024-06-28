@@ -5,12 +5,12 @@ Revises: b56d8ac560a5
 Create Date: 2024-06-18 20:01:12.749566
 
 """
+
 from typing import Sequence, Union
 from uuid import UUID
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "fdbefac8521a"

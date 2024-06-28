@@ -9,8 +9,8 @@ from pydantic import computed_field
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
     PydanticBaseSettingsSource,
+    SettingsConfigDict,
 )
 
 # read from .env if it exists (local development only)

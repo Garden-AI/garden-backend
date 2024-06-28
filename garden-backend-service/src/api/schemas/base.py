@@ -1,12 +1,6 @@
 from typing import Annotated, List, TypeVar
 
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    Field,
-    HttpUrl,
-    PlainSerializer,
-)
+from pydantic import AfterValidator, BaseModel, Field, HttpUrl, PlainSerializer
 from pydantic_core import PydanticCustomError
 
 

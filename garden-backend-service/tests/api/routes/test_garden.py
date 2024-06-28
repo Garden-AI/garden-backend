@@ -1,5 +1,6 @@
-import pytest
 from copy import deepcopy
+
+import pytest
 
 
 async def post_entrypoints(client, *payloads):

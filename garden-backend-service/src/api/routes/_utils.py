@@ -1,6 +1,6 @@
+import httpx
 from fastapi import HTTPException, status
 from src.models import Entrypoint, Garden, User
-import httpx
 
 
 def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
