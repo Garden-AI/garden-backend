@@ -117,43 +117,48 @@ On a push to `dev` or `prod` branches, we run a GitHub action to build and push 
 
 ## Connect pgadmin to RDS instances
 
-Note: You will need to follow this process for each instance. You can
+**Note:** You will need to follow this process for each instance (dev and prod). You can
 use the same key pair for both instances.
 
-1. Create ssh key pair
+### **Create ssh key pair**
+   
 Either through the AWS console or on the command line create an RSA
 keypair.
 
-- Option 1 AWS Console
+- **Option 1 AWS Console**
+  
   Login to AWS and navigate to the EC2 Console. On the left nav panel
-  under network and security select 'Key Pairs'.
+  under network and security select *Key Pairs*.
 
-  Click 'Create key pair'.
+  Click *Create key pair*.
 
-  Select "RSA" for the key pair type and select '.pem' for the format.
+  Select "RSA" for the key pair type and select ".pem" for the format.
 
-  Create the key pair by clicking 'Create key pair' at the bottom of
+  Create the key pair by clicking *Create key pair* at the bottom of
   the page. Make sure to download the generated key pair as this is
   the only opportunity you have to save it. If you lose it you will
   need to create a new one.
 
-- Option 2 local command line
+- **Option 2 local command line**
+  
   Use `ssh-keygen` to generate a key pair locally:
+  
   ```sh
   ssh-keygen -m PEM -t rsa -b 4096
   ```
 
-2. Add public key to EC2 instance
-Login to AWS and go to the EC2 console. Click "Instances" on the
+### **Add public key to EC2 instance**
+   
+Login to AWS and go to the EC2 console. Click *Instances* on the
 left nav panel.
 
 Select the instance you want to connect to by clicking the
-checkbox next to the instance name. Then, click "Connect" and select
-the "EC2 Instance Connect" tab. For the connection type select
-"Connect using EC2 Instance Connect" and leave the username as the
+checkbox next to the instance name. Then, click *Connect* and select
+the *EC2 Instance Connect* tab. For the connection type select
+*Connect using EC2 Instance Connect* and leave the username as the
 default `ec2-user`.
 
-Click "Connect" at the bottom of the page and a terminal will open
+Click *Connect* at the bottom of the page and a terminal will open
 connected to the EC2 instance in the ec2-user's home directory.
 
 Add the public key of your new key pair to the file
@@ -169,32 +174,32 @@ private key from your key pair.
 ssh -i <path-to-private-key> ec2-user@<hostname-or-ip-of-instance>
 ```
 
-3. Configure pgadmin
+### **Configure pgadmin**
+   
 With the pgadmin container running via `docker compose`, login to
-pgadmin at `http://localhost:8080/`.
+pgadmin at [localhost:8080](http://localhost:8080/).
 
-Click "Add New Server".
+Click *Add New Server*.
 
 Set the name of the server to something meaningful like
-'garden_db_dev', then click the 'Connection' tab.
+'garden_db_dev', then select the *Connection* tab.
 
-In the 'Host name/address' field add the private hostname or IP of the
+In the *Host name/address* field add the private hostname or IP of the
 RDS instance you want to connect to. This can be found in the AWS
-RDS console by clicking the instance and looking at the 'Connectivity
-& Security' tab.
+RDS console by clicking the instance and looking at the *Connectivity
+& Security* tab.
 
 Keep the port and username set with their default values.
 
-Move to the 'SSH Tunnel' tab of the server configuration and toggle
-'Use SSH tunneling' on.
+Move to the *SSH Tunnel* tab of the server configuration and toggle
+*Use SSH tunneling* on.
 
-'Tunnel host' should be the public hostname or IP of the EC2 instance.
-'Tunnel port' should be '22'
-'Username' should be 'ec2-user'
+*Tunnel host* should be the public hostname or IP of the EC2 instance.
+*Tunnel port* should be `22`
+*Username* should be `ec2-user`
+For *Authentication*, select *Identity file*
 
-For 'Authentication' select 'Identity file'
-
-The 'Identity file' should be the private key from your key
+The *Identity file* should be the private key from your key
 pair. Click the folder icon and select the private key file. Since
 pgadmin is running in a container you will need to upload your private
 key file before you can select it here. Click the three dots in the
@@ -202,7 +207,5 @@ upper right side of the file browser and select upload. Add the
 private key file from you key pair. Once the file is uploaded to the
 container, you can select it.
 
-Click 'Save' and if everything goes well pgadmin should connect to the
+Click *Save* and if everything goes well pgadmin should connect to the
 RDS instance using the EC2 instance as an ssh tunnel.
-
-4. Profit
