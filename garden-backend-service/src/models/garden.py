@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
-from src.models._associations import gardens_entrypoints
+from src.models._associations import gardens_entrypoints, users_saved_gardens
 from src.models.base import Base
 
 if TYPE_CHECKING:
@@ -41,3 +41,7 @@ class Garden(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
+
+    users: Mapped[list[User]] = relationship(
+        "User", secondary=users_saved_gardens, back_populates="saved_gardens"
+    )
