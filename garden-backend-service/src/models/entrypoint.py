@@ -11,10 +11,6 @@ if TYPE_CHECKING:
     from src.models.user import User
 
 else:
-    DatasetMetadata = "DatasetMetadata"
-    ModelMetadata = "ModelMetadata"
-    PaperMetadata = "PaperMetadata"
-    RepositoryMetadata = "RepositoryMetadata"
     Garden = "Garden"
     User = "User"
 
@@ -42,7 +38,7 @@ class Entrypoint(Base):
     requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
 
     # NOTE: modifications to these lists / dictionaries won't be picked up
-    # by sqlalchemy. Replace the attribute with an updated copy instead
+    # by sqlalchemy ORM. Updates should replace with a copy.
     models: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     repositories: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     papers: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))

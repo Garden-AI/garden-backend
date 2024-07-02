@@ -203,7 +203,7 @@ def mock_entrypoint_create_request_json() -> dict:
 
 @pytest.fixture(autouse=True)
 def mock_is_doi_registered(mocker):
-    mock_garden = mocker.patch("src.api.routes.garden.is_doi_registered")
+    mock_garden = mocker.patch("src.api.routes.gardens.is_doi_registered")
     mock_garden.return_value = False
 
     return mock_garden
