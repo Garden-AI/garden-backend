@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import Field
 
 from .base import BaseSchema, UniqueList
-from .entrypoint import EntrypointMetadata
+from .entrypoint import EntrypointMetadataResponse
 
 
 class GardenMetadata(BaseSchema):
@@ -29,4 +29,4 @@ class GardenCreateRequest(GardenMetadata):
 
 class GardenMetadataResponse(GardenMetadata):
     id: int
-    entrypoints: list[EntrypointMetadata] = Field(default_factory=list)
+    entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
