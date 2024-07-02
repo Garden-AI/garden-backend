@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 
@@ -107,3 +109,31 @@ async def test_delete_entrypoint(
     response = await client.delete("/entrypoints/10.fake/doi")
     assert response.status_code == 200
     assert response.json() == {"detail": "No entrypoint found with DOI 10.fake/doi."}
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_update_entrypoint(
+    client,
+    mock_db_session,
+    mock_entrypoint_create_request_json,
+    override_authenticated_dependency,
+):
+    doi = mock_entrypoint_create_request_json["doi"]
+    # First, create the entrypoint with a PUT instead of POST
+    response = await client.put(
+        f"/entrypoints/{doi}", json=mock_entrypoint_create_request_json
+    )
+    assert response.status_code == 200
+
+    # put some updated data to the same place
+    updated_data = copy.deepcopy(mock_entrypoint_create_request_json)
+    updated_data["title"] = "Updated Title"
+    # include a nested metadata field
+    updated_data["datasets"][0]["title"] = "Updated Dataset Title"
+    response = await client.put(f"/entrypoints/{doi}", json=updated_data)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["doi"] == updated_data["doi"]
+    assert response_data["title"] == updated_data["title"]
+    assert response_data["datasets"][0]["title"] == "Updated Dataset Title"

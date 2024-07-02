@@ -23,34 +23,7 @@ async def add_entrypoint(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
-    # default owner is authed_user unless owner_identity_id is explicitly provided
-    owner: User = user
-    if entrypoint.owner_identity_id is not None:
-        explicit_owner: User | None = await User.get(
-            db, identity_id=entrypoint.owner_identity_id
-        )
-        if explicit_owner is not None:
-            owner = explicit_owner
-        else:
-            logger.warning(
-                f"No user found with Globus identity ID {entrypoint.owner_identity_id}. "
-                f"Assigning default ownership to {user.identity_id} ({user.username}). "
-            )
-
-    new_entrypoint = Entrypoint.from_dict(
-        entrypoint.model_dump(exclude="owner_identity_id")
-    )
-    new_entrypoint.owner = owner
-    db.add(new_entrypoint)
-    try:
-        await db.commit()
-    except IntegrityError as e:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Entrypoint with this DOI already exists",
-        ) from e
-    return new_entrypoint
+    return await _create_new_entrypoint(entrypoint, db, user)
 
 
 # note: the ':path' is a starlette converter option to include '/' characters
@@ -98,3 +71,75 @@ async def delete_entrypoint(
     else:
         # no error if not found so DELETE is idempotent
         return {"detail": f"No entrypoint found with DOI {doi}."}
+
+
+@router.put("/{doi:path}", response_model=EntrypointMetadataResponse)
+async def create_or_replace_entrypoint(
+    doi: str,
+    entrypoint_data: EntrypointCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+):
+    existing_entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
+
+    if existing_entrypoint is None:
+        return await _create_new_entrypoint(entrypoint_data, db, user)
+
+    assert_deletable_by_user(existing_entrypoint, user)
+    # re-assign ownership if specified
+    if entrypoint_data.owner_identity_id is not None:
+        new_owner: User | None = await User.get(
+            db, identity_id=entrypoint_data.owner_identity_id
+        )
+        existing_entrypoint.owner = new_owner or user
+
+    try:
+        # naive update with all other values from payload
+        for key, value in entrypoint_data.model_dump(
+            exclude="owner_identity_id"
+        ).items():
+            setattr(existing_entrypoint, key, value)
+
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Integrity error occurred: {str(e)}",
+        ) from e
+    return existing_entrypoint
+
+
+async def _create_new_entrypoint(
+    entrypoint: EntrypointCreateRequest,
+    db: AsyncSession,
+    user: User,
+) -> Entrypoint:
+    # default owner is authed_user unless owner_identity_id is explicitly provided
+    owner: User = user
+    if entrypoint.owner_identity_id is not None:
+        explicit_owner: User | None = await User.get(
+            db, identity_id=entrypoint.owner_identity_id
+        )
+        if explicit_owner is not None:
+            owner = explicit_owner
+        else:
+            logger.warning(
+                f"No user found with Globus identity ID {entrypoint.owner_identity_id}. "
+                f"Assigning default ownership to {user.identity_id} ({user.username}). "
+            )
+
+    new_entrypoint = Entrypoint.from_dict(
+        entrypoint.model_dump(exclude="owner_identity_id")
+    )
+    new_entrypoint.owner = owner
+    db.add(new_entrypoint)
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Entrypoint with this DOI already exists",
+        ) from e
+    return new_entrypoint
