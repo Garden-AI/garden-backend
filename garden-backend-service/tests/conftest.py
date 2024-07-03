@@ -111,6 +111,8 @@ def mock_auth_state():
     mock_auth.username = "Monsieur.Sartre@ens-paris.fr"
     mock_auth.identity_id = UUID("00000000-0000-0000-0000-000000000000")
     mock_auth.token = "tokentokentoken"
+    mock_auth.email = "some@email.com"
+    mock_auth.name = "M. Sartre"
     return mock_auth
 
 

@@ -45,13 +45,16 @@ async def authed_user(
     try:
         user, created = await User.get_or_create(
             db,
-            username=auth.username,
             identity_id=auth.identity_id,
         )
 
         # Add the user to Garden Users Globus group if they are new
         if created:
             add_user_to_group(auth, settings)
+            # populate fields we can get from the auth token
+            user.name = auth.name
+            user.email = auth.email
+            user.username = auth.username
             await db.commit()
 
         return user
