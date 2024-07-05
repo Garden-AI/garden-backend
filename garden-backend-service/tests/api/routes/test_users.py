@@ -74,7 +74,10 @@ async def test_update_partial_user_info(
 
 
 @pytest.mark.asyncio
-async def test_get_user_info_unauthenticated(client: AsyncClient, mock_missing_token):
+@pytest.mark.integration
+async def test_get_user_info_unauthenticated(
+    client: AsyncClient, mock_missing_token, mock_db_session
+):
     response = await client.get("/users")
     assert response.status_code == 403
     assert response.json()["detail"] == "Authorization header missing"
@@ -95,7 +98,10 @@ async def test_update_user_info_invalid_payload(
 
 
 @pytest.mark.asyncio
-async def test_unauthorized_access(client: AsyncClient, mock_missing_token):
+@pytest.mark.integration
+async def test_unauthorized_access(
+    client: AsyncClient, mock_missing_token, mock_db_session
+):
     response = await client.get("/users")
     assert response.status_code == 403
     assert response.json()["detail"] == "Authorization header missing"
