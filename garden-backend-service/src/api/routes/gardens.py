@@ -1,4 +1,6 @@
 from logging import getLogger
+from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
@@ -34,6 +36,62 @@ async def add_garden(
             create_or_update_on_search_index, new_garden, settings
         )
     return new_garden
+
+
+@router.get("", response_model=list[GardenMetadataResponse])
+async def search_gardens(
+    uuid: Optional[UUID] = Query(None, description="Filter by user UUID"),
+    authors: Optional[str] = Query(None, description="Comma-separated list of authors"),
+    contributors: Optional[str] = Query(
+        None, description="Comma-separated list of contributors"
+    ),
+    tags: Optional[str] = Query(None, description="Comma-separated list of tags"),
+    year: Optional[str] = Query(None, description="Filter by year"),
+    limit: int = Query(
+        20, description="Limit number of gardens returned by the query."
+    ),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """
+    Return a list of gardens.
+
+    With no query params, this returns the default limit number of gardens.
+    Add limit=0 to get all gardens.
+
+    Query params for filtering by:
+     - user_id
+     - authors
+     - contributors
+     - tags
+     - year
+    """
+    stmt = select(Garden)
+
+    if uuid is not None:
+        stmt = stmt.join(Garden.user).where(User.identity_id == uuid)
+
+    if authors:
+        authors_list = authors.split(",")
+        stmt = stmt.where(Garden.authors.contains(authors_list))
+
+    if contributors:
+        contributors_list = contributors.split(",")
+        stmt = stmt.where(Garden.contributors.contains(contributors_list))
+
+    if tags:
+        tags_list = tags.split(",")
+        stmt = stmt.where(Garden.tags.contains(tags_list))
+
+    if year is not None:
+        stmt = stmt.where(Garden.year == year)
+
+    if limit > 0:
+        stmt = stmt.limit(limit)
+
+    result = await db.execute(stmt)
+    gardens = result.scalars().all()
+
+    return gardens
 
 
 @router.get(
