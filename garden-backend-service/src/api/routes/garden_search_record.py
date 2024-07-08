@@ -4,14 +4,19 @@ from fastapi import APIRouter, Depends, exceptions, status
 from globus_sdk import SearchClient
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.dependencies.search import get_globus_search_client
-from src.api.routes._utils import is_doi_registered
+from src.api.routes._utils import deprecated, is_doi_registered
 from src.api.schemas.search import DeleteSearchRecordRequest, PublishSearchRecordRequest
 from src.config import Settings, get_settings
 
 router = APIRouter(prefix="/garden-search-record")
 
 
-@router.post("", status_code=status.HTTP_200_OK)
+@router.post("", status_code=status.HTTP_200_OK, deprecated=True)
+@deprecated(
+    name="/garden-search-record",
+    message="Use /gardens instead or update garden-ai package to latest version.",
+    doc_url="https://api-dev.thegardens.ai/docs#/default/add_garden_gardens_post",
+)
 async def publish_search_record(
     garden_meta: PublishSearchRecordRequest,
     settings: Settings = Depends(get_settings),
@@ -30,7 +35,12 @@ async def publish_search_record(
     return await _poll_globus_search_task(task_id, search_client)
 
 
-@router.delete("", status_code=status.HTTP_200_OK)
+@router.delete("", status_code=status.HTTP_200_OK, deprecated=True)
+@deprecated(
+    name="/delete-search-record",
+    message="Use /gardens instead or update garden-ai package to latest version.",
+    doc_url="https://api-dev.thegardens.ai/docs#/default/delete_garden_gardens__doi__delete",
+)
 async def delete_search_record(
     body: DeleteSearchRecordRequest,
     settings: Settings = Depends(get_settings),

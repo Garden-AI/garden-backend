@@ -1,3 +1,5 @@
+import functools
+
 import httpx
 from fastapi import HTTPException, status
 from src.models import Entrypoint, Garden, User
@@ -44,3 +46,26 @@ async def is_doi_registered(doi: str) -> bool:
         return True
     else:
         return False
+
+
+def deprecated(
+    name="Endpoint",
+    message: str = None,
+    doc_url: str = "https://api-dev.thegardens.ai/docs",
+):
+    """Mark an endpoint as deprecated.
+
+    Causes the endpoint to return a 410 response with optional message and docs link.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail=f"{name} is deprecated. {message if message is not None else ''} See: {doc_url}",
+            )
+
+        return wrapper
+
+    return decorator
