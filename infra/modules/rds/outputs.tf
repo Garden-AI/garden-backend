@@ -12,3 +12,8 @@ output "db_security_group_id" {
   description = "The security group ID for the RDS instance."
   value       = aws_security_group.garden_db_sg.id
 }
+
+output "bastion_public_ip" {
+  description = "The public IP address of the bastion EC2 instance."
+  value       = aws_instance.rds_bastion.public_ip
+}

@@ -17,7 +17,7 @@ output "container_service_url" {
 
 output "api_endpoint_url" {
   description = "The full URL for the API endpoint"
-  value = "https://${var.subdomain_prefix}.${var.root_domain_name}"
+  value       = "https://${var.subdomain_prefix}.${var.root_domain_name}"
 }
 
 output "db_endpoint" {
