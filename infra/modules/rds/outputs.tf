@@ -15,5 +15,5 @@ output "db_security_group_id" {
 
 output "bastion_public_ip" {
   description = "The public IP address of the bastion EC2 instance."
-  value       = aws_instance.rds-bastion.public_ip
+  value       = aws_instance.rds_bastion.public_ip
 }

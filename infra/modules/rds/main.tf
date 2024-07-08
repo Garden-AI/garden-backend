@@ -83,7 +83,7 @@ data "aws_ami" "ubuntu" {
 
 # Create a security group for incoming ssh connections
 resource "aws_security_group" "bastion_sg" {
-  name = "garden_db_bastion_sg"
+  name = "garden_db_bastion_sg_${var.env}"
 
   # Accept incoming traffic on port 22
   ingress {
@@ -109,7 +109,7 @@ resource "aws_security_group" "bastion_sg" {
 
 
 # Provision the EC2 instance
-resource "aws_instance" "rds-bastion" {
+resource "aws_instance" "rds_bastion" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = "t2.micro"
   associate_public_ip_address = true
@@ -129,6 +129,6 @@ resource "aws_security_group_rule" "bastion_to_rds" {
   from_port         = 5432
   to_port           = 5432
   protocol          = "tcp"
-  cidr_blocks       = ["${aws_instance.rds-bastion.private_ip}/32"]
+  cidr_blocks       = ["${aws_instance.rds_bastion.private_ip}/32"]
   security_group_id = aws_security_group.garden_db_sg.id
 }
