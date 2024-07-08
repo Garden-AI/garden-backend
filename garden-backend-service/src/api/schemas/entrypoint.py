@@ -51,6 +51,7 @@ class EntrypointMetadata(BaseSchema):
     authors: UniqueList[str] = Field(default_factory=list)
     tags: UniqueList[str] = Field(default_factory=list)
     test_functions: list[str] = Field(default_factory=list)
+    requirements: list[str] = Field(default_factory=list)
 
     models: list[_ModelMetadata] = Field(default_factory=list)
     repositories: list[_RepositoryMetadata] = Field(default_factory=list)

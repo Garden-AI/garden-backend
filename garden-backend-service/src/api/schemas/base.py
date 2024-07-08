@@ -1,11 +1,35 @@
 from typing import Annotated, List, TypeVar
 
-from pydantic import AfterValidator, BaseModel, Field, HttpUrl, PlainSerializer
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    HttpUrl,
+    PlainSerializer,
+    ValidationInfo,
+    field_validator,
+)
 from pydantic_core import PydanticCustomError
 
 
 class BaseSchema(BaseModel, from_attributes=True):
-    pass
+    @field_validator("*", mode="before")
+    @classmethod
+    def use_default_if_none(cls, val, info: ValidationInfo) -> str:
+        """validator for compatibility when parsing ORM instances with nullable attributes into response schemas.
+
+        This means that `MySchema(optional_value=None)` behaves the same as
+        simply omitting `optional_value` from the kwargs would
+
+        (optional as in "not required", not optional as in "nullable". see
+        https://docs.pydantic.dev/latest/migration/#required-optional-and-nullable-fields)
+        """
+        has_default: bool = not cls.model_fields[info.field_name].is_required()
+        if val is None and has_default:
+            val = cls.model_fields[info.field_name].get_default(
+                call_default_factory=True
+            )
+        return val
 
 
 T = TypeVar("T")
