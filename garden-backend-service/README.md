@@ -121,12 +121,12 @@ On a push to `dev` or `prod` branches, we run a GitHub action to build and push 
 use the same key pair for both instances.
 
 ### **Create ssh key pair**
-   
+
 Either through the AWS console or on the command line create an RSA
 keypair.
 
 - **Option 1 AWS Console**
-  
+
   Login to AWS and navigate to the EC2 Console. On the left nav panel
   under network and security select *Key Pairs*.
 
@@ -140,15 +140,15 @@ keypair.
   need to create a new one.
 
 - **Option 2 local command line**
-  
+
   Use `ssh-keygen` to generate a key pair locally:
-  
+
   ```sh
   ssh-keygen -m PEM -t rsa -b 4096
   ```
 
 ### **Add public key to EC2 instance**
-   
+
 Login to AWS and go to the EC2 console. Click *Instances* on the
 left nav panel.
 
@@ -156,7 +156,7 @@ Select the instance you want to connect to by clicking the
 checkbox next to the instance name. Then, click *Connect* and select
 the *EC2 Instance Connect* tab. For the connection type select
 *Connect using EC2 Instance Connect* and leave the username as the
-default `ec2-user`.
+default `ubuntu`.
 
 Click *Connect* at the bottom of the page and a terminal will open
 connected to the EC2 instance in the ec2-user's home directory.
@@ -171,11 +171,11 @@ You now have the ability to login to the instance with ssh using the
 private key from your key pair.
 
 ``` sh
-ssh -i <path-to-private-key> ec2-user@<hostname-or-ip-of-instance>
+ssh -i <path-to-private-key> ubuntu@<hostname-or-ip-of-instance>
 ```
 
 ### **Configure pgadmin**
-   
+
 With the pgadmin container running via `docker compose`, login to
 pgadmin at [localhost:8080](http://localhost:8080/).
 
@@ -184,19 +184,16 @@ Click *Add New Server*.
 Set the name of the server to something meaningful like
 'garden_db_dev', then select the *Connection* tab.
 
-In the *Host name/address* field add the private hostname or IP of the
-RDS instance you want to connect to. This can be found in the AWS
-RDS console by clicking the instance and looking at the *Connectivity
-& Security* tab.
+For the *Host name/address*, *username* and *password* fields, check the `garden-backend-env-vars/{dev, prod}`AWS secret and copy the appropriate values (`DB_ENDPOINT`/ `DB_USERNAME`/`DB_PASSWORD`, respectively).
 
-Keep the port and username set with their default values.
+Keep the *port* and *maintenance database* set with their default values.
 
 Move to the *SSH Tunnel* tab of the server configuration and toggle
 *Use SSH tunneling* on.
 
 *Tunnel host* should be the public hostname or IP of the EC2 instance.
 *Tunnel port* should be `22`
-*Username* should be `ec2-user`
+*Username* should be `ubuntu`
 For *Authentication*, select *Identity file*
 
 The *Identity file* should be the private key from your key
