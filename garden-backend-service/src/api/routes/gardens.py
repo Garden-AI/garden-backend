@@ -1,12 +1,17 @@
 from logging import getLogger
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
+from src.api.routes._utils import (
+    assert_deletable_by_user,
+    create_or_update_on_search_index,
+    delete_from_search_index,
+    is_doi_registered,
+)
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.models import Entrypoint, Garden, User
 
@@ -17,10 +22,11 @@ logger = getLogger(__name__)
 @router.post("", response_model=GardenMetadataResponse)
 async def add_garden(
     garden: GardenCreateRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
-    return await _create_new_garden(garden, db, user)
+    return await _create_new_garden(garden, db, user, background_tasks)
 
 
 @router.get(
@@ -44,6 +50,7 @@ async def get_garden_by_doi(
 @router.delete("/{doi:path}", status_code=status.HTTP_200_OK)
 async def delete_garden(
     doi: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
@@ -53,6 +60,7 @@ async def delete_garden(
         await db.delete(garden)
         try:
             await db.commit()
+            background_tasks.add_task(delete_from_search_index, garden)
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -67,13 +75,14 @@ async def delete_garden(
 @router.put("/{doi:path}", response_model=GardenMetadataResponse)
 async def create_or_replace_garden(
     doi: str,
+    background_tasks: BackgroundTasks,
     garden_data: GardenCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
     existing_garden: Garden | None = await Garden.get(db, doi=doi)
     if existing_garden is None:
-        return await _create_new_garden(garden_data, db, user)
+        return await _create_new_garden(garden_data, db, user, background_tasks)
 
     # check draft status with the real world (doi.org)
     if garden_data.doi_is_draft is None:
@@ -99,6 +108,7 @@ async def create_or_replace_garden(
         setattr(existing_garden, key, value)
     try:
         await db.commit()
+        background_tasks.add_task(create_or_update_on_search_index, existing_garden)
     except IntegrityError as e:
         logger.error(str(e))
         await db.rollback()
@@ -128,6 +138,7 @@ async def _create_new_garden(
     garden_data: GardenCreateRequest,
     db: AsyncSession,
     user: User,
+    background_tasks: BackgroundTasks,
 ):
     # if not specified, check draft status with the real world (doi.org)
     if garden_data.doi_is_draft is None:
@@ -160,6 +171,7 @@ async def _create_new_garden(
     db.add(new_garden)
     try:
         await db.commit()
+        background_tasks.add_task(create_or_update_on_search_index, new_garden)
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
