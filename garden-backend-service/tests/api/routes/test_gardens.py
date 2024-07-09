@@ -1,4 +1,5 @@
 from copy import deepcopy
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -22,7 +23,9 @@ async def test_add_garden(
     create_entrypoint_with_related_metadata_json,
     create_shared_entrypoint_json,
     create_garden_two_entrypoints_json,
+    mocker,
 ):
+    mocker.patch("src.api.routes.gardens.BackgroundTasks", return_value=MagicMock())
     await post_entrypoints(
         client,
         create_shared_entrypoint_json,

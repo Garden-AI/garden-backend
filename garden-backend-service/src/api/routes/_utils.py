@@ -6,7 +6,6 @@ from fastapi import HTTPException, exceptions, status
 from globus_sdk import SearchClient
 from src.api.dependencies.search import get_globus_search_client
 from src.auth.globus_auth import get_auth_client
-from src.config import get_settings
 from src.models import Entrypoint, Garden, User
 
 
@@ -101,8 +100,7 @@ async def poll_globus_search_task(
         )
 
 
-async def delete_from_search_index(garden_data):
-    settings = get_settings()
+async def delete_from_search_index(garden_data, settings):
     if settings.SYNC_SEARCH_INDEX:
         client = get_globus_search_client(get_auth_client())
         delete_result = client.delete_entry(
@@ -113,8 +111,7 @@ async def delete_from_search_index(garden_data):
         return await poll_globus_search_task(task_id, client)
 
 
-async def create_or_update_on_search_index(garden_data):
-    settings = get_settings()
+async def create_or_update_on_search_index(garden_data, settings):
     if settings.SYNC_SEARCH_INDEX:
         client = get_globus_search_client(get_auth_client())
         create_result = client.create_entry(
