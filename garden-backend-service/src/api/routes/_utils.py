@@ -4,7 +4,10 @@ import functools
 import httpx
 from fastapi import HTTPException, exceptions, status
 from globus_sdk import SearchClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Entrypoint, Garden, User
+from src.models._associations import gardens_entrypoints
 
 
 def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
@@ -48,6 +51,17 @@ async def is_doi_registered(doi: str) -> bool:
         return True
     else:
         return False
+
+
+async def get_garden_for_entrypoint(
+    entrypoint: Entrypoint, db: AsyncSession
+) -> Garden | None:
+    garden_entry = await db.execute(
+        select(Garden)
+        .join(gardens_entrypoints, Garden.id == gardens_entrypoints.c.garden_id)
+        .where(gardens_entrypoints.c.entrypoint_id == entrypoint.id)
+    )
+    return garden_entry.scalar_one_or_none()
 
 
 def deprecated(
