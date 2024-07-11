@@ -13,7 +13,7 @@ router = APIRouter(prefix="/garden-search-record")
 @deprecated(
     name="/garden-search-record",
     message="Use /gardens instead or update garden-ai package to latest version.",
-    doc_url="https://api-dev.thegardens.ai/docs#/default/add_garden_gardens_post",
+    doc_url="https://api.thegardens.ai/docs#/default/add_garden_gardens_post",
 )
 async def publish_search_record(
     garden_meta: PublishSearchRecordRequest,
@@ -37,7 +37,7 @@ async def publish_search_record(
 @deprecated(
     name="/delete-search-record",
     message="Use /gardens instead or update garden-ai package to latest version.",
-    doc_url="https://api-dev.thegardens.ai/docs#/default/delete_garden_gardens__doi__delete",
+    doc_url="https://api.thegardens.ai/docs#/default/delete_garden_gardens__doi__delete",
 )
 async def delete_search_record(
     body: DeleteSearchRecordRequest,

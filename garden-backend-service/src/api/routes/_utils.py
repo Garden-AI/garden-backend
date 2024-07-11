@@ -53,7 +53,7 @@ async def is_doi_registered(doi: str) -> bool:
 def deprecated(
     name="Endpoint",
     message: str = None,
-    doc_url: str = "https://api-dev.thegardens.ai/docs",
+    doc_url: str = "https://api.thegardens.ai/docs",
 ):
     """Mark an endpoint as deprecated.
 
