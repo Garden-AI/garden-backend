@@ -22,6 +22,7 @@ class User(Base):
     skills: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
     domains: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
     affiliations: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
+    profile_pic_id: Mapped[int | None]
 
     saved_gardens: Mapped[list["Garden"]] = relationship(
         "Garden",

@@ -14,6 +14,7 @@ class UserBase(BaseSchema):
     affiliations: UniqueList[str] | None = None
     skills: UniqueList[str] | None = None
     domains: UniqueList[str] | None = None
+    profile_pic_id: int | None = None
 
 
 class UserMetadataResponse(UserBase):
