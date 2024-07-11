@@ -49,6 +49,8 @@ class AuthenticationState:
             else None
         )
         self.scopes = set(self.introspect_data["scope"].split(" "))
+        self.email = self.introspect_data["email"]
+        self.name = self.introspect_data["name"]
 
     @property
     def is_authenticated(self):

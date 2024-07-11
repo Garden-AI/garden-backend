@@ -9,6 +9,7 @@ from src.api.routes import (
     greet,
     hello_database,
     notebook,
+    users,
 )
 
 app = FastAPI()
@@ -28,6 +29,7 @@ app.include_router(garden_search_record.router)
 app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
+app.include_router(users.router)
 
 
 @app.get("/")
