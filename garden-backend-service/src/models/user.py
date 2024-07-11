@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import String
@@ -14,22 +14,17 @@ if TYPE_CHECKING:
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[Optional[str]]
+    username: Mapped[str | None]
     identity_id: Mapped[UUID] = mapped_column(unique=True)
-    name: Mapped[Optional[str]]
-    email: Mapped[Optional[str]] = mapped_column(unique=True)
-    phone_number: Mapped[Optional[str]]
-    skills: Mapped[Optional[list[str]]] = mapped_column(postgresql.ARRAY(String))
-    domains: Mapped[Optional[list[str]]] = mapped_column(postgresql.ARRAY(String))
-    affiliations: Mapped[Optional[list[str]]] = mapped_column(postgresql.ARRAY(String))
+    name: Mapped[str | None]
+    email: Mapped[str | None]
+    phone_number: Mapped[str | None]
+    skills: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
+    domains: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
+    affiliations: Mapped[list[str] | None] = mapped_column(postgresql.ARRAY(String))
 
     saved_gardens: Mapped[list["Garden"]] = relationship(
         "Garden",
         secondary=users_saved_gardens,
-        back_populates="users",
-        lazy="selectin",
+        lazy="select",
     )
-
-    @property
-    def saved_garden_dois(self):
-        return [garden.doi for garden in self.saved_gardens]
