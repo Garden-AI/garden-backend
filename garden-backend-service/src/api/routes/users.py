@@ -6,15 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.user import UserMetadataResponse, UserUpdateRequest
-from src.models import User
+from src.models import Garden, User
 from src.models._associations import users_saved_gardens
 
 router = APIRouter(prefix="/users")
 
 
 async def _get_saved_garden_dois(user: User, db: AsyncSession) -> list[str]:
-    from src.models import Garden  # import here to avoid circular imports
-
     result = await db.execute(
         select(Garden.doi)
         .join(users_saved_gardens, Garden.id == users_saved_gardens.c.garden_id)
