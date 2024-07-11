@@ -46,7 +46,7 @@ def upgrade() -> None:
     op.add_column(
         "users", sa.Column("affiliations", postgresql.ARRAY(sa.String()), nullable=True)
     )
-    op.add_column("users", sa.Column("profile_pic_id", sa.Integer()), nullable=True)
+    op.add_column("users", sa.Column("profile_pic_id", sa.Integer(), nullable=True))
     op.alter_column("users", "username", existing_type=sa.VARCHAR(), nullable=True)
     # ### end Alembic commands ###
 
