@@ -1,15 +1,16 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import EmailStr
+from pydantic_extra_types.phone_numbers import PhoneNumber
 
-from .base import UniqueList
+from .base import BaseSchema, UniqueList
 
 
-class UserBase(BaseModel):
+class UserBase(BaseSchema):
     username: str | None = None
     name: str | None = None
     email: EmailStr | None = None
-    phone_number: str | None = None
+    phone_number: PhoneNumber | None = None
     affiliations: UniqueList[str] | None = None
     skills: UniqueList[str] | None = None
     domains: UniqueList[str] | None = None

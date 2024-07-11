@@ -26,20 +26,23 @@ async def test_update_user_info(
         "username": "new_username",
         "name": "New Name",
         "email": "new.email@example.com",
-        "phone_number": "1234567890",
+        "phone_number": "+1-234-567-8900",
         "skills": ["Python", "FastAPI"],
         "domains": ["Web Development"],
         "affiliations": ["New Affiliation"],
     }
 
     response = await client.patch("/users", json=update_payload)
+    if response.status_code != 200:
+        print(response.json())
+
     assert response.status_code == 200
 
     updated_user_data = response.json()
     assert updated_user_data["username"] == "new_username"
     assert updated_user_data["name"] == "New Name"
     assert updated_user_data["email"] == "new.email@example.com"
-    assert updated_user_data["phone_number"] == "1234567890"
+    assert updated_user_data["phone_number"] == "tel:+1-234-567-8900"
     assert updated_user_data["skills"] == ["Python", "FastAPI"]
     assert updated_user_data["domains"] == ["Web Development"]
     assert updated_user_data["affiliations"] == ["New Affiliation"]
