@@ -11,6 +11,6 @@ gardens_entrypoints = Table(
 users_saved_gardens = Table(
     "users_saved_gardens",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id")),
-    Column("garden_id", Integer, ForeignKey("gardens.id")),
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("garden_id", Integer, ForeignKey("gardens.id"), primary_key=True),
 )
