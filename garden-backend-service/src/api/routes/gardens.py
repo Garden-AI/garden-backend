@@ -6,12 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import (
-    assert_deletable_by_user,
+from src.api.routes._tasks import (
     create_or_update_on_search_index,
     delete_from_search_index,
-    is_doi_registered,
 )
+from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
