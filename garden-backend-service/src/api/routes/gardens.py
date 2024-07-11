@@ -27,7 +27,12 @@ async def add_garden(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
 ):
-    return await _create_new_garden(garden, db, user, background_tasks, settings)
+    new_garden = await _create_new_garden(garden, db, user)
+    if settings.SYNC_SEARCH_INDEX:
+        background_tasks.add_task(
+            create_or_update_on_search_index, new_garden, settings
+        )
+    return new_garden
 
 
 @router.get(
@@ -62,7 +67,8 @@ async def delete_garden(
         await db.delete(garden)
         try:
             await db.commit()
-            background_tasks.add_task(delete_from_search_index, garden, settings)
+            if settings.SYNC_SEARCH_INDEX:
+                background_tasks.add_task(delete_from_search_index, garden, settings)
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -85,9 +91,12 @@ async def create_or_replace_garden(
 ):
     existing_garden: Garden | None = await Garden.get(db, doi=doi)
     if existing_garden is None:
-        return await _create_new_garden(
-            garden_data, db, user, background_tasks, settings
-        )
+        new_garden = await _create_new_garden(garden_data, db, user)
+        if settings.SYNC_SEARCH_INDEX:
+            background_tasks.add_task(
+                create_or_update_on_search_index, new_garden, settings
+            )
+        return new_garden
 
     # check draft status with the real world (doi.org)
     if garden_data.doi_is_draft is None:
@@ -113,9 +122,10 @@ async def create_or_replace_garden(
         setattr(existing_garden, key, value)
     try:
         await db.commit()
-        background_tasks.add_task(
-            create_or_update_on_search_index, existing_garden, settings
-        )
+        if settings.SYNC_SEARCH_INDEX:
+            background_tasks.add_task(
+                create_or_update_on_search_index, existing_garden, settings
+            )
     except IntegrityError as e:
         logger.error(str(e))
         await db.rollback()
@@ -145,8 +155,6 @@ async def _create_new_garden(
     garden_data: GardenCreateRequest,
     db: AsyncSession,
     user: User,
-    background_tasks: BackgroundTasks,
-    settings: Settings,
 ):
     # if not specified, check draft status with the real world (doi.org)
     if garden_data.doi_is_draft is None:
@@ -179,9 +187,6 @@ async def _create_new_garden(
     db.add(new_garden)
     try:
         await db.commit()
-        background_tasks.add_task(
-            create_or_update_on_search_index, new_garden, settings
-        )
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
