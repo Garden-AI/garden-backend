@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._tasks import create_or_update_on_search_index
-from src.api.routes._utils import assert_deletable_by_user, get_garden_for_entrypoint
+from src.api.routes._utils import assert_deletable_by_user, get_gardens_for_entrypoint
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
@@ -61,16 +61,18 @@ async def delete_entrypoint(
 
     if entrypoint is not None:
         assert_deletable_by_user(entrypoint, user)
-        garden: Garden | None = await get_garden_for_entrypoint(entrypoint, db)
+        gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
         await db.delete(entrypoint)
         try:
             await db.commit()
-            db.refresh(garden)
-            if garden and settings.SYNC_SEARCH_INDEX:
-                # just update the garden, we don't want to delete a garden just because we deleted an entrypoint
-                background_tasks.add_task(
-                    create_or_update_on_search_index, garden, settings
-                )
+            if gardens:
+                for garden in gardens:
+                    db.refresh(garden)
+                    if settings.SYNC_SEARCH_INDEX:
+                        # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
+                        background_tasks.add_task(
+                            create_or_update_on_search_index, garden, settings
+                        )
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -114,11 +116,14 @@ async def create_or_replace_entrypoint(
             setattr(existing_entrypoint, key, value)
 
         await db.commit()
-        garden: Garden | None = await get_garden_for_entrypoint(existing_entrypoint, db)
-        if garden and settings.SYNC_SEARCH_INDEX:
-            background_tasks.add_task(
-                create_or_update_on_search_index, garden, settings
-            )
+        gardens: list[Garden] | None = await get_gardens_for_entrypoint(
+            existing_entrypoint, db
+        )
+        if gardens and settings.SYNC_SEARCH_INDEX:
+            for garden in gardens:
+                background_tasks.add_task(
+                    create_or_update_on_search_index, garden, settings
+                )
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(

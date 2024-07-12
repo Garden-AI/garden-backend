@@ -53,15 +53,15 @@ async def is_doi_registered(doi: str) -> bool:
         return False
 
 
-async def get_garden_for_entrypoint(
+async def get_gardens_for_entrypoint(
     entrypoint: Entrypoint, db: AsyncSession
-) -> Garden | None:
-    garden_entry = await db.execute(
+) -> list[Garden] | None:
+    garden_entrys = await db.execute(
         select(Garden)
         .join(gardens_entrypoints, Garden.id == gardens_entrypoints.c.garden_id)
         .where(gardens_entrypoints.c.entrypoint_id == entrypoint.id)
     )
-    return garden_entry.scalar_one_or_none()
+    return garden_entrys.all()
 
 
 def deprecated(
