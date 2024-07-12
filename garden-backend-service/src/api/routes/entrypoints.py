@@ -70,6 +70,9 @@ async def delete_entrypoint(
                     db.refresh(garden)
                     if settings.SYNC_SEARCH_INDEX:
                         # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
+                        logger.info(
+                            msg=f"Deleting garden {garden.doi} from search index"
+                        )
                         background_tasks.add_task(
                             create_or_update_on_search_index, garden, settings
                         )
@@ -121,6 +124,7 @@ async def create_or_replace_entrypoint(
         )
         if gardens and settings.SYNC_SEARCH_INDEX:
             for garden in gardens:
+                logger.info(msg=f"Sending garden {garden.doi} to search index")
                 background_tasks.add_task(
                     create_or_update_on_search_index, garden, settings
                 )

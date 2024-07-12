@@ -6,6 +6,9 @@ from fastapi import HTTPException, exceptions, status
 from globus_sdk import SearchClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.api.schemas.base import UniqueList
+from src.api.schemas.search import PublishSearchRecordRequest
+from src.api.schemas.search._garden_sdk_schema import _RegisteredEntrypoint
 from src.models import Entrypoint, Garden, User
 from src.models._associations import gardens_entrypoints
 
@@ -110,3 +113,26 @@ async def poll_globus_search_task(
         raise exceptions.HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, detail=task_result.text
         )
+
+
+def _garden_sqlalchemy_to_pydantic(garden: Garden):
+    entrypoints = [
+        _RegisteredEntrypoint(**entrypoint.__dict__)
+        for entrypoint in garden.entrypoints
+    ]
+
+    # Create and return the Pydantic model instance
+    return PublishSearchRecordRequest(
+        title=garden.title,
+        authors=garden.authors,
+        contributors=UniqueList(garden.contributors),
+        doi=garden.doi,
+        description=garden.description,
+        publisher=garden.publisher,
+        year=garden.year,
+        language=garden.language,
+        tags=UniqueList(garden.tags),
+        version=garden.version,
+        entrypoints=entrypoints,
+        entrypoint_aliases=garden.entrypoint_aliases,
+    )

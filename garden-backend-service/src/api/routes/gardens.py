@@ -29,6 +29,7 @@ async def add_garden(
 ):
     new_garden = await _create_new_garden(garden, db, user)
     if settings.SYNC_SEARCH_INDEX:
+        logger.info(msg=f"Sending garden {new_garden.doi} to search index")
         background_tasks.add_task(
             create_or_update_on_search_index, new_garden, settings
         )
@@ -68,6 +69,7 @@ async def delete_garden(
         try:
             await db.commit()
             if settings.SYNC_SEARCH_INDEX:
+                logger.info(msg=f"Deleting garden {garden.doi} from search index")
                 background_tasks.add_task(delete_from_search_index, garden, settings)
         except IntegrityError as e:
             await db.rollback()
@@ -93,6 +95,7 @@ async def create_or_replace_garden(
     if existing_garden is None:
         new_garden = await _create_new_garden(garden_data, db, user)
         if settings.SYNC_SEARCH_INDEX:
+            logger.log(msg=f"Sending garden {new_garden.doi} to search index")
             background_tasks.add_task(
                 create_or_update_on_search_index, new_garden, settings
             )
@@ -123,6 +126,7 @@ async def create_or_replace_garden(
     try:
         await db.commit()
         if settings.SYNC_SEARCH_INDEX:
+            logger.info(msg=f"Updating garden {existing_garden.doi} on search index")
             background_tasks.add_task(
                 create_or_update_on_search_index, existing_garden, settings
             )

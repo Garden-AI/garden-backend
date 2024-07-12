@@ -1,4 +1,4 @@
-from typing import Annotated, List, TypeVar
+from typing import Annotated, TypeVar
 
 from pydantic import (
     AfterValidator,
@@ -43,7 +43,7 @@ def _validate_unique_list(v: list[T]) -> list[T]:
 
 
 UniqueList = Annotated[
-    List[T],
+    list[T],
     AfterValidator(_validate_unique_list),
     Field(json_schema_extra={"uniqueItems": True}, default_factory=list),
 ]
