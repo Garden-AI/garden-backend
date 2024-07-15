@@ -51,6 +51,9 @@ async def search_gardens(
      - contributors
      - tags
      - year
+
+    Raises:
+        HTTPException: 404 if no gardens are found
     """
     stmt = select(Garden)
 
@@ -78,7 +81,33 @@ async def search_gardens(
     result = await db.execute(stmt)
     gardens = result.scalars().all()
 
-    return gardens
+    if len(gardens) > 0:
+        return gardens
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No gardens found."
+        )
+
+
+@router.get("", response_model=list[GardenMetadataResponse])
+async def get_users_gardens(
+    authed_user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[GardenMetadataResponse]:
+    """Return all gardens owned by the current authed user.
+
+    Raises:
+       HTTPException: 404 if no gardens are found
+    """
+    stmt = select(Garden).where(Garden.user.identity_id == authed_user.identity_id)
+    gardens = await db.scalars(stmt).all()
+    if len(gardens) > 0:
+        return gardens
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No gardens found for current user.",
+        )
 
 
 @router.get(

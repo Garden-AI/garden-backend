@@ -370,6 +370,39 @@ async def test_search_gardens_no_results(
     override_authenticated_dependency,
 ):
     response = await client.get("/gardens?user_id=9999")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_users_gardens(
+    client: AsyncClient,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+
+    response = await client.get("/gardens")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 0
+    assert len(data) == 1
+    assert data[0]["title"] == create_garden_two_entrypoints_json["title"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_users_gardens_no_results(
+    client: AsyncClient,
+    mock_db_session,
+    override_authenticated_dependency,
+):
+    response = await client.get("/gardens")
+    assert response.status_code == 404
