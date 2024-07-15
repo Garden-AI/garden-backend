@@ -64,4 +64,5 @@ class EntrypointCreateRequest(EntrypointMetadata):
 
 
 class EntrypointMetadataResponse(EntrypointMetadata):
+    owner_identity_id: UUID
     id: int
