@@ -1,9 +1,10 @@
 from src.api.dependencies.search import get_globus_search_client
+from src.api.schemas.search import PublishSearchRecordRequest
 from src.auth.globus_auth import get_auth_client
 from src.config import Settings
 from src.models import Garden
 
-from ._utils import _garden_sqlalchemy_to_pydantic, poll_globus_search_task
+from ._utils import poll_globus_search_task
 
 
 async def delete_from_search_index(garden: Garden, settings: Settings):
@@ -18,11 +19,11 @@ async def delete_from_search_index(garden: Garden, settings: Settings):
 
 async def create_or_update_on_search_index(garden: Garden, settings: Settings):
     client = get_globus_search_client(get_auth_client())
-    garden_pub = _garden_sqlalchemy_to_pydantic(garden)
+    garden_pub = PublishSearchRecordRequest.model_validate(garden, from_attributes=True)
     garden_meta = {
         "subject": garden_pub.doi,
         "visible_to": ["public"],
-        "content": garden_pub.dict(),
+        "content": garden_pub.model_dump(mode="json"),
     }
     create_result = client.create_entry(
         settings.GLOBUS_SEARCH_INDEX_ID,
