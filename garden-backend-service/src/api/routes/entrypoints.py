@@ -1,16 +1,18 @@
 from logging import getLogger
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user
+from src.api.routes._tasks import create_or_update_on_search_index
+from src.api.routes._utils import assert_deletable_by_user, get_gardens_for_entrypoint
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
 )
-from src.models import Entrypoint, User
+from src.config import Settings, get_settings
+from src.models import Entrypoint, Garden, User
 
 logger = getLogger(__name__)
 
@@ -50,16 +52,28 @@ async def get_entrypoint_by_doi(
 @router.delete("/{doi:path}", status_code=status.HTTP_200_OK)
 async def delete_entrypoint(
     doi: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
 ):
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
     if entrypoint is not None:
         assert_deletable_by_user(entrypoint, user)
+        gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
         await db.delete(entrypoint)
         try:
             await db.commit()
+            if gardens:
+                for garden in gardens:
+                    db.refresh(garden)
+                    if settings.SYNC_SEARCH_INDEX:
+                        # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
+                        logger.info(msg=f"Updating garden {garden.doi} on search index")
+                        background_tasks.add_task(
+                            create_or_update_on_search_index, garden, settings
+                        )
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -76,9 +90,11 @@ async def delete_entrypoint(
 @router.put("/{doi:path}", response_model=EntrypointMetadataResponse)
 async def create_or_replace_entrypoint(
     doi: str,
+    background_tasks: BackgroundTasks,
     entrypoint_data: EntrypointCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
 ):
     existing_entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
@@ -101,6 +117,15 @@ async def create_or_replace_entrypoint(
             setattr(existing_entrypoint, key, value)
 
         await db.commit()
+        gardens: list[Garden] | None = await get_gardens_for_entrypoint(
+            existing_entrypoint, db
+        )
+        if gardens and settings.SYNC_SEARCH_INDEX:
+            for garden in gardens:
+                logger.info(msg=f"Sending garden {garden.doi} to search index")
+                background_tasks.add_task(
+                    create_or_update_on_search_index, garden, settings
+                )
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(

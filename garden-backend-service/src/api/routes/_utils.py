@@ -1,6 +1,13 @@
+import asyncio
+import functools
+
 import httpx
-from fastapi import HTTPException, status
+from fastapi import HTTPException, exceptions, status
+from globus_sdk import SearchClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import Entrypoint, Garden, User
+from src.models._associations import gardens_entrypoints
 
 
 def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
@@ -44,3 +51,62 @@ async def is_doi_registered(doi: str) -> bool:
         return True
     else:
         return False
+
+
+async def get_gardens_for_entrypoint(
+    entrypoint: Entrypoint, db: AsyncSession
+) -> list[Garden] | None:
+    garden_entrys = await db.scalars(
+        select(Garden)
+        .join(gardens_entrypoints, Garden.id == gardens_entrypoints.c.garden_id)
+        .where(gardens_entrypoints.c.entrypoint_id == entrypoint.id)
+    )
+    return garden_entrys.all()
+
+
+def deprecated(
+    name="Endpoint",
+    message: str = None,
+    doc_url: str = "https://api.thegardens.ai/docs",
+):
+    """Mark an endpoint as deprecated.
+
+    Causes the endpoint to return a 410 response with optional message and docs link.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail=f"{name} is deprecated. {message if message is not None else ''} See: {doc_url}",
+            )
+
+        return wrapper
+
+    return decorator
+
+
+async def poll_globus_search_task(
+    task_id, search_client: SearchClient, max_intervals=25
+):
+    task_result = search_client.get_task(task_id)
+    while task_result["state"] not in {"FAILED", "SUCCESS"}:
+        if max_intervals == 0:
+            raise exceptions.HTTPException(
+                status.HTTP_408_REQUEST_TIMEOUT,
+                detail=(
+                    "Server timed out waiting for globus search task to finish. "
+                    f"You can manually check its progress with the task id: {task_id}"
+                ),
+            )
+        await asyncio.sleep(0.2)
+        max_intervals -= 1
+        task_result = search_client.get_task(task_id)
+
+    if task_result["state"] == "SUCCESS":
+        return {}
+    else:
+        raise exceptions.HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, detail=task_result.text
+        )

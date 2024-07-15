@@ -152,7 +152,6 @@ async def test_put_updated_garden(
     )
     assert response.status_code == 200
     assert len(response.json()["entrypoints"]) == 2
-
     updated_payload = deepcopy(create_garden_two_entrypoints_json)
     updated_payload["title"] = "Updated Title"
     # only one of the DOIs this time

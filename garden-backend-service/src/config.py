@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     NOTEBOOKS_S3_BUCKET: str
 
     GLOBUS_SEARCH_INDEX_ID: str
+    SYNC_SEARCH_INDEX: bool
 
     DB_USERNAME: str
     DB_PASSWORD: str
