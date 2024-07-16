@@ -1,5 +1,4 @@
 from logging import getLogger
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -41,17 +40,17 @@ async def add_garden(
 
 @router.get("", response_model=list[GardenMetadataResponse])
 async def search_gardens(
-    uuid: Optional[UUID] = Query(None, description="Filter by user UUID"),
-    authors: Optional[str] = Query(None, description="Comma-separated list of authors"),
-    contributors: Optional[str] = Query(
+    uuid: UUID | None = Query(None, description="Filter by user UUID"),
+    authors: str | None = Query(None, description="Comma-separated list of authors"),
+    contributors: str | None = Query(
         None, description="Comma-separated list of contributors"
     ),
-    tags: Optional[str] = Query(None, description="Comma-separated list of tags"),
-    year: Optional[str] = Query(None, description="Filter by year"),
-    limit: int = Query(
-        20, description="Limit number of gardens returned by the query."
-    ),
-    publisher: Optional[str] = Query(None, description="Filter by publisher"),
+    tags: str | None = Query(None, description="Comma-separated list of tags"),
+    year: str | None = Query(None, description="Filter by year"),
+    publisher: str | None = Query(None, description="Filter by publisher"),
+    language: str | None = Query(None, description="Filter by language"),
+    version: str | None = Query(None, description="Filter by version"),
+    limit: int = Query(20, description="Limit number of gardens returned by the query"),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -67,6 +66,8 @@ async def search_gardens(
      - publisher
      - tags
      - year
+     - language
+     - version
     """
     stmt = select(Garden)
 
@@ -90,6 +91,12 @@ async def search_gardens(
 
     if year is not None:
         stmt = stmt.where(Garden.year == year)
+
+    if language is not None:
+        stmt = stmt.where(Garden.language == language)
+
+    if publisher is not None:
+        stmt = stmt.where(Garden.publisher == publisher)
 
     if limit > 0:
         stmt = stmt.limit(limit)
