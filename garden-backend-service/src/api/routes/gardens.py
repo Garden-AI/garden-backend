@@ -66,7 +66,7 @@ async def search_gardens(
         stmt = stmt.where(Garden.contributors.overlap(array(contributors)))
 
     if tags is not None:
-        stmt = stmt.where(Garden.tags.overlap(array(contributors)))
+        stmt = stmt.where(Garden.tags.overlap(array(tags)))
 
     if year is not None:
         stmt = stmt.where(Garden.year == year)
