@@ -178,24 +178,20 @@ async def test_put_updated_garden(
 async def test_search_gardens_by_doi(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
-        "/gardens", params={"doi": [create_garden_two_entrypoints_json["doi"]]}
+        "/gardens",
+        params={"doi": [mock_garden_create_request_no_entrypoints_json["doi"]]},
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
-    assert response_data[0]["doi"] == create_garden_two_entrypoints_json["doi"]
+    assert (
+        response_data[0]["doi"] == mock_garden_create_request_no_entrypoints_json["doi"]
+    )
 
 
 @pytest.mark.asyncio
@@ -361,3 +357,53 @@ async def test_search_multiple_gardens_by_year(
     response_data = response.json()
     assert len(response_data) == 5
     assert all(garden["year"] == "2023" for garden in response_data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_combined_filters(
+    client,
+    mock_db_session,
+    mock_garden_create_request_no_entrypoints_json,
+    override_authenticated_dependency,
+):
+    for i in range(3):
+        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
+        mock_garden_create_request_no_entrypoints_json["year"] = "2022"
+        mock_garden_create_request_no_entrypoints_json["authors"] = ["Author A"]
+        await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    response = await client.get(
+        "/gardens", params={"year": "2022", "authors": ["Author A"]}
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 3
+    assert all(garden["year"] == "2022" for garden in response_data)
+    assert all("Author A" in garden["authors"] for garden in response_data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_no_results(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+):
+    response = await client.get("/gardens", params={"doi": ["nonexistent_doi"]})
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_empty_database(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+):
+    response = await client.get("/gardens")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 0
