@@ -1,11 +1,12 @@
 from logging import getLogger
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import select, text
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.expression import or_
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._tasks import (
@@ -39,106 +40,39 @@ async def add_garden(
 
 
 @router.get("", response_model=list[GardenMetadataResponse])
-async def get_users_gardens(
-    authed_user: User = Depends(authed_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> list[GardenMetadataResponse]:
-    """Return all gardens owned by the current authed user."""
-    stmt = (
-        select(Garden)
-        .join(Garden.user)
-        .where(User.identity_id == authed_user.identity_id)
-    )
-    result = await db.scalars(stmt)
-    gardens = result.all()
-    return gardens
-
-
-@router.get("/search", response_model=list[GardenMetadataResponse])
 async def search_gardens(
-    uuid: UUID | None = Query(None, description="Filter by user UUID"),
-    authors: str | None = Query(None, description="Comma-separated list of authors"),
-    contributors: str | None = Query(
-        None, description="Comma-separated list of contributors"
-    ),
-    tags: str | None = Query(None, description="Comma-separated list of tags"),
-    year: str | None = Query(None, description="Filter by year"),
-    publisher: str | None = Query(None, description="Filter by publisher"),
-    language: str | None = Query(None, description="Filter by language"),
-    version: str | None = Query(None, description="Filter by version"),
-    limit: int = Query(20, description="Limit number of gardens returned by the query"),
+    doi: Annotated[list[str] | None, Query()] = None,
+    owner_uuid: Annotated[UUID | None, Query()] = None,
+    authors: Annotated[list[str] | None, Query()] = None,
+    contributors: Annotated[list[str] | None, Query()] = None,
+    tags: Annotated[list[str] | None, Query()] = None,
+    year: Annotated[str | None, Query()] = None,
+    limit: Annotated[int | None, Query(max_value=100)] = 50,
     db: AsyncSession = Depends(get_db_session),
 ):
-    """
-    Return a list of gardens.
-
-    Without query parameters, returns the default limit number of gardens.
-    Add limit=0 to get all gardens.
-
-    Query params for filtering by:
-     - user_id
-     - authors
-     - contributors
-     - publisher
-     - tags
-     - year
-     - language
-     - version
-    """
+    """Fetch multiple gardens according to query parameters"""
     stmt = select(Garden)
 
-    if uuid is not None:
-        stmt = stmt.join(Garden.user).where(User.identity_id == uuid)
+    if doi is not None:
+        stmt = stmt.where(Garden.doi.in_(doi))
 
-    if authors:
-        authors_list = authors.split(",")
-        author_conditions = [
-            text(
-                "EXISTS (SELECT 1 FROM unnest(authors) AS a WHERE lower(a) LIKE :author)"
-            ).bindparams(author=f"%{author.lower()}%")
-            for author in authors_list
-        ]
-        stmt = stmt.where(or_(*author_conditions))
+    if owner_uuid is not None:
+        stmt = stmt.join(Garden.user).where(User.identity_id.in_(owner_uuid))
 
-    if contributors:
-        contributors_list = contributors.split(",")
-        contributor_conditions = [
-            text(
-                "EXISTS (SELECT 1 FROM unnest(contributors) AS c WHERE lower(c) LIKE :contributor)"
-            ).bindparams(contributor=f"%{contributor.lower()}%")
-            for contributor in contributors_list
-        ]
-        stmt = stmt.where(or_(*contributor_conditions))
+    if authors is not None:
+        stmt = stmt.where(Garden.authors.overlap(array(authors)))
 
-    if tags:
-        tags_list = tags.split(",")
-        tag_conditions = [
-            text(
-                "EXISTS (SELECT 1 FROM unnest(tags) AS t WHERE lower(t) LIKE :tag)"
-            ).bindparams(tag=f"%{tag.lower()}%")
-            for tag in tags_list
-        ]
-        stmt = stmt.where(or_(*tag_conditions))
+    if contributors is not None:
+        stmt = stmt.where(Garden.contributors.overlap(array(contributors)))
 
-    if publisher:
-        stmt = stmt.where(Garden.publisher.ilike(f"%{publisher}%"))
+    if tags is not None:
+        stmt = stmt.where(Garden.tags.overlap(array(contributors)))
 
     if year is not None:
         stmt = stmt.where(Garden.year == year)
 
-    if language is not None:
-        stmt = stmt.where(Garden.language.ilike(f"%{language}%"))
-
-    if version is not None:
-        stmt = stmt.where(Garden.version == version)
-
-    if limit > 0:
-        stmt = stmt.limit(limit)
-
-    result = await db.scalars(stmt)
-    gardens = result.all()
-
-    return gardens
+    result = await db.scalars(stmt.limit(limit))
+    return result.all()
 
 
 @router.get(

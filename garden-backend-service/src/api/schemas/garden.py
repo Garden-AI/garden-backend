@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import AliasPath, Field
 
 from .base import BaseSchema, UniqueList
 from .entrypoint import EntrypointMetadataResponse
@@ -28,5 +28,6 @@ class GardenCreateRequest(GardenMetadata):
 
 
 class GardenMetadataResponse(GardenMetadata):
+    owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)

@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 import pytest
-from httpx import AsyncClient
 
 
 async def post_garden(client, garden_data):
@@ -176,13 +175,13 @@ async def test_put_updated_garden(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_search_gardens_no_filters(
-    client: AsyncClient,
+async def test_search_gardens_by_doi(
+    client,
     mock_db_session,
-    override_authenticated_dependency,
     create_garden_two_entrypoints_json,
     create_shared_entrypoint_json,
     create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
 ):
     await post_entrypoints(
         client,
@@ -190,199 +189,25 @@ async def test_search_gardens_no_filters(
         create_entrypoint_with_related_metadata_json,
     )
     await post_garden(client, create_garden_two_entrypoints_json)
-
-    response = await client.get("/gardens/search")
+    response = await client.get(
+        "/gardens", params={"doi": [create_garden_two_entrypoints_json["doi"]]}
+    )
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == create_garden_two_entrypoints_json["title"]
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert response_data[0]["doi"] == create_garden_two_entrypoints_json["doi"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_search_gardens_filter_by_user_id(
-    client: AsyncClient,
+async def test_search_gardens_by_owner_uuid(
+    client,
     mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
     mock_auth_state,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
-):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-
-    garden1 = deepcopy(create_garden_two_entrypoints_json)
-    garden1["doi"] = "10.1234/doi1"
-
-    garden2 = deepcopy(create_garden_two_entrypoints_json)
-    garden2["doi"] = "10.1234/doi2"
-
-    await post_garden(client, garden1)
-    await post_garden(client, garden2)
-
-    response = await client.get(f"/gardens/search?uuid={mock_auth_state.identity_id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
-    assert data[0]["title"] == garden1["title"]
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_search_gardens_filter_by_authors(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
-):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-
-    garden1 = deepcopy(create_garden_two_entrypoints_json)
-    garden1["authors"] = ["Author 1", "Author 2"]
-    garden1["doi"] = "10.1234/doi1"
-
-    garden2 = deepcopy(create_garden_two_entrypoints_json)
-    garden2["authors"] = ["Author 3"]
-    garden2["doi"] = "10.1234/doi2"
-
-    await post_garden(client, garden1)
-    await post_garden(client, garden2)
-
-    response = await client.get("/gardens/search?authors=Author 1,Author 2")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == garden1["title"]
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_search_gardens_filter_by_tags(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
-):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-
-    garden1 = deepcopy(create_garden_two_entrypoints_json)
-    garden1["tags"] = ["Tag 1", "Tag 2"]
-    garden1["doi"] = "10.1234/doi1"
-
-    garden2 = deepcopy(create_garden_two_entrypoints_json)
-    garden2["tags"] = ["Tag 3"]
-    garden2["doi"] = "10.1234/doi2"
-
-    await post_garden(client, garden1)
-    await post_garden(client, garden2)
-
-    response = await client.get("/gardens/search?tags=Tag 1,Tag 2")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == garden1["title"]
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_search_gardens_filter_by_year(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
-):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-
-    garden1 = deepcopy(create_garden_two_entrypoints_json)
-    garden1["year"] = "2023"
-    garden1["doi"] = "10.1234/doi1"
-
-    garden2 = deepcopy(create_garden_two_entrypoints_json)
-    garden2["year"] = "2022"
-    garden2["doi"] = "10.1234/doi2"
-
-    await post_garden(client, garden1)
-    await post_garden(client, garden2)
-
-    response = await client.get("/gardens/search?year=2023")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == garden1["title"]
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_search_gardens_limit(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
-):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-
-    gardens = [deepcopy(create_garden_two_entrypoints_json) for i in range(5)]
-    for i, garden in enumerate(gardens):
-        garden["title"] = f"Garden {i}"
-        garden["doi"] = f"10.1234/doi{i}"
-        await post_garden(client, garden)
-
-    response = await client.get("/gardens/search?limit=2")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_search_gardens_no_results(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-):
-    response = await client.get("/gardens/search?user_id=9999")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 0
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_get_users_gardens(
-    client: AsyncClient,
-    mock_db_session,
-    override_authenticated_dependency,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
 ):
     await post_entrypoints(
         client,
@@ -390,22 +215,140 @@ async def test_get_users_gardens(
         create_entrypoint_with_related_metadata_json,
     )
     await post_garden(client, create_garden_two_entrypoints_json)
-
-    response = await client.get("/gardens")
+    response = await client.get(
+        "/gardens",
+        params={"uuid": mock_auth_state.identity_id},
+    )
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["title"] == create_garden_two_entrypoints_json["title"]
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert response_data[0]["owner_identity_id"] == str(mock_auth_state.identity_id)
 
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_get_users_gardens_no_results(
-    client: AsyncClient,
+async def test_search_gardens_by_authors(
+    client,
     mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
     override_authenticated_dependency,
 ):
-    response = await client.get("/gardens")
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+    response = await client.get(
+        "/gardens", params={"authors": create_garden_two_entrypoints_json["authors"]}
+    )
     assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 0
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert set(response_data[0]["authors"]) == set(
+        create_garden_two_entrypoints_json["authors"]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_by_contributors(
+    client,
+    mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+    response = await client.get(
+        "/gardens",
+        params={"contributors": create_garden_two_entrypoints_json["contributors"]},
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert set(response_data[0]["contributors"]) == set(
+        create_garden_two_entrypoints_json["contributors"]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_by_tags(
+    client,
+    mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+    response = await client.get(
+        "/gardens", params={"tags": create_garden_two_entrypoints_json["tags"]}
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert set(response_data[0]["tags"]) == set(
+        create_garden_two_entrypoints_json["tags"]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_by_year(
+    client,
+    mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+    response = await client.get(
+        "/gardens", params={"year": create_garden_two_entrypoints_json["year"]}
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert response_data[0]["year"] == create_garden_two_entrypoints_json["year"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_with_limit(
+    client,
+    mock_db_session,
+    create_garden_two_entrypoints_json,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+    response = await client.get("/gardens", params={"limit": 1})
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
