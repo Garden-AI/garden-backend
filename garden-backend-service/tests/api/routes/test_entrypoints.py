@@ -156,7 +156,7 @@ async def test_get_entrypoints_with_dois(
     assert response.status_code == 200
 
     doi = mock_entrypoint_create_request_json["doi"]
-    response = await client.get(f"/entrypoints?dois={doi}")
+    response = await client.get(f"/entrypoints?doi={doi}")
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
@@ -240,7 +240,7 @@ async def test_get_entrypoints_with_owner(
     response = await client.post("/entrypoints", json=entrypoint_data_with_owner)
     assert response.status_code == 200
 
-    response = await client.get(f"/entrypoints?owner={owner_id}")
+    response = await client.get(f"/entrypoints?owner_uuid={owner_id}")
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1

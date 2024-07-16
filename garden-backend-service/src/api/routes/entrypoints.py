@@ -56,24 +56,24 @@ async def get_entrypoint_by_doi(
 async def get_entrypoints(
     db: AsyncSession = Depends(get_db_session),
     *,
-    dois: list[str] | None = Query(None),
+    doi: list[str] | None = Query(None),
     tags: list[str] | None = Query(None),
     authors: list[str] | None = Query(None),
-    owner: UUID | None = Query(None),
+    owner_uuid: UUID | None = Query(None),
     draft: bool | None = Query(None),
     year: str | None = Query(None),
     limit: int = Query(50),
 ) -> list[EntrypointMetadataResponse]:
     """Fetch multiple entrypoints according to query parameters."""
     stmt = select(Entrypoint)
-    if dois:
-        stmt = stmt.where(Entrypoint.doi.in_(dois))
+    if doi:
+        stmt = stmt.where(Entrypoint.doi.in_(doi))
     if tags:
         stmt = stmt.where(Entrypoint.tags.overlap(array(tags)))
     if authors:
         stmt = stmt.where(Entrypoint.authors.overlap(array(authors)))
-    if owner:
-        stmt = stmt.join(Entrypoint.owner).where(User.identity_id == owner)
+    if owner_uuid:
+        stmt = stmt.join(Entrypoint.owner).where(User.identity_id == owner_uuid)
     if draft is not None:
         stmt = stmt.where(Entrypoint.doi_is_draft == draft)
     if year:
