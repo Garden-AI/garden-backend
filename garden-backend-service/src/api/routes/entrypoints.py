@@ -73,7 +73,7 @@ async def get_entrypoints(
     if authors:
         stmt = stmt.where(Entrypoint.authors.overlap(array(authors)))
     if owner:
-        stmt = stmt.where(Entrypoint.owner.identity_id == owner)
+        stmt = stmt.join(Entrypoint.owner).where(User.identity_id == owner)
     if draft is not None:
         stmt = stmt.where(Entrypoint.doi_is_draft == draft)
     if year:
