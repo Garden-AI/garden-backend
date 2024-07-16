@@ -203,18 +203,11 @@ async def test_search_gardens_by_doi(
 async def test_search_gardens_by_owner_uuid(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
     mock_auth_state,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
         "/gardens",
         params={"uuid": mock_auth_state.identity_id},
@@ -230,25 +223,19 @@ async def test_search_gardens_by_owner_uuid(
 async def test_search_gardens_by_authors(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
-        "/gardens", params={"authors": create_garden_two_entrypoints_json["authors"]}
+        "/gardens",
+        params={"authors": mock_garden_create_request_no_entrypoints_json["authors"]},
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
     assert set(response_data[0]["authors"]) == set(
-        create_garden_two_entrypoints_json["authors"]
+        mock_garden_create_request_no_entrypoints_json["authors"]
     )
 
 
@@ -257,26 +244,23 @@ async def test_search_gardens_by_authors(
 async def test_search_gardens_by_contributors(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
         "/gardens",
-        params={"contributors": create_garden_two_entrypoints_json["contributors"]},
+        params={
+            "contributors": mock_garden_create_request_no_entrypoints_json[
+                "contributors"
+            ]
+        },
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
     assert set(response_data[0]["contributors"]) == set(
-        create_garden_two_entrypoints_json["contributors"]
+        mock_garden_create_request_no_entrypoints_json["contributors"]
     )
 
 
@@ -285,25 +269,19 @@ async def test_search_gardens_by_contributors(
 async def test_search_gardens_by_tags(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
-        "/gardens", params={"tags": create_garden_two_entrypoints_json["tags"]}
+        "/gardens",
+        params={"tags": mock_garden_create_request_no_entrypoints_json["tags"]},
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
     assert set(response_data[0]["tags"]) == set(
-        create_garden_two_entrypoints_json["tags"]
+        mock_garden_create_request_no_entrypoints_json["tags"]
     )
 
 
@@ -312,24 +290,21 @@ async def test_search_gardens_by_tags(
 async def test_search_gardens_by_year(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
-        "/gardens", params={"year": create_garden_two_entrypoints_json["year"]}
+        "/gardens",
+        params={"year": mock_garden_create_request_no_entrypoints_json["year"]},
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
-    assert response_data[0]["year"] == create_garden_two_entrypoints_json["year"]
+    assert (
+        response_data[0]["year"]
+        == mock_garden_create_request_no_entrypoints_json["year"]
+    )
 
 
 @pytest.mark.asyncio
@@ -337,18 +312,52 @@ async def test_search_gardens_by_year(
 async def test_search_gardens_with_limit(
     client,
     mock_db_session,
-    create_garden_two_entrypoints_json,
-    create_shared_entrypoint_json,
-    create_entrypoint_with_related_metadata_json,
+    mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
-    await post_entrypoints(
-        client,
-        create_shared_entrypoint_json,
-        create_entrypoint_with_related_metadata_json,
-    )
-    await post_garden(client, create_garden_two_entrypoints_json)
-    response = await client.get("/gardens", params={"limit": 1})
+    for i in range(10):
+        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
+        await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+    response = await client.get("/gardens", params={"limit": 5})
     assert response.status_code == 200
     response_data = response.json()
-    assert len(response_data) == 1
+    assert len(response_data) == 5
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_multiple_gardens_by_doi(
+    client,
+    mock_db_session,
+    mock_garden_create_request_no_entrypoints_json,
+    override_authenticated_dependency,
+):
+    doi_list = []
+    for i in range(5):
+        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
+        doi_list.append(mock_garden_create_request_no_entrypoints_json["doi"])
+        await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+    response = await client.get("/gardens", params={"doi": doi_list})
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 5
+    assert set([garden["doi"] for garden in response_data]) == set(doi_list)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_multiple_gardens_by_year(
+    client,
+    mock_db_session,
+    mock_garden_create_request_no_entrypoints_json,
+    override_authenticated_dependency,
+):
+    mock_garden_create_request_no_entrypoints_json["year"] = "2023"
+    for i in range(5):
+        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
+        await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+    response = await client.get("/gardens", params={"year": "2023"})
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 5
+    assert all(garden["year"] == "2023" for garden in response_data)
