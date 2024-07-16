@@ -2,8 +2,9 @@ from logging import getLogger
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
@@ -50,6 +51,7 @@ async def search_gardens(
     limit: int = Query(
         20, description="Limit number of gardens returned by the query."
     ),
+    publisher: Optional[str] = Query(None, description="Filter by publisher"),
     db: AsyncSession = Depends(get_db_session),
 ):
     """
@@ -62,11 +64,9 @@ async def search_gardens(
      - user_id
      - authors
      - contributors
+     - publisher
      - tags
      - year
-
-    Raises:
-        HTTPException: 404 if no gardens are found
     """
     stmt = select(Garden)
 
@@ -75,15 +75,18 @@ async def search_gardens(
 
     if authors:
         authors_list = authors.split(",")
-        stmt = stmt.where(Garden.authors.contains(authors_list))
+        stmt = stmt.where(Garden.authors.overlap(array(authors_list)))
 
     if contributors:
         contributors_list = contributors.split(",")
-        stmt = stmt.where(Garden.contributors.contains(contributors_list))
+        stmt = stmt.where(Garden.contributors.overlap(array(contributors_list)))
+
+    if publisher:
+        stmt = stmt.where(Garden.publisher == publisher)
 
     if tags:
         tags_list = tags.split(",")
-        stmt = stmt.where(Garden.tags.contains(tags_list))
+        stmt = stmt.where(Garden.tags.overlap(array(tags_list)))
 
     if year is not None:
         stmt = stmt.where(Garden.year == year)
@@ -91,15 +94,10 @@ async def search_gardens(
     if limit > 0:
         stmt = stmt.limit(limit)
 
-    result = await db.execute(stmt)
-    gardens = result.scalars().all()
+    result = await db.scalars(stmt)
+    gardens = result.all()
 
-    if len(gardens) > 0:
-        return gardens
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No gardens found."
-        )
+    return gardens
 
 
 @router.get("", response_model=list[GardenMetadataResponse])
@@ -107,20 +105,11 @@ async def get_users_gardens(
     authed_user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[GardenMetadataResponse]:
-    """Return all gardens owned by the current authed user.
-
-    Raises:
-       HTTPException: 404 if no gardens are found
-    """
+    """Return all gardens owned by the current authed user."""
     stmt = select(Garden).where(Garden.user.identity_id == authed_user.identity_id)
-    gardens = await db.scalars(stmt).all()
-    if len(gardens) > 0:
-        return gardens
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No gardens found for current user.",
-        )
+    result = await db.scalars(stmt)
+    gardens = result.all()
+    return gardens
 
 
 @router.get(

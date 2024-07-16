@@ -369,7 +369,9 @@ async def test_search_gardens_no_results(
     override_authenticated_dependency,
 ):
     response = await client.get("/gardens?user_id=9999")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 0
 
 
 @pytest.mark.asyncio
@@ -404,4 +406,6 @@ async def test_get_users_gardens_no_results(
     override_authenticated_dependency,
 ):
     response = await client.get("/gardens")
-    assert response.status_code == 404
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 0
