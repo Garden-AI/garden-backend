@@ -2,10 +2,10 @@ from logging import getLogger
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.expression import or_
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._tasks import (
@@ -39,6 +39,22 @@ async def add_garden(
 
 
 @router.get("", response_model=list[GardenMetadataResponse])
+async def get_users_gardens(
+    authed_user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[GardenMetadataResponse]:
+    """Return all gardens owned by the current authed user."""
+    stmt = (
+        select(Garden)
+        .join(Garden.user)
+        .where(User.identity_id == authed_user.identity_id)
+    )
+    result = await db.scalars(stmt)
+    gardens = result.all()
+    return gardens
+
+
+@router.get("/search", response_model=list[GardenMetadataResponse])
 async def search_gardens(
     uuid: UUID | None = Query(None, description="Filter by user UUID"),
     authors: str | None = Query(None, description="Comma-separated list of authors"),
@@ -56,7 +72,7 @@ async def search_gardens(
     """
     Return a list of gardens.
 
-    With no query params, this returns the default limit number of gardens.
+    Without query parameters, returns the default limit number of gardens.
     Add limit=0 to get all gardens.
 
     Query params for filtering by:
@@ -76,27 +92,45 @@ async def search_gardens(
 
     if authors:
         authors_list = authors.split(",")
-        stmt = stmt.where(Garden.authors.overlap(array(authors_list)))
+        author_conditions = [
+            text(
+                "EXISTS (SELECT 1 FROM unnest(authors) AS a WHERE lower(a) LIKE :author)"
+            ).bindparams(author=f"%{author.lower()}%")
+            for author in authors_list
+        ]
+        stmt = stmt.where(or_(*author_conditions))
 
     if contributors:
         contributors_list = contributors.split(",")
-        stmt = stmt.where(Garden.contributors.overlap(array(contributors_list)))
-
-    if publisher:
-        stmt = stmt.where(Garden.publisher == publisher)
+        contributor_conditions = [
+            text(
+                "EXISTS (SELECT 1 FROM unnest(contributors) AS c WHERE lower(c) LIKE :contributor)"
+            ).bindparams(contributor=f"%{contributor.lower()}%")
+            for contributor in contributors_list
+        ]
+        stmt = stmt.where(or_(*contributor_conditions))
 
     if tags:
         tags_list = tags.split(",")
-        stmt = stmt.where(Garden.tags.overlap(array(tags_list)))
+        tag_conditions = [
+            text(
+                "EXISTS (SELECT 1 FROM unnest(tags) AS t WHERE lower(t) LIKE :tag)"
+            ).bindparams(tag=f"%{tag.lower()}%")
+            for tag in tags_list
+        ]
+        stmt = stmt.where(or_(*tag_conditions))
+
+    if publisher:
+        stmt = stmt.where(Garden.publisher.ilike(f"%{publisher}%"))
 
     if year is not None:
         stmt = stmt.where(Garden.year == year)
 
     if language is not None:
-        stmt = stmt.where(Garden.language == language)
+        stmt = stmt.where(Garden.language.ilike(f"%{language}%"))
 
-    if publisher is not None:
-        stmt = stmt.where(Garden.publisher == publisher)
+    if version is not None:
+        stmt = stmt.where(Garden.version == version)
 
     if limit > 0:
         stmt = stmt.limit(limit)
@@ -104,18 +138,6 @@ async def search_gardens(
     result = await db.scalars(stmt)
     gardens = result.all()
 
-    return gardens
-
-
-@router.get("", response_model=list[GardenMetadataResponse])
-async def get_users_gardens(
-    authed_user: User = Depends(authed_user),
-    db: AsyncSession = Depends(get_db_session),
-) -> list[GardenMetadataResponse]:
-    """Return all gardens owned by the current authed user."""
-    stmt = select(Garden).where(Garden.user.identity_id == authed_user.identity_id)
-    result = await db.scalars(stmt)
-    gardens = result.all()
     return gardens
 
 

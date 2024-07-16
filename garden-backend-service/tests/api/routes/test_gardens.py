@@ -191,7 +191,7 @@ async def test_search_gardens_no_filters(
     )
     await post_garden(client, create_garden_two_entrypoints_json)
 
-    response = await client.get("/gardens")
+    response = await client.get("/gardens/search")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -224,7 +224,7 @@ async def test_search_gardens_filter_by_user_id(
     await post_garden(client, garden1)
     await post_garden(client, garden2)
 
-    response = await client.get(f"/gardens?uuid={mock_auth_state.identity_id}")
+    response = await client.get(f"/gardens/search?uuid={mock_auth_state.identity_id}")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -258,7 +258,7 @@ async def test_search_gardens_filter_by_authors(
     await post_garden(client, garden1)
     await post_garden(client, garden2)
 
-    response = await client.get("/gardens?authors=Author 1,Author 2")
+    response = await client.get("/gardens/search?authors=Author 1,Author 2")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -292,7 +292,7 @@ async def test_search_gardens_filter_by_tags(
     await post_garden(client, garden1)
     await post_garden(client, garden2)
 
-    response = await client.get("/gardens?tags=Tag 1,Tag 2")
+    response = await client.get("/gardens/search?tags=Tag 1,Tag 2")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -326,7 +326,7 @@ async def test_search_gardens_filter_by_year(
     await post_garden(client, garden1)
     await post_garden(client, garden2)
 
-    response = await client.get("/gardens?year=2023")
+    response = await client.get("/gardens/search?year=2023")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -355,7 +355,7 @@ async def test_search_gardens_limit(
         garden["doi"] = f"10.1234/doi{i}"
         await post_garden(client, garden)
 
-    response = await client.get("/gardens?limit=2")
+    response = await client.get("/gardens/search?limit=2")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -368,7 +368,7 @@ async def test_search_gardens_no_results(
     mock_db_session,
     override_authenticated_dependency,
 ):
-    response = await client.get("/gardens?user_id=9999")
+    response = await client.get("/gardens/search?user_id=9999")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 0
