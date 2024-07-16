@@ -95,7 +95,7 @@ async def create_or_replace_garden(
     if existing_garden is None:
         new_garden = await _create_new_garden(garden_data, db, user)
         if settings.SYNC_SEARCH_INDEX:
-            logger.log(msg=f"Sending garden {new_garden.doi} to search index")
+            logger.info(msg=f"Sending garden {new_garden.doi} to search index")
             background_tasks.add_task(
                 create_or_update_on_search_index, new_garden, settings
             )
