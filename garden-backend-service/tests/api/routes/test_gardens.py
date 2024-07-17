@@ -1,6 +1,8 @@
 from copy import deepcopy
 
 import pytest
+from src.api.dependencies.auth import authenticated
+from src.main import app
 
 
 async def post_garden(client, garden_data):
@@ -245,8 +247,22 @@ async def test_search_gardens_by_owner_uuid(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
     mock_auth_state,
+    mock_auth_state_other_user,
 ):
+
+    # Add a garden by another user
+    app.dependency_overrides[authenticated] = lambda: mock_auth_state_other_user
+    _ = await client.get("/greet")
+    other_users_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    other_users_garden["doi"] = "new/doi"
+    await post_garden(client, other_users_garden)
+
+    # Add garden by ther user we are looking for
+    app.dependency_overrides[authenticated] = lambda: mock_auth_state
+    _ = await client.get("/greet")
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Search for the garden
     response = await client.get(
         "/gardens",
         params={"owner_uuid": mock_auth_state.identity_id},

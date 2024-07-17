@@ -117,6 +117,18 @@ def mock_auth_state():
 
 
 @pytest.fixture
+def mock_auth_state_other_user():
+    # this one's a joke about The Other
+    mock_auth = MagicMock(spec=AuthenticationState)
+    mock_auth.username = "Madame.deBeauvoir@ens-paris.fr"
+    mock_auth.identity_id = UUID("10101010-1010-1010-1010-101020101010")
+    mock_auth.token = "tokentokentoken"
+    mock_auth.email = "simone.debeauvoir@ens-paris.fr"
+    mock_auth.name = "Mme. de Beauvoir"
+    return mock_auth
+
+
+@pytest.fixture
 def mock_missing_token():
     def missing_auth_token_effect(authorization=Depends(HTTPBearer(auto_error=False))):
         raise HTTPException(status_code=403, detail="Authorization header missing")

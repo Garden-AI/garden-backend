@@ -48,7 +48,7 @@ async def search_gardens(
     contributors: Annotated[list[str] | None, Query()] = None,
     tags: Annotated[list[str] | None, Query()] = None,
     year: Annotated[str | None, Query()] = None,
-    limit: Annotated[int | None, Query(max_value=100)] = 50,
+    limit: Annotated[int | None, Query(le=100)] = 50,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Fetch multiple gardens according to query parameters"""
