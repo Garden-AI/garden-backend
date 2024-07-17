@@ -1,7 +1,10 @@
 from logging import getLogger
+from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
@@ -34,6 +37,46 @@ async def add_garden(
             create_or_update_on_search_index, new_garden, settings
         )
     return new_garden
+
+
+@router.get("", response_model=list[GardenMetadataResponse])
+async def search_gardens(
+    doi: Annotated[list[str] | None, Query()] = None,
+    draft: Annotated[bool | None, Query()] = None,
+    owner_uuid: Annotated[UUID | None, Query()] = None,
+    authors: Annotated[list[str] | None, Query()] = None,
+    contributors: Annotated[list[str] | None, Query()] = None,
+    tags: Annotated[list[str] | None, Query()] = None,
+    year: Annotated[str | None, Query()] = None,
+    limit: Annotated[int | None, Query(le=100)] = 50,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Fetch multiple gardens according to query parameters"""
+    stmt = select(Garden)
+
+    if doi is not None:
+        stmt = stmt.where(Garden.doi.in_(doi))
+
+    if draft is not None:
+        stmt = stmt.where(Garden.doi_is_draft == draft)
+
+    if owner_uuid is not None:
+        stmt = stmt.join(Garden.user).where(User.identity_id == owner_uuid)
+
+    if authors is not None:
+        stmt = stmt.where(Garden.authors.overlap(array(authors)))
+
+    if contributors is not None:
+        stmt = stmt.where(Garden.contributors.overlap(array(contributors)))
+
+    if tags is not None:
+        stmt = stmt.where(Garden.tags.overlap(array(tags)))
+
+    if year is not None:
+        stmt = stmt.where(Garden.year == year)
+
+    result = await db.scalars(stmt.limit(limit))
+    return result.all()
 
 
 @router.get(

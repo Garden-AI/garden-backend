@@ -1,0 +1,16 @@
+{
+    "title": "Garden with no entrypoints",
+    "authors": ["Owen"],
+    "contributors": ["Owen :)", "Et", "Al"],
+    "doi": "10.23677/garden-no-entrypoints",
+    "doi_is_draft": true,
+    "description": "",
+    "publisher": "Garden-AI",
+    "year": "2023",
+    "language": "en",
+    "tags": ["python", "machine learning", "garden-ai"],
+    "version": "0.0.1",
+    "entrypoint_aliases": {},
+    "entrypoint_ids": [
+    ]
+}

@@ -217,6 +217,16 @@ def mock_entrypoint_create_request_json() -> dict:
         return json.load(f_in)
 
 
+@pytest.fixture
+def mock_garden_create_request_no_entrypoints_json() -> dict:
+    path = (
+        Path(__file__).parent / "fixtures" / "GardenCreateRequest-no-entrypoints.json"
+    )
+    assert path.exists()
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
 @pytest.fixture(autouse=True)
 def mock_is_doi_registered(mocker):
     mock_garden = mocker.patch("src.api.routes.gardens.is_doi_registered")

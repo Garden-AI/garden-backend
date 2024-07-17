@@ -1920,6 +1920,20 @@ pytest = ">=6.2.5"
 dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
+name = "pytest-random-order"
+version = "1.1.1"
+description = "Randomise the order in which pytest tests are run with some control over the randomness"
+optional = false
+python-versions = ">=3.5.0"
+files = [
+    {file = "pytest-random-order-1.1.1.tar.gz", hash = "sha256:4472d7d34f1f1c5f3a359c4ffc5c13ed065232f31eca19c8844c1ab406e79080"},
+    {file = "pytest_random_order-1.1.1-py3-none-any.whl", hash = "sha256:882727a8b597ecd06ede28654ffeb8a6d511a1e4abe1054cca7982f2e42008cd"},
+]
+
+[package.dependencies]
+pytest = ">=3.0.0"
+
+[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -2866,4 +2880,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "4b79146133f94a0e49a983f3dd6840e3c4004c8e731811bbc315019b000ea4a7"
+content-hash = "e6e03368373652926242a5c266c72d9e4a10b1128069df8874b1fe366741d9c5"
