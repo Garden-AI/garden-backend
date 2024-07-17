@@ -181,7 +181,15 @@ async def test_search_gardens_by_doi(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
+    # Post the garden we are looking for
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
     response = await client.get(
         "/gardens",
         params={"doi": [mock_garden_create_request_no_entrypoints_json["doi"]]},
@@ -191,6 +199,41 @@ async def test_search_gardens_by_doi(
     assert len(response_data) == 1
     assert (
         response_data[0]["doi"] == mock_garden_create_request_no_entrypoints_json["doi"]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_by_doi_is_draft(
+    client,
+    mock_db_session,
+    mock_garden_create_request_no_entrypoints_json,
+    override_authenticated_dependency,
+):
+    # Post the garden we are looking for
+    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    new_garden["doi_is_draft"] = False
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
+    response = await client.get(
+        "/gardens",
+        params={
+            "doi_is_draft": mock_garden_create_request_no_entrypoints_json[
+                "doi_is_draft"
+            ]
+        },
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert (
+        response_data[0]["doi_is_draft"]
+        == mock_garden_create_request_no_entrypoints_json["doi_is_draft"]
     )
 
 
@@ -206,7 +249,7 @@ async def test_search_gardens_by_owner_uuid(
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
     response = await client.get(
         "/gardens",
-        params={"uuid": mock_auth_state.identity_id},
+        params={"owner_uuid": mock_auth_state.identity_id},
     )
     assert response.status_code == 200
     response_data = response.json()
@@ -222,7 +265,16 @@ async def test_search_gardens_by_authors(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
+    # Post the garden we are looking for
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    new_garden["authors"] = ["new authors"]
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
     response = await client.get(
         "/gardens",
         params={"authors": mock_garden_create_request_no_entrypoints_json["authors"]},
@@ -243,7 +295,16 @@ async def test_search_gardens_by_contributors(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
+    # Post the garden we will search for
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    new_garden["contributors"] = ["new contributors"]
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
     response = await client.get(
         "/gardens",
         params={
@@ -268,7 +329,16 @@ async def test_search_gardens_by_tags(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
+    # Post the garden we will search for
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    new_garden["tags"] = ["new tags"]
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
     response = await client.get(
         "/gardens",
         params={"tags": mock_garden_create_request_no_entrypoints_json["tags"]},
@@ -289,7 +359,16 @@ async def test_search_gardens_by_year(
     mock_garden_create_request_no_entrypoints_json,
     override_authenticated_dependency,
 ):
+    # Post the garden we will search for
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+
+    # Post another garden
+    new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    new_garden["doi"] = "new/doi"
+    new_garden["year"] = "1970"
+    await post_garden(client, new_garden)
+
+    # Search for the first garden
     response = await client.get(
         "/gardens",
         params={"year": mock_garden_create_request_no_entrypoints_json["year"]},
