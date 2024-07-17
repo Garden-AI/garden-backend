@@ -62,7 +62,7 @@ async def get_entrypoints(
     owner_uuid: UUID | None = Query(None),
     draft: bool | None = Query(None),
     year: str | None = Query(None),
-    limit: int = Query(50),
+    limit: int = Query(50, le=100),
 ) -> list[EntrypointMetadataResponse]:
     """Fetch multiple entrypoints according to query parameters."""
     stmt = select(Entrypoint)
