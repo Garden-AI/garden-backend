@@ -119,7 +119,7 @@ async def test_unauthorized_access(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_get_saved_gardens(
+async def test_saved_gardens(
     client,
     mock_db_session,
     override_authenticated_dependency,
@@ -130,6 +130,7 @@ async def test_get_saved_gardens(
     res = await client.post(
         "/gardens", json=mock_garden_create_request_no_entrypoints_json
     )
+    assert res.status_code == 200
 
     # Post some other gardens
     for i in range(5):
@@ -140,14 +141,14 @@ async def test_get_saved_gardens(
         assert res.status_code == 200
 
     # Save the garden, we should get the updated list of saved gardens back
-    res = await client.patch(f"/users/gardens/saved?doi={doi}")
+    res = await client.patch(f"/users/gardens/saved/{doi}")
     assert res.status_code == 200
     data = res.json()
     assert len(data) == 1
     assert doi in data
 
     # Saving the garden again should fail
-    res = await client.patch(f"/users/gardens/saved?doi={doi}")
+    res = await client.patch(f"/users/gardens/saved/{doi}")
     assert res.status_code == 400
 
     # Get the users saved gardens, should only have 1
@@ -156,3 +157,15 @@ async def test_get_saved_gardens(
     data = res.json()
     assert len(data) == 1
     assert doi in data
+
+    # Remove the saved garden
+    res = await client.delete(f"/users/gardens/saved/{doi}")
+    assert res.status_code == 200
+    data = res.json()
+    assert doi not in data
+
+    # Get the users saved gardens again, make sure the doi is gone
+    res = await client.get("/users/gardens/saved")
+    assert res.status_code == 200
+    data = res.json()
+    assert doi not in data

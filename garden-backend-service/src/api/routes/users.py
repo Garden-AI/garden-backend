@@ -1,9 +1,10 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import insert, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import delete, insert, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import and_
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.user import UserMetadataResponse, UserUpdateRequest
@@ -69,7 +70,7 @@ async def get_saved_garden_dois(
     return await _get_saved_garden_dois(authed_user, db)
 
 
-@router.patch("/gardens/saved")
+@router.patch("/gardens/saved/{doi:path}")
 async def save_garden(
     doi: str,
     authed_user: User = Depends(authed_user),
@@ -88,11 +89,50 @@ async def save_garden(
         stmt = insert(users_saved_gardens).values(user_id=user.id, garden_id=garden.id)
         await db.execute(stmt)
         await db.commit()
-        dois = await _get_saved_garden_dois(authed_user, db)
-        return dois
+        return await _get_saved_garden_dois(authed_user, db)
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User has already saved this garden.",
+        ) from e
+
+
+@router.delete("/gardens/saved/{doi:path}")
+async def remove_saved_garden(
+    doi: str,
+    authed_user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[str]:
+    """Remove a garden from the authed users list of saved gardens by doi."""
+    user: User = await User.get(db, identity_id=authed_user.identity_id)
+    garden: Garden | None = await Garden.get(db, doi=doi)
+
+    if garden is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No garden with doi {doi} found.",
+        )
+
+    try:
+        stmt = delete(users_saved_gardens).where(
+            and_(
+                users_saved_gardens.c.user_id == user.id,
+                users_saved_gardens.c.garden_id == garden.id,
+            )
+        )
+        await db.execute(stmt)
+        await db.commit()
+        return await _get_saved_garden_dois(authed_user, db)
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unable to remove saved garden with doi {doi} due to integrity contraints",
+        ) from e
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database Error Occured: {str(e)}",
         ) from e
