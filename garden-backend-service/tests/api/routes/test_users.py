@@ -115,3 +115,44 @@ async def test_unauthorized_access(
     response = await client.patch("/users", json=update_payload)
     assert response.status_code == 403
     assert response.json()["detail"] == "Authorization header missing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_saved_gardens(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # Post the garden we will save
+    doi = mock_garden_create_request_no_entrypoints_json["doi"]
+    res = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+
+    # Post some other gardens
+    for i in range(5):
+        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
+        res = await client.post(
+            "/gardens", json=mock_garden_create_request_no_entrypoints_json
+        )
+        assert res.status_code == 200
+
+    # Save the garden, we should get the updated list of saved gardens back
+    res = await client.patch(f"/users/gardens/saved?doi={doi}")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 1
+    assert doi in data
+
+    # Saving the garden again should fail
+    res = await client.patch(f"/users/gardens/saved?doi={doi}")
+    assert res.status_code == 400
+
+    # Get the users saved gardens, should only have 1
+    res = await client.get("/users/gardens/saved")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 1
+    assert doi in data

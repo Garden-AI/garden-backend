@@ -1,7 +1,8 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
@@ -58,3 +59,40 @@ async def update_user_info(
         saved_garden_dois=saved_garden_dois,
     )
     return user_response
+
+
+@router.get("/gardens/saved")
+async def get_saved_garden_dois(
+    authed_user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[str]:
+    return await _get_saved_garden_dois(authed_user, db)
+
+
+@router.patch("/gardens/saved")
+async def save_garden(
+    doi: str,
+    authed_user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+) -> list[str]:
+    user: User = await User.get(db, identity_id=authed_user.identity_id)
+    garden: Garden | None = await Garden.get(db, doi=doi)
+
+    if garden is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No garden with doi {doi} found.",
+        )
+
+    try:
+        stmt = insert(users_saved_gardens).values(user_id=user.id, garden_id=garden.id)
+        await db.execute(stmt)
+        await db.commit()
+        dois = await _get_saved_garden_dois(authed_user, db)
+        return dois
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User has already saved this garden.",
+        ) from e
