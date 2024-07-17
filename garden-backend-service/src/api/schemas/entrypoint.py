@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import AliasPath, Field
 
 from .base import BaseSchema, UniqueList, Url
 
@@ -64,4 +64,5 @@ class EntrypointCreateRequest(EntrypointMetadata):
 
 
 class EntrypointMetadataResponse(EntrypointMetadata):
+    owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
     id: int

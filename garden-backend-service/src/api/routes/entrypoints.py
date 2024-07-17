@@ -1,6 +1,9 @@
 from logging import getLogger
+from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user
@@ -47,6 +50,37 @@ async def get_entrypoint_by_doi(
             detail=f"Entrypoint not found with DOI {doi}",
         )
     return entrypoint
+
+
+@router.get("", status_code=status.HTTP_200_OK)
+async def get_entrypoints(
+    db: AsyncSession = Depends(get_db_session),
+    *,
+    doi: list[str] | None = Query(None),
+    tags: list[str] | None = Query(None),
+    authors: list[str] | None = Query(None),
+    owner_uuid: UUID | None = Query(None),
+    draft: bool | None = Query(None),
+    year: str | None = Query(None),
+    limit: int = Query(50, le=100),
+) -> list[EntrypointMetadataResponse]:
+    """Fetch multiple entrypoints according to query parameters."""
+    stmt = select(Entrypoint)
+    if doi:
+        stmt = stmt.where(Entrypoint.doi.in_(doi))
+    if tags:
+        stmt = stmt.where(Entrypoint.tags.overlap(array(tags)))
+    if authors:
+        stmt = stmt.where(Entrypoint.authors.overlap(array(authors)))
+    if owner_uuid:
+        stmt = stmt.join(Entrypoint.owner).where(User.identity_id == owner_uuid)
+    if draft is not None:
+        stmt = stmt.where(Entrypoint.doi_is_draft == draft)
+    if year:
+        stmt = stmt.where(Entrypoint.year == year)
+
+    result = await db.scalars(stmt.limit(limit))
+    return result.all()
 
 
 @router.delete("/{doi:path}", status_code=status.HTTP_200_OK)
