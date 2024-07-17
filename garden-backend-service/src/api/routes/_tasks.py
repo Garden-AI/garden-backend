@@ -1,5 +1,5 @@
 from src.api.dependencies.search import get_globus_search_client
-from src.api.schemas.search import PublishSearchRecordRequest
+from src.api.schemas.garden import GardenMetadataResponse
 from src.auth.globus_auth import get_auth_client
 from src.config import Settings
 from src.models import Garden
@@ -19,7 +19,7 @@ async def delete_from_search_index(garden: Garden, settings: Settings):
 
 async def create_or_update_on_search_index(garden: Garden, settings: Settings):
     client = get_globus_search_client(get_auth_client())
-    garden_pub = PublishSearchRecordRequest.model_validate(garden, from_attributes=True)
+    garden_pub = GardenMetadataResponse.model_validate(garden, from_attributes=True)
     garden_meta = {
         "subject": garden_pub.doi,
         "visible_to": ["public"],
