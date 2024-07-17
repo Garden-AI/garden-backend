@@ -42,7 +42,7 @@ async def add_garden(
 @router.get("", response_model=list[GardenMetadataResponse])
 async def search_gardens(
     doi: Annotated[list[str] | None, Query()] = None,
-    doi_is_draft: Annotated[bool | None, Query()] = None,
+    draft: Annotated[bool | None, Query()] = None,
     owner_uuid: Annotated[UUID | None, Query()] = None,
     authors: Annotated[list[str] | None, Query()] = None,
     contributors: Annotated[list[str] | None, Query()] = None,
@@ -57,8 +57,8 @@ async def search_gardens(
     if doi is not None:
         stmt = stmt.where(Garden.doi.in_(doi))
 
-    if doi_is_draft is not None:
-        stmt = stmt.where(Garden.doi_is_draft == doi_is_draft)
+    if draft is not None:
+        stmt = stmt.where(Garden.doi_is_draft == draft)
 
     if owner_uuid is not None:
         stmt = stmt.join(Garden.user).where(User.identity_id == owner_uuid)

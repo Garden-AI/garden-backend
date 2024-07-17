@@ -206,7 +206,7 @@ async def test_search_gardens_by_doi(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_search_gardens_by_doi_is_draft(
+async def test_search_gardens_by_draft(
     client,
     mock_db_session,
     mock_garden_create_request_no_entrypoints_json,
@@ -218,16 +218,14 @@ async def test_search_gardens_by_doi_is_draft(
     # Post another garden
     new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
     new_garden["doi"] = "new/doi"
-    new_garden["doi_is_draft"] = False
+    new_garden["doi_is_draft"] = "false"
     await post_garden(client, new_garden)
 
     # Search for the first garden
     response = await client.get(
         "/gardens",
         params={
-            "doi_is_draft": mock_garden_create_request_no_entrypoints_json[
-                "doi_is_draft"
-            ]
+            "draft": mock_garden_create_request_no_entrypoints_json["doi_is_draft"]
         },
     )
     assert response.status_code == 200
@@ -257,7 +255,7 @@ async def test_search_gardens_by_owner_uuid(
     other_users_garden["doi"] = "new/doi"
     await post_garden(client, other_users_garden)
 
-    # Add garden by ther user we are looking for
+    # Add garden by the user we are looking for
     app.dependency_overrides[authenticated] = lambda: mock_auth_state
     _ = await client.get("/greet")
     await post_garden(client, mock_garden_create_request_no_entrypoints_json)
