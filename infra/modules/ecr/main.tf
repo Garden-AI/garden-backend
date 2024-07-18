@@ -1,4 +1,3 @@
-
 resource "aws_ecrpublic_repository" "ecr_repo" {
   repository_name = "garden-containers-${var.env}"
   tags = {
@@ -11,6 +10,7 @@ resource "aws_ecrpublic_repository" "ecr_repo" {
 resource "aws_iam_policy" "ecr_backend_write" {
   name        = "ECRBackendWriteAccess-${var.env}"
   description = "ECR write access for backend application"
+  tags        = var.tags
 
   policy = jsonencode({
     Version = "2012-10-17",

@@ -21,8 +21,9 @@ resource "aws_lightsail_container_service" "garden_service" {
 }
 
 resource "aws_lightsail_certificate" "api_cert" {
-  name                      = var.lightsail_certificate_name
-  domain_name               = var.lightsail_certificate_domain_name
+  name        = var.lightsail_certificate_name
+  domain_name = var.lightsail_certificate_domain_name
+  tags        = var.tags
 }
 
 # IAM stuff
@@ -30,6 +31,7 @@ resource "aws_lightsail_certificate" "api_cert" {
 # but inject the actual user credentials for the app at deployment time with the gh action
 resource "aws_iam_user" "lightsail_user" {
   name = "garden_lightsail_user_${var.env}"
+  tags = var.tags
 }
 
 data "aws_iam_policy_document" "secrets_policy" {
@@ -45,6 +47,7 @@ resource "aws_iam_policy" "secrets_policy" {
   name        = "secrets_policy_${var.env}"
   description = "A policy that allows IAM user to read a secret"
   policy      = data.aws_iam_policy_document.secrets_policy.json
+  tags        = var.tags
 }
 
 resource "aws_iam_user_policy_attachment" "lightsail_user_secrets_policy_attachment" {
@@ -56,6 +59,7 @@ resource "aws_iam_user_policy_attachment" "lightsail_user_secrets_policy_attachm
 # define "ecr-pusher" role for lightsail user to assume
 resource "aws_iam_role" "assumable_role" {
   name = "ecr-pusher-${var.env}"
+  tags = var.tags
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -91,6 +95,7 @@ data "aws_iam_policy_document" "assume_role_policy" {
 resource "aws_iam_policy" "allow_assume_role_policy" {
   name   = "allow_assume_role_policy_${var.env}"
   policy = data.aws_iam_policy_document.assume_role_policy.json
+  tags   = var.tags
 }
 
 resource "aws_iam_user_policy_attachment" "allow_assume_role_attachment" {
