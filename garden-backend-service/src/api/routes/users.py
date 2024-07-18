@@ -85,8 +85,8 @@ async def save_garden(
             detail=f"No garden with doi {doi} found.",
         )
 
+    stmt = insert(users_saved_gardens).values(user_id=user.id, garden_id=garden.id)
     try:
-        stmt = insert(users_saved_gardens).values(user_id=user.id, garden_id=garden.id)
         await db.execute(stmt)
         await db.commit()
         return await _get_saved_garden_dois(authed_user, db)
@@ -114,13 +114,13 @@ async def remove_saved_garden(
             detail=f"No garden with doi {doi} found.",
         )
 
-    try:
-        stmt = delete(users_saved_gardens).where(
-            and_(
-                users_saved_gardens.c.user_id == user.id,
-                users_saved_gardens.c.garden_id == garden.id,
-            )
+    stmt = delete(users_saved_gardens).where(
+        and_(
+            users_saved_gardens.c.user_id == user.id,
+            users_saved_gardens.c.garden_id == garden.id,
         )
+    )
+    try:
         await db.execute(stmt)
         await db.commit()
         return await _get_saved_garden_dois(authed_user, db)
