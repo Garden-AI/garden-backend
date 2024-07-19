@@ -68,6 +68,7 @@ async def get_saved_gardens(
     user_uuid: UUID,
     db: AsyncSession = Depends(get_db_session),
 ) -> list[GardenMetadataResponse]:
+    """Fetch the users list of saved gardens."""
     user: User | None = await User.get(db, identity_id=user_uuid)
 
     if user is None:
@@ -90,6 +91,7 @@ async def save_garden(
     authed_user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[GardenMetadataResponse]:
+    """Add a garden to the user's list of saved gardens by doi."""
     user: User | None = await User.get(db, identity_id=user_uuid)
     garden: Garden | None = await Garden.get(db, doi=doi)
 
@@ -140,7 +142,7 @@ async def remove_saved_garden(
     authed_user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
 ) -> list[GardenMetadataResponse]:
-    """Remove a garden from the authed users list of saved gardens by doi."""
+    """Remove a garden from the user's list of saved gardens by doi."""
 
     if user_uuid != authed_user.identity_id:
         raise HTTPException(
