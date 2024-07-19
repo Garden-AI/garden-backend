@@ -3,18 +3,16 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from globus_sdk import ConfidentialAppAuthClient
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.api.dependencies.auth import authed_user
+from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
-from src.api.routes._tasks import (
-    create_or_update_on_search_index,
-    delete_from_search_index,
-)
 from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
 from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
+from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
 
@@ -29,12 +27,18 @@ async def add_garden(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
     new_garden = await _create_new_garden(garden, db, user)
     if settings.SYNC_SEARCH_INDEX:
         logger.info(msg=f"Sending garden {new_garden.doi} to search index")
         background_tasks.add_task(
-            create_or_update_on_search_index, new_garden, settings
+            schedule_search_index_update,
+            SearchIndexOperation.CREATE_OR_UPDATE,
+            new_garden,
+            settings,
+            db,
+            app_auth_client,
         )
     return new_garden
 
@@ -104,6 +108,7 @@ async def delete_garden(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is not None:
@@ -113,7 +118,14 @@ async def delete_garden(
             await db.commit()
             if settings.SYNC_SEARCH_INDEX:
                 logger.info(msg=f"Deleting garden {garden.doi} from search index")
-                background_tasks.add_task(delete_from_search_index, garden, settings)
+                background_tasks.add_task(
+                    schedule_search_index_update,
+                    SearchIndexOperation.DELETE,
+                    garden,
+                    settings,
+                    db,
+                    app_auth_client,
+                )
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -133,6 +145,7 @@ async def create_or_replace_garden(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
     existing_garden: Garden | None = await Garden.get(db, doi=doi)
     if existing_garden is None:
@@ -140,7 +153,12 @@ async def create_or_replace_garden(
         if settings.SYNC_SEARCH_INDEX:
             logger.info(msg=f"Sending garden {new_garden.doi} to search index")
             background_tasks.add_task(
-                create_or_update_on_search_index, new_garden, settings
+                schedule_search_index_update,
+                SearchIndexOperation.CREATE_OR_UPDATE,
+                new_garden,
+                settings,
+                db,
+                app_auth_client,
             )
         return new_garden
 
@@ -171,7 +189,12 @@ async def create_or_replace_garden(
         if settings.SYNC_SEARCH_INDEX:
             logger.info(msg=f"Updating garden {existing_garden.doi} on search index")
             background_tasks.add_task(
-                create_or_update_on_search_index, existing_garden, settings
+                schedule_search_index_update,
+                SearchIndexOperation.CREATE_OR_UPDATE,
+                existing_garden,
+                settings,
+                db,
+                app_auth_client,
             )
     except IntegrityError as e:
         logger.error(str(e))
