@@ -30,6 +30,7 @@ data "aws_secretsmanager_secret_version" "datacite_repo_id" {
 resource "aws_iam_policy" "allow_globus_api_key_access_policy" {
   name        = "test-policy-${var.env}"
   description = "A test policy"
+  tags        = var.tags
 
   policy = jsonencode({
     "Version" : "2012-10-17",

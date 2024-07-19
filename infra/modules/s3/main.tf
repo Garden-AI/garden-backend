@@ -11,10 +11,10 @@ resource "aws_s3_bucket_policy" "public_read_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow",
+        Effect    = "Allow",
         Principal = "*",
-        Action = "s3:GetObject",
-        Resource = "${aws_s3_bucket.pipeline_notebooks_bucket.arn}/*"
+        Action    = "s3:GetObject",
+        Resource  = "${aws_s3_bucket.pipeline_notebooks_bucket.arn}/*"
       }
     ]
   })
@@ -24,6 +24,7 @@ resource "aws_s3_bucket_policy" "public_read_policy" {
 resource "aws_iam_policy" "s3_full_access" {
   name        = "s3_full_access-${var.env}"
   description = "Full access to notebook bucket"
+  tags        = var.tags
 
   policy = jsonencode({
     "Version" : "2012-10-17",
