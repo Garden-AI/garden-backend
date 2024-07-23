@@ -10,12 +10,9 @@ if TYPE_CHECKING:
     from src.models.garden import Garden
     from src.models.user import User
 
-    # from src.models.mdf_dataset import Dataset
-
 else:
     Garden = "Garden"
     User = "User"
-    # Dataset = "Dataset"
 
 
 class Entrypoint(Base):
@@ -50,11 +47,3 @@ class Entrypoint(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
-
-    """
-    connected_datasets: Mapped[list[Dataset]] = relationship(
-        Dataset,
-        secondary=entrypoints_datasets,
-        back_populates='connected_entrypoints'
-    )
-    """

@@ -14,12 +14,3 @@ users_saved_gardens = Table(
     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("garden_id", Integer, ForeignKey("gardens.id"), primary_key=True),
 )
-
-"""
-entrypoints_datasets = Table(
-    "entrypoints_datasets",
-    Base.metadata,
-    Column("entrypoint_id", Integer, ForeignKey("entrypoints.id"), primary_key=True),
-    Column("dataset_id", String, ForeignKey("mdf-datasets.id"), primary_key=True),
-)
-"""
