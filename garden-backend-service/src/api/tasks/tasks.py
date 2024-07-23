@@ -188,9 +188,6 @@ async def _create_or_update_on_search_index(
     Raises:
        SearchIndexUpdateError
     """
-    raise SearchIndexUpdateError(
-        "INTENTIONAL FAILURE", garden.doi
-    )  # TODO REMOVE ME AFTER TESTING
     try:
         client = get_globus_search_client(auth_client)
         garden_pub = GardenMetadataResponse.model_validate(garden, from_attributes=True)
@@ -227,9 +224,6 @@ async def _delete_from_search_index(
     Raises:
        SearchIndexUpdateError
     """
-    raise SearchIndexUpdateError(
-        "INTENTIONAL FAILURE", garden_doi
-    )  # TODO REMOVE ME AFTER TESTING
     try:
         client = get_globus_search_client(auth_client)
         delete_result = client.delete_entry(
