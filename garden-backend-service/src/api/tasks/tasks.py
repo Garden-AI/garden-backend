@@ -83,8 +83,11 @@ async def retry_failed_updates(
                     failed_updates, db, settings, auth_client
                 )
                 await db.commit()
-                logger.info(f"Successfully updated {successful} records")
-                logger.info(f"Failed to update {failed} records")
+            logger.info(f"Successfully updated {successful} records")
+            logger.info(f"Failed to update {failed} records")
+        except asyncio.CancelledErorr:
+            logger.log("Synchronization loop canceled.")
+            break
         except Exception as e:
             logger.error(f"Error in synchronization loop: {e}")
 

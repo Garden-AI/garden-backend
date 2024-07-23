@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +19,20 @@ from src.api.tasks import retry_failed_updates
 from src.auth.globus_auth import get_auth_client
 from src.config import get_settings
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Kick of the search index synchronization loop
+    settings = get_settings()
+    db_session = await get_db_session_maker(settings=settings)
+    auth_client = get_auth_client()
+    task = asyncio.create_task(retry_failed_updates(settings, db_session, auth_client))
+    yield
+    task.cancel()
+    await task
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,15 +50,6 @@ app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
-
-
-@app.on_event("startup")
-async def on_startup():
-    # Kick of the search index synchronization loop
-    settings = get_settings()
-    db_session = await get_db_session_maker(settings=settings)
-    auth_client = get_auth_client()
-    asyncio.create_task(retry_failed_updates(settings, db_session, auth_client))
 
 
 @app.get("/")
