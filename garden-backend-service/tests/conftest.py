@@ -153,6 +153,8 @@ def mock_settings(db_url):
     mock_settings.GARDEN_USERS_GROUP_ID = "fakeid"
     mock_settings.SYNC_SEARCH_INDEX = False
     mock_settings.GLOBUS_SEARCH_INDEX_ID = "GLOBUS_ID"
+    mock_settings.API_CLIENT_ID = "fakeid"
+    mock_settings.API_CLIENT_SECRET = "secretfakeid"
     return mock_settings
 
 
