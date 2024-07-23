@@ -112,6 +112,7 @@ async def delete_entrypoint(
                             garden,
                             settings,
                             db,
+                            app_auth_client,
                         )
         except IntegrityError as e:
             await db.rollback()
