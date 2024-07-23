@@ -148,9 +148,9 @@ async def test_save_garden(
     assert len(data) == 1
     assert doi == data[0]["doi"]
 
-    # Saving the garden again should fail
+    # Saving the garden again should be idempotent
     res = await client.put(f"/users/{mock_auth_state.identity_id}/saved/gardens/{doi}")
-    assert res.status_code == 409
+    assert res.status_code == 200
 
     # Get the users saved gardens, should only have 1
     res = await client.get(f"/users/{mock_auth_state.identity_id}/saved/gardens")
@@ -167,11 +167,11 @@ async def test_save_garden(
     data = res.json()
     assert len(data) == 0
 
-    # Removing the same saved garden again should fail
+    # Removing the same saved garden again should be idempotent
     res = await client.delete(
         f"/users/{mock_auth_state.identity_id}/saved/gardens/{doi}"
     )
-    assert res.status_code == 404
+    assert res.status_code == 200
 
     # Get the users saved gardens again, make sure the garden is not present
     res = await client.get(f"/users/{mock_auth_state.identity_id}/saved/gardens")

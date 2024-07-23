@@ -79,7 +79,9 @@ async def get_saved_gardens(
 
     # We need to explicitly load the saved_gardens field
     await db.refresh(user, ["saved_gardens"])
-    return [GardenMetadataResponse.from_orm(garden) for garden in user.saved_gardens]
+    return [
+        GardenMetadataResponse.model_validate(garden) for garden in user.saved_gardens
+    ]
 
 
 @router.put(
@@ -114,19 +116,12 @@ async def save_garden(
         )
 
     await db.refresh(user, ["saved_gardens"])
-    for saved_garden in user.saved_gardens:
-        if garden.doi == saved_garden.doi:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"User has already saved garden with doi {garden.doi}",
-            )
+    if garden not in user.saved_gardens:
+        user.saved_gardens.append(garden)
 
-    user.saved_gardens.append(garden)
     try:
         await db.commit()
-        return [
-            GardenMetadataResponse.from_orm(garden) for garden in user.saved_gardens
-        ]
+        return user.saved_gardens
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
@@ -166,17 +161,14 @@ async def remove_saved_garden(
         )
 
     await db.refresh(user, ["saved_gardens"])
-    updated_saved_gardens = list(filter(lambda g: g != garden, user.saved_gardens))
-    if len(updated_saved_gardens) == len(user.saved_gardens):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Could not remove saved garden {doi}. Garden is not saved.",
-        )
-    user.saved_gardens = updated_saved_gardens
+    if garden in user.saved_gardens:
+        user.saved_gardens.remove(garden)
+
     try:
         await db.commit()
         return [
-            GardenMetadataResponse.from_orm(garden) for garden in user.saved_gardens
+            GardenMetadataResponse.model_validate(garden)
+            for garden in user.saved_gardens
         ]
     except IntegrityError as e:
         await db.rollback()
