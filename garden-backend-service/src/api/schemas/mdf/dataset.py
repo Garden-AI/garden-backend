@@ -3,11 +3,10 @@ from pydantic import Field
 from .base import BaseSchema, UniqueList
 
 
-class DatasetMetadata(BaseSchema):
-    versioned_source_id: str
-
+class MDFDatasetMetadata(BaseSchema):
     doi: str
-    source_id: str
+    versioned_source_id: str
+    source_name: str
     version: str
 
     previous_versions: UniqueList[str] = Field(default_factory=list)
