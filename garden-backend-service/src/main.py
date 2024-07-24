@@ -13,6 +13,7 @@ from src.api.routes import (
     greet,
     hello_database,
     notebook,
+    status,
     users,
 )
 from src.api.tasks import retry_failed_updates
@@ -29,7 +30,6 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(retry_failed_updates(settings, db_session, auth_client))
     yield
     task.cancel()
-    await task
 
 
 app = FastAPI(lifespan=lifespan)
@@ -50,6 +50,7 @@ app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
+app.include_router(status.router)
 
 
 @app.get("/")
