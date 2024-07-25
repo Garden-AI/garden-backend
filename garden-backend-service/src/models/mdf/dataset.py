@@ -26,4 +26,4 @@ class Dataset(Base):
 
     flow_action_id: Mapped[str]
 
-    previous_versions: Mapped[list[str]] = mapped_column(ARRAY(String), default=[])
+    previous_versions: Mapped[list[str] | None] = mapped_column(ARRAY(String))
