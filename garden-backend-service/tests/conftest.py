@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import create_engine
 from src.api.dependencies.auth import (
     AuthenticationState,
@@ -23,7 +23,7 @@ from testcontainers.postgres import PostgresContainer
 
 @pytest.fixture
 def client(patch_globus_groups):
-    client = AsyncClient(app=app, base_url="http://test")
+    client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     return client
 
 
@@ -105,6 +105,13 @@ def override_get_settings_dependency(mock_settings):
 
 
 @pytest.fixture
+def override_get_settings_dependency_with_sync(mock_settings_with_sync):
+    app.dependency_overrides[get_settings] = lambda: mock_settings_with_sync
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def mock_auth_state():
     # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
@@ -155,6 +162,13 @@ def mock_settings(db_url):
     mock_settings.GLOBUS_SEARCH_INDEX_ID = "GLOBUS_ID"
     mock_settings.API_CLIENT_ID = "fakeid"
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
+    mock_settings.RETRY_INTERVAL = 1
+    return mock_settings
+
+
+@pytest.fixture
+def mock_settings_with_sync(mock_settings):
+    mock_settings.SYNC_SEARCH_INDEX = True
     return mock_settings
 
 

@@ -53,7 +53,7 @@ async def schedule_search_index_update(
         )
         if update is not None:
             # delete the record from the failed updates table
-            db.delete(update)
+            await db.delete(update)
         await db.commit()
     except SearchIndexUpdateError as e:
         # The update failed, log the failure
@@ -82,11 +82,10 @@ async def retry_failed_updates(
                 successful, failed = await _process_failed_updates(
                     failed_updates, db, settings, auth_client
                 )
-                await db.commit()
             logger.info(f"Successfully updated {successful} records")
             logger.info(f"Failed to update {failed} records")
-        except asyncio.CancelledErorr:
-            logger.log("Synchronization loop canceled.")
+        except asyncio.CancelledError:
+            logger.info("Synchronization loop canceled.")
             break
         except Exception as e:
             logger.error(f"Error in synchronization loop: {e}")
@@ -115,12 +114,14 @@ async def _process_failed_updates(
             await _try_update(update, garden, settings, db, auth_client)
             # If the update was successful, delete the record
             await db.delete(update)
+            await db.commit()
             successful += 1
         except SearchIndexUpdateError as e:
             # The update failed, update the record and continue
             logger.error(f"Failed to update {e.doi}: {e}")
             update.error_message = str(e)
             await _log_failed_update(update, db)
+            await db.commit()
             failed += 1
 
     return successful, failed
@@ -136,7 +137,7 @@ async def _get_failed_updates(
         .where(FailedSearchIndexUpdate.retry_count < settings.MAX_RETRY_COUNT)
         .order_by(FailedSearchIndexUpdate.last_attempt)
     )
-    return list(result.all())
+    return result.all()
 
 
 async def _try_update(
@@ -178,6 +179,7 @@ async def _log_failed_update(
         existing_update.retry_count += 1
         existing_update.error_message = update.error_message
         existing_update.operation_type = update.operation_type
+    await db.commit()
 
 
 async def _create_or_update_on_search_index(

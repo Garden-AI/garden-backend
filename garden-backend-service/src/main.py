@@ -27,9 +27,15 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     db_session = await get_db_session_maker(settings=settings)
     auth_client = get_auth_client()
-    task = asyncio.create_task(retry_failed_updates(settings, db_session, auth_client))
-    yield
-    task.cancel()
+
+    if settings.SYNC_SEARCH_INDEX:
+        task = asyncio.create_task(
+            retry_failed_updates(settings, db_session, auth_client)
+        )
+        yield
+        task.cancel()
+    else:
+        yield
 
 
 app = FastAPI(lifespan=lifespan)
