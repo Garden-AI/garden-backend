@@ -6,6 +6,7 @@
     "description": "Random forest model to predict the formation energy of O vacancies in oxides",
     "year": "2024",
     "tags": ["scikit-learn", "mastml"],
+    "is_archived": false,
     "models": [
         {
             "model_identifier": "rjacobs3/model_oxide_vacancy",

@@ -4,6 +4,7 @@
     "title": "Iris Classifier (with bonus data)",
     "description": "A simple demonstration of how to host a scikit-learn model with Garden.",
     "year": "2024",
+    "is_archived": false,
     "func_uuid": "f05b2dd7-2b5b-4f2a-860f-dd3b8bcd91b2",
     "container_uuid": "953471b1-0345-4432-818a-0f81efa1190a",
     "base_image_uri": "gardenai/base:python-3.10-sklearn",

@@ -20,6 +20,7 @@ class GardenMetadata(BaseSchema):
     tags: UniqueList[str] = Field(default_factory=list)
     version: str = "0.0.1"
     entrypoint_aliases: dict[str, str] = Field(default_factory=dict)
+    is_archived: bool | None = None
 
 
 class GardenCreateRequest(GardenMetadata):

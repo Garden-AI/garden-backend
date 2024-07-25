@@ -30,6 +30,7 @@ class Entrypoint(Base):
     base_image_uri: Mapped[str]
     full_image_uri: Mapped[str]
     notebook_url: Mapped[str]
+    is_archived: Mapped[bool] = mapped_column(default=False)
 
     short_name: Mapped[str]
     function_text: Mapped[str]
