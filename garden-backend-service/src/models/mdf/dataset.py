@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -24,6 +25,6 @@ class Dataset(Base):
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
 
-    flow_action_id: Mapped[str]
+    flow_action_id: Mapped[UUID] = mapped_column(unique=True)
 
     previous_versions: Mapped[list[str] | None] = mapped_column(ARRAY(String))
