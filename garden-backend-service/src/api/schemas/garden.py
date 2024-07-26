@@ -33,7 +33,23 @@ class GardenMetadataResponse(GardenMetadata):
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
 
+
     @computed_field
     @property
     def entrypoint_ids(self) -> list[str]:
         return [ep.doi for ep in self.entrypoints]
+
+
+class GardenPatchRequest(BaseSchema):
+    title: str | None = None
+    authors: UniqueList[str] | None = None
+    contributors: UniqueList[str] | None = None
+    doi_is_draft: bool | None = None
+    description: str | None = None
+    publisher: str | None = None
+    year: str | None = None
+    language: str | None = None
+    tags: UniqueList[str] | None = None
+    version: str | None = None
+    entrypoint_aliases: dict[str, str] = None
+    is_archived: bool | None = None

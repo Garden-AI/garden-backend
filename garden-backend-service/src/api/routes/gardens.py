@@ -10,9 +10,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user, is_doi_registered
-from src.api.schemas.garden import GardenCreateRequest, GardenMetadataResponse
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
+from src.api.routes._utils import (
+    archive_on_datacite,
+    assert_deletable_by_user,
+    is_doi_registered,
+)
+from src.api.schemas.garden import (
+    GardenCreateRequest,
+    GardenMetadataResponse,
+    GardenPatchRequest,
+)
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
 
@@ -205,6 +213,41 @@ async def create_or_replace_garden(
         ) from e
 
     return existing_garden
+
+
+@router.patch("/{doi:path}", response_model=GardenMetadataResponse)
+async def update_garden(
+    doi: str,
+    garden_data: GardenPatchRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> GardenMetadataResponse:
+    garden: Garden | None = await Garden.get(db, doi=doi)
+    if garden is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No Garden with DOI {doi} found.",
+        )
+
+    for key, value in garden_data.model_dump(exclude_none=True).items():
+        setattr(garden, key, value)
+
+    await db.commit()
+    if garden.is_archived:
+        if garden.doi_is_draft:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot archive a garden in draft state.",
+            )
+        else:
+            await archive_on_datacite(doi, settings)
+
+    if settings.SYNC_SEARCH_INDEX:
+        background_tasks.add_task(create_or_update_on_search_index, garden, settings)
+
+    return garden
 
 
 async def _collect_entrypoints(dois: list[str], db: AsyncSession) -> list[Entrypoint]:

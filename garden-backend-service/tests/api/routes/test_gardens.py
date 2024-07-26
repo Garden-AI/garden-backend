@@ -1,4 +1,5 @@
 from copy import deepcopy
+from unittest.mock import patch
 
 import pytest
 from src.api.dependencies.auth import authenticated
@@ -481,3 +482,79 @@ async def test_search_gardens_empty_database(
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_partial_update(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # post a new garden
+    post_response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the garden
+    doi = mock_garden_create_request_no_entrypoints_json["doi"]
+    updated_data = {"tags": ["Some", "New", "Tags"]}
+    patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 200
+    data = patch_response.json()
+    for key, value in data.items():
+        if key == "tags":
+            assert value == updated_data["tags"]
+        elif mock_garden_create_request_no_entrypoints_json.get(key) is not None:
+            assert value == mock_garden_create_request_no_entrypoints_json.get(key)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_archive(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    mock_garden_create_request_no_entrypoints_json["doi_is_draft"] = False
+    with patch("src.api.routes.gardens.archive_on_datacite") as mock_archive:
+        # post a new registered garden
+        post_response = await client.post(
+            "/gardens", json=mock_garden_create_request_no_entrypoints_json
+        )
+        assert post_response.status_code == 200
+
+        # Update the garden and verify the response
+        doi = mock_garden_create_request_no_entrypoints_json["doi"]
+        updated_data = {"is_archived": True}
+        patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+        assert patch_response.status_code == 200
+        mock_archive.assert_called_once()
+        data = patch_response.json()
+        assert data["doi"] == doi
+        assert data["is_archived"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_archive_and_draft(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # post a new garden
+    post_response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the garden, should return an error code
+    # Cannot archive a draft garden
+    doi = mock_garden_create_request_no_entrypoints_json["doi"]
+    updated_data = {"is_archived": True}
+    patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 400
