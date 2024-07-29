@@ -55,5 +55,5 @@ class Entrypoint(Base):
         secondary=entrypoints_mdf_datasets,
         back_populates="connected_entrypoints",
         lazy="selectin",
-        cascade="all",
+        cascade="save-update, merge, refresh-expire, expunge",
     )

@@ -37,5 +37,5 @@ class Dataset(Base):
         secondary=entrypoints_mdf_datasets,
         back_populates="connected_mdf_datasets",
         lazy="selectin",
-        cascade="all",
+        cascade="save-update, merge, refresh-expire, expunge",
     )
