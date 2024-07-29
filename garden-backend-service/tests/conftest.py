@@ -172,7 +172,7 @@ def mock_settings_with_sync(mock_settings):
     return mock_settings
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def create_entrypoint_with_related_metadata_json() -> dict:
     path = (
         Path(__file__).parent
@@ -183,7 +183,7 @@ def create_entrypoint_with_related_metadata_json() -> dict:
         return json.load(f_in)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def create_shared_entrypoint_json() -> dict:
     path = (
         Path(__file__).parent
@@ -194,7 +194,7 @@ def create_shared_entrypoint_json() -> dict:
         return json.load(f_in)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def create_garden_two_entrypoints_json() -> dict:
     """Request payload to create a garden referencing two other entrypoints by DOI.
     Note: Trying to create the garden before these entrypoints exist in the DB will cause an error.
@@ -207,7 +207,7 @@ def create_garden_two_entrypoints_json() -> dict:
         return json.load(f_in)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def create_garden_shares_entrypoint_json() -> dict:
     """Request payload to create a garden referencing one of another garden's entrypoints.
     See: create_garden_two_entrypoints_json, create_shared_entrypoint_json
@@ -221,7 +221,7 @@ def create_garden_shares_entrypoint_json() -> dict:
         return json.load(f_in)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def mock_entrypoint_create_request_json() -> dict:
     path = (
         Path(__file__).parent
