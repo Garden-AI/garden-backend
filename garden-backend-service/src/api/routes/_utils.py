@@ -114,4 +114,22 @@ async def poll_globus_search_task(
 
 
 async def archive_on_datacite(doi: str, settings: Settings):
-    return NotImplemented
+    """Hide a published doi on datacite.
+
+    See: https://support.datacite.org/docs/updating-metadata-with-the-rest-api
+    """
+    body = {"data": {"type": "dois", "attributes": {"event": "hide"}}}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            f"{settings.DATACITE_ENDPOINT}/{doi}",
+            headers={"Content-Type": "application/vnd.api+json"},
+            auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
+            json=body,
+        )
+
+    if response.status_code != 200:
+        raise exceptions.HTTPException(
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update DOI {doi} on Datacite: {response.json()}",
+        )
