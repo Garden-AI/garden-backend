@@ -99,7 +99,7 @@ async def _process_failed_updates(
     db: AsyncSession,
     settings: Settings,
     auth_client: ConfidentialAppAuthClient,
-) -> (int, int):
+) -> tuple[int, int]:
     """Attempt to update the search index for each failed update.
 
     If the update to the search index fails, log the failure.

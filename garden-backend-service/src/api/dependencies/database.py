@@ -13,9 +13,3 @@ async def get_db_session(settings=Depends(get_settings)) -> AsyncSession:
 
     async with AsyncSessionLocal() as db_session:
         yield db_session
-
-
-async def get_db_session_maker(settings=Depends(get_settings)) -> AsyncSession:
-    postgres_url = settings.SQLALCHEMY_DATABASE_URL
-    engine = create_async_engine(postgres_url, echo=False)
-    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.dependencies.database import get_db_session_maker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from src.api.routes import (
     docker_push_token,
     doi,
@@ -18,14 +18,20 @@ from src.api.routes import (
 )
 from src.api.tasks import retry_failed_updates
 from src.auth.globus_auth import get_auth_client
-from src.config import get_settings
+from src.config import Settings, get_settings
+
+
+def get_db_session_maker(settings: Settings) -> async_sessionmaker[AsyncSession]:
+    postgres_url = settings.SQLALCHEMY_DATABASE_URL
+    engine = create_async_engine(postgres_url, echo=False)
+    return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Kick of the search index synchronization loop
     settings = get_settings()
-    db_session = await get_db_session_maker(settings=settings)
+    db_session = get_db_session_maker(settings=settings)
     auth_client = get_auth_client()
 
     if settings.SYNC_SEARCH_INDEX:
