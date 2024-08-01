@@ -69,7 +69,7 @@ async def test_failed_create_request_resolves(
         assert data[0]["operation_type"] == "create_or_update"
 
         # Wait for the update to resolve, the background task should succeed the second time...
-        await asyncio.sleep(mock_settings_with_sync.RETRY_INTERVAL * 1.5)
+        await asyncio.sleep(mock_settings_with_sync.RETRY_INTERVAL_SECS * 1.5)
 
         # The failed update should no longer be present
         failed_update_request_2 = await client.get("/status/failed-updates")
@@ -120,7 +120,7 @@ async def test_failed_delete_request_resolves(
             assert data[0]["operation_type"] == "delete"
 
             # Wait for the update to resolve, the background task should succeed the second time...
-            await asyncio.sleep(mock_settings_with_sync.RETRY_INTERVAL * 1.5)
+            await asyncio.sleep(mock_settings_with_sync.RETRY_INTERVAL_SECS * 1.5)
 
             # The failed update should no longer be present
             failed_update_request_2 = await client.get("/status/failed-updates")

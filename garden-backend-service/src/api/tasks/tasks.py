@@ -90,7 +90,7 @@ async def retry_failed_updates(
         except Exception as e:
             logger.error(f"Error in synchronization loop: {e}")
 
-        await asyncio.sleep(settings.RETRY_INTERVAL)
+        await asyncio.sleep(settings.RETRY_INTERVAL_SECS)
 
 
 async def _process_failed_updates(

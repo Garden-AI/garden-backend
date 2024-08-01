@@ -51,7 +51,7 @@ class Settings(BaseSettings):
 
     GLOBUS_SEARCH_INDEX_ID: str
     SYNC_SEARCH_INDEX: bool
-    RETRY_INTERVAL: int
+    RETRY_INTERVAL_SECS: int
     MAX_RETRY_COUNT: int
 
     DB_USERNAME: str
