@@ -1,5 +1,6 @@
 import logging
 
+import globus_sdk
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,3 +63,12 @@ async def authed_user(
         logger.error(f"Error in authed_user: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+def get_auth_client(
+    settings: Settings = Depends(get_settings),
+) -> globus_sdk.ConfidentialAppAuthClient:
+    """Create an AuthClient for the service."""
+    return globus_sdk.ConfidentialAppAuthClient(
+        settings.API_CLIENT_ID, settings.API_CLIENT_SECRET
+    )

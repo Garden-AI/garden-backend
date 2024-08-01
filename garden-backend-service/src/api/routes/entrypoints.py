@@ -6,14 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.api.dependencies.auth import authed_user
+from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
-from src.api.routes._tasks import create_or_update_on_search_index
 from src.api.routes._utils import assert_deletable_by_user, get_gardens_for_entrypoint
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
 )
+from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
 
@@ -90,6 +90,7 @@ async def delete_entrypoint(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    app_auth_client=Depends(get_auth_client),
 ):
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
@@ -106,7 +107,12 @@ async def delete_entrypoint(
                         # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
                         logger.info(msg=f"Updating garden {garden.doi} on search index")
                         background_tasks.add_task(
-                            create_or_update_on_search_index, garden, settings
+                            schedule_search_index_update,
+                            SearchIndexOperation.CREATE_OR_UPDATE,
+                            garden,
+                            settings,
+                            db,
+                            app_auth_client,
                         )
         except IntegrityError as e:
             await db.rollback()
@@ -129,6 +135,7 @@ async def create_or_replace_entrypoint(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    app_auth_client=Depends(get_auth_client),
 ):
     existing_entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
@@ -158,7 +165,12 @@ async def create_or_replace_entrypoint(
             for garden in gardens:
                 logger.info(msg=f"Sending garden {garden.doi} to search index")
                 background_tasks.add_task(
-                    create_or_update_on_search_index, garden, settings
+                    schedule_search_index_update,
+                    SearchIndexOperation.CREATE_OR_UPDATE,
+                    garden,
+                    settings,
+                    db,
+                    app_auth_client,
                 )
     except IntegrityError as e:
         await db.rollback()
