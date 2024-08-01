@@ -194,6 +194,7 @@ async def update_entrypoint(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
+    app_auth_client=Depends(get_auth_client),
 ) -> EntrypointMetadataResponse:
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
     if entrypoint is None:
@@ -205,21 +206,26 @@ async def update_entrypoint(
     for key, value in entrypoint_data.model_dump(exclude_none=True).items():
         setattr(entrypoint, key, value)
 
+    if entrypoint.is_archived and entrypoint.doi_is_draft:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot archive a entrypoint in draft state.",
+        )
+
     await db.commit()
     if entrypoint.is_archived:
-        if entrypoint.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot archive a entrypoint in draft state.",
-            )
-        else:
-            await archive_on_datacite(doi, settings)
+        await archive_on_datacite(doi, settings)
 
     if settings.SYNC_SEARCH_INDEX:
         gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
         for garden in gardens:
             background_tasks.add_task(
-                create_or_update_on_search_index, garden, settings
+                schedule_search_index_update,
+                SearchIndexOperation.CREATE_OR_UPDATE,
+                garden,
+                settings,
+                db,
+                app_auth_client,
             )
 
     return entrypoint

@@ -33,7 +33,6 @@ class GardenMetadataResponse(GardenMetadata):
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
 
-
     @computed_field
     @property
     def entrypoint_ids(self) -> list[str]:

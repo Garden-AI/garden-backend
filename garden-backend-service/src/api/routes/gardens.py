@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
-from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.api.routes._utils import (
     archive_on_datacite,
     assert_deletable_by_user,
@@ -21,6 +20,7 @@ from src.api.schemas.garden import (
     GardenMetadataResponse,
     GardenPatchRequest,
 )
+from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
 
@@ -223,6 +223,7 @@ async def update_garden(
     user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
+    app_auth_client=Depends(get_auth_client),
 ) -> GardenMetadataResponse:
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is None:
@@ -234,18 +235,25 @@ async def update_garden(
     for key, value in garden_data.model_dump(exclude_none=True).items():
         setattr(garden, key, value)
 
+    if garden.is_archived and garden.doi_is_draft:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot archive a garden in draft state.",
+        )
+
     await db.commit()
     if garden.is_archived:
-        if garden.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot archive a garden in draft state.",
-            )
-        else:
-            await archive_on_datacite(doi, settings)
+        await archive_on_datacite(doi, settings)
 
     if settings.SYNC_SEARCH_INDEX:
-        background_tasks.add_task(create_or_update_on_search_index, garden, settings)
+        background_tasks.add_task(
+            schedule_search_index_update,
+            SearchIndexOperation.CREATE_OR_UPDATE,
+            garden,
+            settings,
+            db,
+            app_auth_client,
+        )
 
     return garden
 
