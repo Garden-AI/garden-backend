@@ -162,7 +162,7 @@ def mock_settings(db_url):
     mock_settings.GLOBUS_SEARCH_INDEX_ID = "GLOBUS_ID"
     mock_settings.API_CLIENT_ID = "fakeid"
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
-    mock_settings.RETRY_INTERVAL = 1
+    mock_settings.RETRY_INTERVAL_SECS = 1
     return mock_settings
 
 
