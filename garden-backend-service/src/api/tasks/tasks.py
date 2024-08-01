@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 from enum import Enum
 
 from globus_sdk import ConfidentialAppAuthClient, SearchAPIError
@@ -179,6 +180,7 @@ async def _log_failed_update(
         existing_update.retry_count += 1
         existing_update.error_message = update.error_message
         existing_update.operation_type = update.operation_type
+        existing_update.last_attempt = datetime.now()
     await db.commit()
 
 
