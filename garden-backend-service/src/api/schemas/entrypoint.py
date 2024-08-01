@@ -44,7 +44,7 @@ class EntrypointMetadata(BaseSchema):
     base_image_uri: str
     full_image_uri: str
     notebook_url: Url
-    is_archived: bool | None = None
+    is_archived: bool = False
 
     short_name: str
     function_text: str
