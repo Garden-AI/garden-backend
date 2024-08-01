@@ -8,10 +8,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user, get_gardens_for_entrypoint
+from src.api.routes._utils import (
+    archive_on_datacite,
+    assert_deletable_by_user,
+    get_gardens_for_entrypoint,
+)
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
+    EntrypointPatchRequest,
 )
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
@@ -179,6 +184,51 @@ async def create_or_replace_entrypoint(
             detail=f"Integrity error occurred: {str(e)}",
         ) from e
     return existing_entrypoint
+
+
+@router.patch("/{doi:path}", response_model=EntrypointMetadataResponse)
+async def update_entrypoint(
+    doi: str,
+    entrypoint_data: EntrypointPatchRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(authed_user),
+    app_auth_client=Depends(get_auth_client),
+) -> EntrypointMetadataResponse:
+    entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
+    if entrypoint is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No Entrypoint with DOI {doi} found.",
+        )
+
+    for key, value in entrypoint_data.model_dump(exclude_none=True).items():
+        setattr(entrypoint, key, value)
+
+    if entrypoint.is_archived and entrypoint.doi_is_draft:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot archive a entrypoint in draft state.",
+        )
+
+    await db.commit()
+    if entrypoint.is_archived:
+        await archive_on_datacite(doi, settings)
+
+    if settings.SYNC_SEARCH_INDEX:
+        gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
+        for garden in gardens:
+            background_tasks.add_task(
+                schedule_search_index_update,
+                SearchIndexOperation.CREATE_OR_UPDATE,
+                garden,
+                settings,
+                db,
+                app_auth_client,
+            )
+
+    return entrypoint
 
 
 async def _create_new_entrypoint(

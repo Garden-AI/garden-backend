@@ -10,5 +10,6 @@
     "tags": [],
     "version": "0.0.1",
     "entrypoint_aliases": {},
-    "entrypoint_ids": ["10.23677/shared-entrypoint"]
+    "entrypoint_ids": ["10.23677/shared-entrypoint"],
+    "is_archived": false
 }

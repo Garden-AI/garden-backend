@@ -6,6 +6,7 @@ from fastapi import HTTPException, exceptions, status
 from globus_sdk import SearchClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.config import Settings
 from src.models import Entrypoint, Garden, User
 from src.models._associations import gardens_entrypoints
 
@@ -109,4 +110,26 @@ async def poll_globus_search_task(
     else:
         raise exceptions.HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR, detail=task_result.text
+        )
+
+
+async def archive_on_datacite(doi: str, settings: Settings):
+    """Hide a published doi on datacite.
+
+    See: https://support.datacite.org/docs/updating-metadata-with-the-rest-api
+    """
+    body = {"data": {"type": "dois", "attributes": {"event": "hide"}}}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            f"{settings.DATACITE_ENDPOINT}/{doi}",
+            headers={"Content-Type": "application/vnd.api+json"},
+            auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
+            json=body,
+        )
+
+    if response.status_code != 200:
+        raise exceptions.HTTPException(
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update DOI {doi} on Datacite: {response.json()}",
         )

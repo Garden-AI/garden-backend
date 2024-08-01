@@ -12,5 +12,6 @@
     "version": "0.0.1",
     "entrypoint_aliases": {},
     "entrypoint_ids": [
-    ]
+    ],
+    "is_archived": false
 }

@@ -30,6 +30,7 @@ class Garden(Base):
     language: Mapped[str]
     version: Mapped[str]
     entrypoint_aliases: Mapped[dict[str, str]] = mapped_column(postgresql.JSON)
+    is_archived: Mapped[bool] = mapped_column(default=False)
 
     # no back_populates; entrypoints don't directly point back to gardens
     entrypoints: Mapped[list[Entrypoint]] = relationship(

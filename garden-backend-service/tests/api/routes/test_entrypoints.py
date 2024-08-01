@@ -1,4 +1,5 @@
 import copy
+from unittest.mock import patch
 
 import pytest
 from src.api.dependencies.auth import authenticated
@@ -299,3 +300,79 @@ async def test_get_entrypoints_with_year(
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_entrypoint_partial_update(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_entrypoint_create_request_json,
+):
+    # post a new entrypoint
+    post_response = await client.post(
+        "/entrypoints", json=mock_entrypoint_create_request_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the entrypoint
+    doi = mock_entrypoint_create_request_json["doi"]
+    updated_data = {"tags": ["Some", "New", "Tags"]}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 200
+    data = patch_response.json()
+    for key, value in data.items():
+        if key == "tags":
+            assert value == updated_data["tags"]
+        elif mock_entrypoint_create_request_json.get(key) is not None:
+            assert value == mock_entrypoint_create_request_json.get(key)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_entrypoint_archive(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_entrypoint_create_request_json,
+):
+    mock_entrypoint_create_request_json["doi_is_draft"] = False
+    with patch("src.api.routes.entrypoints.archive_on_datacite") as mock_archive:
+        # post a new registered entrypoint
+        post_response = await client.post(
+            "/entrypoints", json=mock_entrypoint_create_request_json
+        )
+        assert post_response.status_code == 200
+
+        # Update the entrypoint and verify the response
+        doi = mock_entrypoint_create_request_json["doi"]
+        updated_data = {"is_archived": True}
+        patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+        assert patch_response.status_code == 200
+        mock_archive.assert_called_once()
+        data = patch_response.json()
+        assert data["doi"] == doi
+        assert data["is_archived"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_entrypoint_archive_and_draft(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_entrypoint_create_request_json,
+):
+    # post a new entrypoint
+    post_response = await client.post(
+        "/entrypoints", json=mock_entrypoint_create_request_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the entrypoint, should return an error code
+    # Cannot archive a draft entrypoint
+    doi = mock_entrypoint_create_request_json["doi"]
+    updated_data = {"is_archived": True}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 400

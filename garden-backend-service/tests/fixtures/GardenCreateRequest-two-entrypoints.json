@@ -13,5 +13,6 @@
     "entrypoint_ids": [
         "10.23677/shared-entrypoint",
         "10.26311/entrypoint-with-related-metadata"
-    ]
+    ],
+    "is_archived": false
 }

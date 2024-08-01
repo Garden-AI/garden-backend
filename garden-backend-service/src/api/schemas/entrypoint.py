@@ -44,6 +44,7 @@ class EntrypointMetadata(BaseSchema):
     base_image_uri: str
     full_image_uri: str
     notebook_url: Url
+    is_archived: bool | None = None
 
     short_name: str
     function_text: str
@@ -66,3 +67,29 @@ class EntrypointCreateRequest(EntrypointMetadata):
 class EntrypointMetadataResponse(EntrypointMetadata):
     owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
     id: int
+
+
+class EntrypointPatchRequest(BaseSchema):
+    doi_is_draft: bool | None = None
+    title: str | None = None
+    description: str | None = None
+    year: str | None = None
+    func_uuid: UUID | None = None
+    container_uuid: UUID | None = None
+    base_image_uri: str | None = None
+    full_image_uri: str | None = None
+    notebook_url: Url | None = None
+    is_archived: bool | None = None
+
+    short_name: str | None = None
+    function_text: str | None = None
+
+    authors: UniqueList[str] | None = None
+    tags: UniqueList[str] | None = None
+    test_functions: list[str] | None = None
+    requirements: list[str] | None = None
+
+    models: list[_ModelMetadata] | None = None
+    repositories: list[_RepositoryMetadata] | None = None
+    papers: list[_PaperMetadata] | None = None
+    datasets: list[_DatasetMetadata] | None = None
