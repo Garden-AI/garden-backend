@@ -2,7 +2,7 @@ from logging import getLogger
 from typing import Any, Dict
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import Json
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,6 @@ router = APIRouter(prefix="/mdf")
     status_code=status.HTTP_200_OK,
 )
 async def search_datasets(
-    request: Request,
     payload: Dict[str, Any],
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
@@ -34,9 +33,7 @@ async def search_datasets(
     Does not support globus search scroll queries.
     """
 
-    query = await request.json()
-
-    response = await _query_search(query, settings)
+    response = await _query_search(payload, settings)
     if response.status_code == 200:
         response_json = response.json()
         gmeta = response_json.get("gmeta", [])
