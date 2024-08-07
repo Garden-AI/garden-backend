@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING
-from uuid import UUID
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -19,16 +18,12 @@ class Dataset(Base):
     __tablename__ = "mdf_datasets"
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    doi: Mapped[str] = mapped_column(unique=True)
     versioned_source_id: Mapped[str] = mapped_column(unique=True)
-    source_name: Mapped[str]
-    version: Mapped[str]
+    doi: Mapped[str] = mapped_column(unique=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
-
-    flow_action_id: Mapped[UUID] = mapped_column(unique=True)
 
     previous_versions: Mapped[list[str] | None] = mapped_column(ARRAY(String))
 
@@ -39,3 +34,13 @@ class Dataset(Base):
         lazy="selectin",
         cascade="save-update, merge, refresh-expire, expunge",
     )
+
+    def get_accelerate_metadata(self):
+        return {
+            "owner_identity_id": str(self.owner.identity_id),
+            "previous_versions": self.previous_versions,
+            "connected_entrypoints": [
+                connected_entrypoint.doi
+                for connected_entrypoint in self.connected_entrypoints
+            ],
+        }
