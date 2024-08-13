@@ -3,10 +3,10 @@ from typing import Any, Dict
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
-from pydantic import Json
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.database import get_db_session
+from src.api.schemas.mdf.dataset import AccelerateDatasetMetadata, MDFSearchResponse
+from src.api.schemas.search.globus_search import GSearchRequestBody
 from src.config import Settings, get_settings
 from src.models import Dataset
 
@@ -20,10 +20,10 @@ router = APIRouter(prefix="/mdf")
     status_code=status.HTTP_200_OK,
 )
 async def search_datasets(
-    payload: Dict[str, Any],
+    request: GSearchRequestBody,
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
-) -> JSONResponse:
+) -> MDFSearchResponse:
     """
     Accepts Globus GSearchRequest in request body.
     Acts as an intermediary for querying MDF's globus search index and then augments the query results with
@@ -33,31 +33,23 @@ async def search_datasets(
     Does not support globus search scroll queries.
     """
 
-    response = await _query_search(payload, settings)
+    response = await _query_search(
+        request.model_dump(exclude_unset=True, exclude_none=True), settings
+    )
     if response.status_code == 200:
-        response_json = response.json()
-        gmeta = response_json.get("gmeta", [])
+        result = MDFSearchResponse(**response.json())
 
-        # For each SI record, grab matching dataset from 'mdf_datasets' table and add accelerate_metadata to query result
-        for i in range(len(gmeta)):
-            record = gmeta[i]
-            versioned_source_id = record.get("subject", None)
-
-            if versioned_source_id:
-                dataset: Dataset | None = await Dataset.get(
-                    db, versioned_source_id=versioned_source_id
+        for gmeta in result.gmeta:
+            versioned_source_id = gmeta.root.subject
+            dataset: Dataset | None = await Dataset.get(
+                db, versioned_source_id=versioned_source_id
+            )
+            if dataset:
+                gmeta.root.accelerate_metadata = AccelerateDatasetMetadata(
+                    **dataset.get_accelerate_metadata()
                 )
-                if dataset:
-                    entries = record.get("entries", [])
-                    if (
-                        len(entries) == 1
-                    ):  # SI is formatted so entries should always be length 1
-                        gmeta[i]["entries"][0][
-                            "accelerate_metadata"
-                        ] = dataset.get_accelerate_metadata()
 
-        response_json["gmeta"] = gmeta
-        return JSONResponse(content=response_json, status_code=status.HTTP_200_OK)
+        return result
     else:
         # Pass on search error if response code is not 200
         logger.warning(
@@ -66,7 +58,7 @@ async def search_datasets(
         raise HTTPException(status_code=response.status_code, detail=response.json())
 
 
-async def _query_search(query: Json[Any], settings: Settings) -> httpx.Response:
+async def _query_search(query: Dict[str, Any], settings: Settings) -> httpx.Response:
     async with httpx.AsyncClient() as client:
         response = await client.post(
             settings.MDF_SEARCH_INDEX,
