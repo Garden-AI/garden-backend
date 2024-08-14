@@ -61,7 +61,7 @@ async def search_datasets(
 async def _query_search(query: Dict[str, Any], settings: Settings) -> httpx.Response:
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            settings.MDF_SEARCH_INDEX,
+            f"https://search.api.globus.org/v1/index/{settings.MDF_SEARCH_INDEX_UUID}/search",
             json=query,
             headers={"Content-Type": "application/json"},
         )

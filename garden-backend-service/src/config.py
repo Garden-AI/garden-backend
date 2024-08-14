@@ -58,9 +58,9 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_ENDPOINT: str
 
-    MDF_SEARCH_INDEX: str = (
-        "https://search.api.globus.org/v1/index/1a57bbe5-5272-477f-9d31-343b8258b7a5/search"
-    )
+    MDF_API_CLIENT_ID: str
+    MDF_API_CLIENT_SECRET: str
+    MDF_SEARCH_INDEX_UUID: str
 
     @computed_field
     @property
