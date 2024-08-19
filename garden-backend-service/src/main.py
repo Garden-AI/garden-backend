@@ -16,6 +16,7 @@ from src.api.routes import (
     status,
     users,
 )
+from src.api.routes.mdf import search as mdf_search
 from src.api.tasks import retry_failed_updates
 from src.auth.globus_auth import get_auth_client
 from src.config import Settings, get_settings
@@ -63,6 +64,8 @@ app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
 app.include_router(status.router)
+
+app.include_router(mdf_search.router)
 
 
 @app.get("/")

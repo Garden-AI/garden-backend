@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_ENDPOINT: str
 
+    MDF_API_CLIENT_ID: str
+    MDF_API_CLIENT_SECRET: str
+    MDF_SEARCH_INDEX_UUID: str
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:
