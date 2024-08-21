@@ -26,3 +26,10 @@ class MDFGMetaResult(BaseSchema, RootModel[MDFLegacyResult | MDFModernResult]):
 
 class MDFSearchResponse(BaseSchema, GSearchResult):
     gmeta: list[MDFGMetaResult] | None = None
+
+
+class MDFDatasetCreateRequest(BaseSchema):
+    flow_action_id: UUID
+    versioned_source_id: str
+    owner_identity_id: UUID
+    previous_versions: UniqueList[str] = Field(default_factory=list)
