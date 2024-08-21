@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.database import get_db_session
-from src.auth.auth_state import AuthenticationState
+from src.auth.auth_state import AuthenticationState, MDFAuthenticationState
 from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
 from src.models.user import User
@@ -29,6 +29,13 @@ def _get_auth_state(
     return AuthenticationState(token)
 
 
+def _get_mdf_auth_state(
+    token: str = Depends(_get_auth_token),
+):
+    """Get an MDFAuthenticationState object from the token in the Authorization header."""
+    return MDFAuthenticationState(token)
+
+
 def authenticated(
     auth_state: AuthenticationState = Depends(_get_auth_state),
 ) -> AuthenticationState:
@@ -36,6 +43,14 @@ def authenticated(
     auth_state.assert_is_authenticated()
     auth_state.assert_has_default_scope()
     return auth_state
+
+
+def mdf_authenticated(
+    mdf_auth_state: MDFAuthenticationState = Depends(_get_mdf_auth_state),
+) -> MDFAuthenticationState:
+    """Ensure the provided auth is using MDF client creds"""
+    mdf_auth_state.assert_is_authenticated()
+    return mdf_auth_state
 
 
 async def authed_user(

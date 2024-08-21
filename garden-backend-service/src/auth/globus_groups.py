@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 
 import globus_sdk as glb
 from src.config import Settings
@@ -27,6 +28,26 @@ def add_user_to_group(
 
     groups_manager = _create_service_groups_manager()
     groups_manager.add_member(settings.GARDEN_USERS_GROUP_ID, authed_user.identity_id)
+
+
+def add_identity_id_to_group(
+    user_identity_id: UUID,
+    settings: Settings,
+) -> None:
+    """Add user identity_id as a member of Garden Users Globus group specified in the settings.
+
+    If the user is already in the group this function does nothing.
+
+    Args:
+        user_identity_id (UUID): The identity id of the user
+        settings (Settings): Application settings.
+
+    Raises:
+        globus_sdk.GlobusAPIError: when there is an issue communicating with Globus services
+    """
+
+    groups_manager = _create_service_groups_manager()
+    groups_manager.add_member(settings.GARDEN_USERS_GROUP_ID, user_identity_id)
 
 
 def _create_service_groups_manager() -> glb.GroupsManager:

@@ -3,7 +3,7 @@ import uuid
 
 import globus_sdk
 from fastapi import HTTPException
-from src.auth.globus_auth import introspect_token
+from src.auth.globus_auth import introspect_mdf_token, introspect_token
 from src.config import get_settings
 
 
@@ -72,3 +72,36 @@ class AuthenticationState:
 
     def assert_has_default_scope(self) -> None:
         self.assert_has_scope(self.garden_default_scope)
+
+
+class MDFAuthenticationState:
+    def __init__(
+        self,
+        token: t.Optional[str],
+    ) -> None:
+        self.token = token
+        self.introspect_data: t.Optional[globus_sdk.GlobusHTTPResponse] = None
+        self.client_id: t.Optional[uuid.UUID] = None
+
+        if token:
+            self._handle_token()
+
+    def _handle_token(self) -> None:
+        """Given a token, get client_id."""
+        self.introspect_data = introspect_mdf_token(t.cast(str, self.token))
+        self.client_id = self.introspect_data["client_id"]
+
+    @property
+    def is_authenticated(self):
+        settings = get_settings()
+        return self.client_id == settings.MDF_API_CLIENT_ID
+
+    def assert_is_authenticated(self):
+        """
+        This tests that is_authenticated=True, and raises an Unauthorized error
+        (401) if it is not.
+        """
+        if not self.is_authenticated:
+            raise HTTPException(
+                status_code=401, detail="method requires token authenticated access"
+            )
