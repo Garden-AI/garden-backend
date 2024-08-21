@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from src.api.dependencies.flows import get_globus_flows_client
 from src.api.routes import (
     docker_push_token,
     doi,
@@ -16,9 +17,10 @@ from src.api.routes import (
     status,
     users,
 )
+from src.api.routes.mdf import datasets as mdf_datasets
 from src.api.routes.mdf import search as mdf_search
-from src.api.tasks import retry_failed_updates
-from src.auth.globus_auth import get_auth_client
+from src.api.tasks import check_active_mdf_flows, retry_failed_updates
+from src.auth.globus_auth import get_auth_client, get_mdf_auth_client
 from src.config import Settings, get_settings
 
 
@@ -33,16 +35,27 @@ async def lifespan(app: FastAPI):
     # Kick of the search index synchronization loop
     settings = get_settings()
     db_session = get_db_session_maker(settings=settings)
-    auth_client = get_auth_client()
+    garden_auth_client = get_auth_client()
+    mdf_auth_client = get_mdf_auth_client()
+    flows_client = get_globus_flows_client(mdf_auth_client)
 
     if settings.SYNC_SEARCH_INDEX:
         task = asyncio.create_task(
-            retry_failed_updates(settings, db_session, auth_client)
+            retry_failed_updates(settings, db_session, garden_auth_client)
         )
-        yield
+    if settings.MDF_POLL_FLOWS:
+        mdf_task = asyncio.create_task(
+            check_active_mdf_flows(
+                settings, db_session, garden_auth_client, flows_client
+            )
+        )
+
+    yield
+
+    if settings.SYNC_SEARCH_INDEX:
         task.cancel()
-    else:
-        yield
+    if settings.MDF_POLL_FLOWS:
+        mdf_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -66,6 +79,7 @@ app.include_router(users.router)
 app.include_router(status.router)
 
 app.include_router(mdf_search.router)
+app.include_router(mdf_datasets.router)
 
 
 @app.get("/")
