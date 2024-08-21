@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from src.models._associations import entrypoints_mdf_datasets
@@ -19,7 +19,7 @@ class Dataset(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     versioned_source_id: Mapped[str] = mapped_column(unique=True)
-    doi: Mapped[str] = mapped_column(unique=True)
+    doi: Mapped[str | None] = mapped_column(nullable=True)
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
@@ -33,6 +33,16 @@ class Dataset(Base):
         back_populates="connected_mdf_datasets",
         lazy="selectin",
         cascade="save-update, merge, refresh-expire, expunge",
+    )
+
+    # Some old MDF datasets don't have a DOI
+    __table_args__ = (
+        Index(
+            "not_null_doi_is_unique",
+            "doi",
+            unique=True,
+            sqlite_where=("doi IS NOT NULL"),
+        ),
     )
 
     def get_accelerate_metadata(self):
