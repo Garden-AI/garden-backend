@@ -9,7 +9,6 @@ from src.models import Dataset, User
 async def test_search_with_db_entry(
     client,
     mock_db_session,
-    mock_settings,
     mocker,
 ):
     versioned_source_id = "a_versioned_source_id"
@@ -61,7 +60,7 @@ async def test_search_with_db_entry(
         "facet_results": None,
     }
 
-    mock_query_search = mocker.patch("src.api.routes.mdf.search._query_search")
+    mock_query_search = mocker.patch("src.api.routes.mdf.search.query_mdf_search")
     mock_query_search.return_value = httpx.Response(
         status_code=200, json=mock_response_body
     )
@@ -83,7 +82,6 @@ async def test_search_with_db_entry(
 async def test_search_with_no_db_entry(
     client,
     mock_db_session,
-    mock_settings,
     mocker,
 ):
     versioned_source_id = "another_versioned_source_id"
@@ -129,7 +127,7 @@ async def test_search_with_no_db_entry(
         "facet_results": None,
     }
 
-    mock_query_search = mocker.patch("src.api.routes.mdf.search._query_search")
+    mock_query_search = mocker.patch("src.api.routes.mdf.search.query_mdf_search")
     mock_query_search.return_value = httpx.Response(
         status_code=200, json=mock_response_body
     )

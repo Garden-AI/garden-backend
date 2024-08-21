@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -10,11 +10,15 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import (
     AuthenticationState,
+    MDFAuthenticationState,
     _get_auth_token,
     authenticated,
+    mdf_authenticated,
 )
+from src.api.dependencies.database import get_db_session
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -91,8 +95,22 @@ def mock_db_session(
 
 
 @pytest.fixture
+def override_get_db_session(mock_db):
+    app.dependency_overrides[get_db_session] = lambda: mock_db
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def override_authenticated_dependency(mock_auth_state):
     app.dependency_overrides[authenticated] = lambda: mock_auth_state
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_mdf_authenticated_dependency(mock_mdf_auth_state):
+    app.dependency_overrides[mdf_authenticated] = lambda: mock_mdf_auth_state
     yield
     app.dependency_overrides.clear()
 
@@ -112,6 +130,19 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 
 @pytest.fixture
+def override_get_settings_dependency_with_mdf_polling(mock_settings_with_mdf_polling):
+    app.dependency_overrides[get_settings] = lambda: mock_settings_with_mdf_polling
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def mock_db():
+    mock_db = AsyncMock(spec=AsyncSession)
+    return mock_db
+
+
+@pytest.fixture
 def mock_auth_state():
     # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
@@ -120,6 +151,17 @@ def mock_auth_state():
     mock_auth.token = "tokentokentoken"
     mock_auth.email = "some@email.com"
     mock_auth.name = "M. Sartre"
+    return mock_auth
+
+
+@pytest.fixture
+def mock_mdf_auth_state():
+    # Mock auth state for MDF client
+    mock_auth = MagicMock(spec=MDFAuthenticationState)
+    mock_auth.identity_id = UUID("00000000-0000-0000-0000-000000000000")
+    mock_auth.token = "tokentokentoken"
+    mock_auth.client_id = "mdffakeid"
+
     return mock_auth
 
 
@@ -163,13 +205,25 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_ID = "fakeid"
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
-    mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+
+    mock_settings.MDF_POLL_FLOWS = False
+    mock_settings.MDF_RETRY_INTERVAL_SECS = 1
+    mock_settings.MDF_MAX_RETRY_COUNT = 1
+    mock_settings.MDF_API_CLIENT_ID = "mdffakeid"
+    mock_settings.MDF_API_CLIENT_SECRET = "mdfsecretfakeid"
+    mock_settings.MDF_SEARCH_INDEX_UUID = "fakeindex"
     return mock_settings
 
 
 @pytest.fixture
 def mock_settings_with_sync(mock_settings):
     mock_settings.SYNC_SEARCH_INDEX = True
+    return mock_settings
+
+
+@pytest.fixture
+def mock_settings_with_mdf_polling(mock_settings):
+    mock_settings.MDF_POLL_FLOWS = True
     return mock_settings
 
 
