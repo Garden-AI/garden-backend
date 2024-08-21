@@ -1,10 +1,9 @@
 from logging import getLogger
-from typing import Any, Dict
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.database import get_db_session
+from src.api.dependencies.search import query_mdf_search
 from src.api.schemas.mdf.dataset import AccelerateDatasetMetadata, MDFSearchResponse
 from src.api.schemas.search.globus_search import GSearchRequestBody
 from src.config import Settings, get_settings
@@ -33,7 +32,7 @@ async def search_datasets(
     Does not support globus search scroll queries.
     """
 
-    response = await _query_search(
+    response = await query_mdf_search(
         request.model_dump(exclude_unset=True, exclude_none=True), settings
     )
     if response.status_code == 200:
@@ -56,13 +55,3 @@ async def search_datasets(
             msg=f"MDF search query returned status code {response.status_code}"
         )
         raise HTTPException(status_code=response.status_code, detail=response.json())
-
-
-async def _query_search(query: Dict[str, Any], settings: Settings) -> httpx.Response:
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"https://search.api.globus.org/v1/index/{settings.MDF_SEARCH_INDEX_UUID}/search",
-            json=query,
-            headers={"Content-Type": "application/json"},
-        )
-    return response
