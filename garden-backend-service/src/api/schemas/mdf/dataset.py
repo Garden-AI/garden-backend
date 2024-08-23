@@ -33,3 +33,9 @@ class MDFDatasetCreateRequest(BaseSchema):
     versioned_source_id: str
     owner_identity_id: UUID
     previous_versions: UniqueList[str] = Field(default_factory=list)
+
+
+class MDFDatasetPutRequest(BaseSchema):
+    versioned_source_id: str
+    doi: str | None
+    owner_identity_id: UUID

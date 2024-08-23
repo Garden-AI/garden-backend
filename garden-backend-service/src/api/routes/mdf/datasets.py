@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.dependencies.auth import get_auth_client, mdf_authenticated
 from src.api.dependencies.database import get_db_session
-from src.api.schemas.mdf.dataset import MDFDatasetCreateRequest
+from src.api.schemas.mdf.dataset import MDFDatasetCreateRequest, MDFDatasetPutRequest
 from src.api.tasks.mdf_tasks import _get_or_create_user
 from src.auth.auth_state import MDFAuthenticationState
 from src.config import Settings, get_settings
@@ -67,35 +67,31 @@ async def add_pending_dataset(
 
 @router.put("/put", status_code=status.HTTP_200_OK)
 async def create_dataset(
-    dataset_meta: dict,
+    dataset: MDFDatasetPutRequest,
     mdf_auth: MDFAuthenticationState = Depends(mdf_authenticated),
     auth_cli: globus_sdk.ConfidentialAppAuthClient = Depends(get_auth_client),
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ):
     """
-    Manually create dataset record if it does not exist.
-    dataset_meta should contain versioned_source_id, doi and user_identity_uuid.
-    DOI can be None.
-
+    Create dataset record if it does not exist.
+    Should only be used for migration of old records / manually creating datasets.
     The route will only accept requests with MDF client cred auth.
     """
-    versioned_source_id = dataset_meta["versioned_source_id"]
-    doi = dataset_meta["doi"]
-    user_identity_uuid = dataset_meta["user_identity_uuid"]
 
-    dataset: Dataset | None = await Dataset.get(
-        db, versioned_source_id=versioned_source_id
+    dataset_exists = (
+        await Dataset.get(db, versioned_source_id=dataset.versioned_source_id)
+        is not None
     )
-    if dataset is not None:
-        raise Exception(f"Dataset record {versioned_source_id} already exists")
+    if dataset_exists:
+        raise Exception(f"Dataset record {dataset.versioned_source_id} already exists")
 
-    user = await _get_or_create_user(user_identity_uuid, db, settings, auth_cli)
+    user = await _get_or_create_user(dataset.owner_identity_id, db, settings, auth_cli)
 
     new_dataset = Dataset(
         owner=user,
-        versioned_source_id=versioned_source_id,
-        doi=doi,
+        versioned_source_id=dataset.versioned_source_id,
+        doi=dataset.doi,
         previous_versions=[],
     )
     db.add(new_dataset)
@@ -104,6 +100,6 @@ async def create_dataset(
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        raise Exception(f"Failed to commit {versioned_source_id} to db")
+        raise Exception(f"Failed to commit {dataset.versioned_source_id} to db")
 
-    logger.info(msg=f"Created new dataset: {versioned_source_id}")
+    logger.info(msg=f"Created new dataset: {dataset.versioned_source_id}")
