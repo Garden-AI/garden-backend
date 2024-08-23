@@ -66,12 +66,16 @@ async def migrate_all_records():
         except Exception as e:
             failed.append({record_key: str(e)})
 
+        break
+
     return {"succeeded": succeeded, "failed": failed}
 
 
 async def migrate_mdf_record(
     settings, dynamo_table, api_url, auth_header, versioned_source_id, doi
 ):
+    """Migrates single mdf record given versioned_source_id and DOI"""
+
     dynamo_record = _scan_dynamo_table(
         dynamo_table, filters=[("source_id", "==", versioned_source_id)]
     )
@@ -79,8 +83,8 @@ async def migrate_mdf_record(
     dynamo_result = dynamo_record.get("results", [])
     if len(dynamo_result) != 1:
         raise Exception("Failed to find record in dynamo table")
-    user_identity_uuid = dynamo_result[0].get("user_id", None)
-    if user_identity_uuid is None:
+    owner_identity_id = dynamo_result[0].get("user_id", None)
+    if owner_identity_id is None:
         raise Exception("Failed to find owner identity_uuid in dynamo table")
 
     response = requests.put(
@@ -89,7 +93,7 @@ async def migrate_mdf_record(
         json={
             "versioned_source_id": versioned_source_id,
             "doi": doi,
-            "user_identity_uuid": user_identity_uuid,
+            "owner_identity_id": owner_identity_id,
         },
     )
 
@@ -98,6 +102,11 @@ async def migrate_mdf_record(
 
 
 async def _get_all_records(search_index_uuid):
+    """Get all records from search index and return dict of {versioned_source_id : {"doi" : doi"}}
+    DOI can be None if not saved in SI.
+    """
+
+    # SI does not have more than 1000 records, dont need to worry about pages
     query = {
         "q": "*",
         "limit": 1000,
