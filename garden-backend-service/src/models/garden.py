@@ -3,17 +3,18 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
-from src.models._associations import gardens_entrypoints
+from src.models._associations import gardens_entrypoints, gardens_modal_functions
 from src.models.base import Base
 
 if TYPE_CHECKING:
     from src.models.entrypoint import Entrypoint
+    from src.models.modal.modal_function import ModalFunction
     from src.models.user import User
 
 else:
     Entrypoint = "Entrypoint"
+    ModalFunction = "ModalFunction"
     User = "User"
-
 
 class Garden(Base):
     __tablename__ = "gardens"
@@ -36,6 +37,13 @@ class Garden(Base):
     entrypoints: Mapped[list[Entrypoint]] = relationship(
         Entrypoint,
         secondary=gardens_entrypoints,
+        lazy="selectin",
+    )
+
+    # Modal Functions don't point back to gardens either
+    modal_functions: Mapped[list[ModalFunction]] = relationship(
+        ModalFunction,
+        secondary=gardens_modal_functions,
         lazy="selectin",
     )
 
