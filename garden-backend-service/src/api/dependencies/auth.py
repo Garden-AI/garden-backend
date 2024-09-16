@@ -62,16 +62,17 @@ async def authed_user(
                 username=auth.username,
                 user_identity_id=auth.identity_id,
             )
-
-        # include username and id automatically in logs
-        # emitted from authed_user-dependent functions
-        with structlog.contextvars.bound_contextvars(
-            username=user.username, user_identity_id=user.identity_id
-        ):
-            yield user
     except Exception:
+        log.exception("Error saving new authed_user")
         await db.rollback()
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+    # include username and id globally in any logs
+    # emitted "downstream" in authed_user-dependants
+    with structlog.contextvars.bound_contextvars(
+        username=auth.username, user_identity_id=auth.identity_id
+    ):
+        yield user
 
 
 def get_auth_client(
