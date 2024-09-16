@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from datetime import datetime
 from enum import Enum
 
@@ -10,10 +9,9 @@ from src.api.dependencies.search import get_globus_search_client
 from src.api.schemas.garden import GardenMetadataResponse
 from src.config import Settings
 from src.models import FailedSearchIndexUpdate, Garden
+from structlog import get_logger
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
+logger = get_logger(__name__)
 
 
 class SearchIndexOperation(Enum):
@@ -37,6 +35,11 @@ async def schedule_search_index_update(
     auth_client: ConfidentialAppAuthClient,
 ) -> None:
     """Schedule an update on the search index for the given garden."""
+    logger.info(
+        "Scheduled search index update",
+        update_operation=update_operation.value,
+        garden_doi=garden.doi,
+    )
     try:
         match update_operation:
             case SearchIndexOperation.CREATE_OR_UPDATE:
@@ -57,6 +60,12 @@ async def schedule_search_index_update(
             await db.delete(update)
         await db.commit()
     except SearchIndexUpdateError as e:
+        logger.warning(
+            "Failed to update search index",
+            doi=garden.doi,
+            operation_type=update_operation.value,
+            error_message=str(e),
+        )
         # The update failed, log the failure
         failed_update = FailedSearchIndexUpdate(
             doi=garden.doi,
@@ -76,20 +85,19 @@ async def retry_failed_updates(
     """Periodically retry failed updates to the search index."""
     while settings.SYNC_SEARCH_INDEX:
         try:
-            logger.info("Synchronizing failed updates with search index...")
             async with db_session() as db:
                 failed_updates = await _get_failed_updates(db, settings)
-                logger.info(f"{len(failed_updates)} records to update.")
                 successful, failed = await _process_failed_updates(
                     failed_updates, db, settings, auth_client
                 )
-            logger.info(f"Successfully updated {successful} records")
-            logger.info(f"Failed to update {failed} records")
+            logger.debug(
+                "Processed failed updates", successful=successful, failed=failed
+            )
         except asyncio.CancelledError:
-            logger.info("Synchronization loop canceled.")
+            logger.warning("Synchronization loop canceled.")
             break
-        except Exception as e:
-            logger.error(f"Error in synchronization loop: {e}")
+        except Exception:
+            logger.exception("Error in synchronization loop", exc_info=True)
 
         await asyncio.sleep(settings.RETRY_INTERVAL_SECS)
 
@@ -119,7 +127,11 @@ async def _process_failed_updates(
             successful += 1
         except SearchIndexUpdateError as e:
             # The update failed, update the record and continue
-            logger.error(f"Failed to update {e.doi}: {e}")
+            logger.warning(
+                "Failed to update search index",
+                doi=update.doi,
+                error_message=str(e),
+            )
             update.error_message = str(e)
             await _log_failed_update(update, db)
             await db.commit()
@@ -169,6 +181,7 @@ async def _log_failed_update(
     db: AsyncSession,
 ) -> None:
     """Log a failed update attempt."""
+    logger.info("Recording failed search index update", doi=update.doi)
     existing_update: FailedSearchIndexUpdate | None = await FailedSearchIndexUpdate.get(
         db, doi=update.doi
     )
@@ -176,6 +189,7 @@ async def _log_failed_update(
         # Create a new record
         db.add(update)
     else:
+        logger.info("Recording failed search index update", doi=update.doi)
         # Update the existing record
         existing_update.retry_count += 1
         existing_update.error_message = update.error_message

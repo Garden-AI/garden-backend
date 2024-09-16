@@ -1,4 +1,3 @@
-from logging import getLogger
 from typing import Any, Dict
 
 import httpx
@@ -9,8 +8,9 @@ from src.api.schemas.mdf.dataset import AccelerateDatasetMetadata, MDFSearchResp
 from src.api.schemas.search.globus_search import GSearchRequestBody
 from src.config import Settings, get_settings
 from src.models import Dataset
+from structlog import get_logger
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/mdf")
 

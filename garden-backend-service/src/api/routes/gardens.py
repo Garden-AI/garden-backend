@@ -1,4 +1,3 @@
-from logging import getLogger
 from typing import Annotated
 from uuid import UUID
 
@@ -23,9 +22,10 @@ from src.api.schemas.garden import (
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
+from structlog import get_logger
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
-logger = getLogger(__name__)
 
 
 @router.post("", response_model=GardenMetadataResponse)
@@ -37,9 +37,13 @@ async def add_garden(
     settings: Settings = Depends(get_settings),
     app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
+    log = logger.bind(doi=garden.doi)
     new_garden = await _create_new_garden(garden, db, user)
     if settings.SYNC_SEARCH_INDEX:
-        logger.info(msg=f"Sending garden {new_garden.doi} to search index")
+        log.info(
+            "Scheduled background task",
+            operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+        )
         background_tasks.add_task(
             schedule_search_index_update,
             SearchIndexOperation.CREATE_OR_UPDATE,
@@ -118,6 +122,7 @@ async def delete_garden(
     settings: Settings = Depends(get_settings),
     app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
+    log = logger.bind(doi=doi)
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is not None:
         assert_deletable_by_user(garden, user)
@@ -125,7 +130,10 @@ async def delete_garden(
         try:
             await db.commit()
             if settings.SYNC_SEARCH_INDEX:
-                logger.info(msg=f"Deleting garden {garden.doi} from search index")
+                log.info(
+                    "Scheduled background task",
+                    operation_type=SearchIndexOperation.DELETE.value,
+                )
                 background_tasks.add_task(
                     schedule_search_index_update,
                     SearchIndexOperation.DELETE,
@@ -140,8 +148,10 @@ async def delete_garden(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to delete Garden with DOI {doi}",
             ) from e
+        log.info("Deleted garden from database")
         return {"detail": f"Successfully deleted garden with DOI {doi}."}
     else:
+        log.info("No garden to delete")
         return {"detail": f"No garden found with DOI {doi}."}
 
 
@@ -155,11 +165,16 @@ async def create_or_replace_garden(
     settings: Settings = Depends(get_settings),
     app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
+    log = logger.bind(doi=doi)
+
     existing_garden: Garden | None = await Garden.get(db, doi=doi)
     if existing_garden is None:
         new_garden = await _create_new_garden(garden_data, db, user)
         if settings.SYNC_SEARCH_INDEX:
-            logger.info(msg=f"Sending garden {new_garden.doi} to search index")
+            log.info(
+                "Scheduled background task",
+                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+            )
             background_tasks.add_task(
                 schedule_search_index_update,
                 SearchIndexOperation.CREATE_OR_UPDATE,
@@ -182,6 +197,11 @@ async def create_or_replace_garden(
             db, identity_id=garden_data.owner_identity_id
         )
         existing_garden.owner = new_owner or user
+        log.info(
+            "Assigned garden ownership",
+            owner_identity_id=(new_owner or user).identity_id,
+            owner_username=(new_owner or user).username,
+        )
 
     # update related entrypoints
     new_entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
@@ -195,7 +215,7 @@ async def create_or_replace_garden(
     try:
         await db.commit()
         if settings.SYNC_SEARCH_INDEX:
-            logger.info(msg=f"Updating garden {existing_garden.doi} on search index")
+            log.info("Updating garden on search index")
             background_tasks.add_task(
                 schedule_search_index_update,
                 SearchIndexOperation.CREATE_OR_UPDATE,
@@ -205,7 +225,7 @@ async def create_or_replace_garden(
                 app_auth_client,
             )
     except IntegrityError as e:
-        logger.error(str(e))
+        log.exception("Failed to update garden", exc_info=True)
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -225,6 +245,7 @@ async def update_garden(
     settings: Settings = Depends(get_settings),
     app_auth_client=Depends(get_auth_client),
 ) -> GardenMetadataResponse:
+    log = logger.bind(doi=doi)
     garden: Garden | None = await Garden.get(db, doi=doi)
     if garden is None:
         raise HTTPException(
@@ -241,20 +262,33 @@ async def update_garden(
             detail="Cannot archive a garden in draft state.",
         )
 
-    await db.commit()
-    if garden.is_archived:
-        await archive_on_datacite(doi, settings)
+    try:
+        await db.commit()
+        if garden.is_archived:
+            await archive_on_datacite(doi, settings)
+            log.info("Archived garden on datacite")
 
-    if settings.SYNC_SEARCH_INDEX:
-        background_tasks.add_task(
-            schedule_search_index_update,
-            SearchIndexOperation.CREATE_OR_UPDATE,
-            garden,
-            settings,
-            db,
-            app_auth_client,
-        )
-
+        if settings.SYNC_SEARCH_INDEX:
+            log.info(
+                "Scheduled background task",
+                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+            )
+            background_tasks.add_task(
+                schedule_search_index_update,
+                SearchIndexOperation.CREATE_OR_UPDATE,
+                garden,
+                settings,
+                db,
+                app_auth_client,
+            )
+    except Exception as e:
+        log.exception("Failed to update garden")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Integrity error occurred: {str(e)}",
+        ) from e
+    log.info("Successfully updated garden")
     return garden
 
 
@@ -277,6 +311,7 @@ async def _create_new_garden(
     db: AsyncSession,
     user: User,
 ):
+    log = logger.bind(doi=garden_data.doi)
     # if not specified, check draft status with the real world (doi.org)
     if garden_data.doi_is_draft is None:
         registered = await is_doi_registered(garden_data.doi)
@@ -292,11 +327,16 @@ async def _create_new_garden(
             db, identity_id=garden_data.owner_identity_id
         )
         if explicit_owner is not None:
+            log.info(
+                "Assigned garden ownership to other user",
+                owner_identity_id=garden_data.owner_identity_id,
+                owner_username=explicit_owner.username,
+            )
             owner = explicit_owner
         else:
-            logger.warning(
-                f"No user found with Globus identity ID {garden_data.owner_identity_id}. "
-                f"Assigning default ownership to {user.identity_id} ({user.username}). "
+            log.warning(
+                "Could not assign ownership to unknown user",
+                unknown_id=garden_data.owner_identity_id,
             )
 
     new_garden: Garden = Garden.from_dict(
@@ -314,4 +354,5 @@ async def _create_new_garden(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Could not create new garden: {e}",
         ) from e
+    log.info("Created new garden")
     return new_garden

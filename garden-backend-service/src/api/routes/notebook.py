@@ -1,15 +1,15 @@
 import hashlib
 import json
-from logging import getLogger
 
 import boto3
 from fastapi import APIRouter, Depends, status
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
 from src.config import Settings, get_settings
+from structlog import get_logger
 
 router = APIRouter(prefix="/notebook")
-logger = getLogger()
+logger = get_logger(__name__)
 
 
 @router.post("", status_code=status.HTTP_200_OK)

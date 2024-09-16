@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.models import Entrypoint, Garden, User
 from src.models._associations import gardens_entrypoints
+from structlog import get_logger
+
+logger = get_logger(__name__)
 
 
 def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
@@ -19,11 +22,15 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
         HTTPException: if obj is not owned by user or has a registered 'findable' DOI
     """
     if obj.owner.identity_id != user.identity_id:
+        logger.info(
+            f"Failed to delete or replace object {str(type(obj).__name__).lower()} (not owned by user)"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Failed to delete or replace {str(type(obj).__name__).lower()} (not owned by user {user.username})",
+            detail=f"Failed to delete or replace (not owned by user {user.username})",
         )
     elif not obj.doi_is_draft:
+        logger.info("Failed to delete or replace object (doi not draft)", doi=obj.doi)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete or replace {str(type(obj).__name__).lower()} (DOI {obj.doi} is registered as 'findable')",
@@ -49,8 +56,10 @@ async def is_doi_registered(doi: str) -> bool:
 
     # Check if the response status code is a redirect (300-399), indicating the DOI is registered
     if 300 <= response.status_code < 400:
+        logger.info("Verified DOI is registered via doi.org", doi=doi)
         return True
     else:
+        logger.info("DOI is not registered via doi.org", doi=doi)
         return False
 
 
@@ -127,6 +136,7 @@ async def archive_on_datacite(doi: str, settings: Settings):
             auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
             json=body,
         )
+        logger.info("Sent request to archive DOI on datacite", doi=doi)
 
     if response.status_code != 200:
         raise exceptions.HTTPException(
