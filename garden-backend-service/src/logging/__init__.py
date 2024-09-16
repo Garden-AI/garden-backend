@@ -42,7 +42,10 @@ structlog.configure(
         structlog.processors.UnicodeDecoder(),
         # Render the final event dict
         structlog.processors.LogfmtRenderer(
-            sort_keys=True, key_order=["event", "level"], bool_as_flag=False
+            sort_keys=True,
+            key_order=["event", "level", "status_code"],
+            bool_as_flag=False,
+            drop_missing=True,
         ),
     ],
     # `wrapper_class` is the bound logger that you get back from
