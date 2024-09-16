@@ -1,6 +1,5 @@
-import logging
-
 import globus_sdk
+import structlog
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,8 +8,9 @@ from src.auth.auth_state import AuthenticationState
 from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
 from src.models.user import User
+from structlog import get_logger
 
-logger = logging.getLogger(__name__)
+log = get_logger(__name__)
 
 
 def _get_auth_token(
@@ -57,10 +57,19 @@ async def authed_user(
             user.email = auth.email
             user.username = auth.username
             await db.commit()
+            log.info(
+                "Added new user",
+                username=auth.username,
+                user_identity_id=auth.identity_id,
+            )
 
-        return user
-    except Exception as e:
-        logger.error(f"Error in authed_user: {e}")
+        # include username and id automatically in logs
+        # emitted from authed_user-dependent functions
+        with structlog.contextvars.bound_contextvars(
+            username=user.username, user_identity_id=user.identity_id
+        ):
+            yield user
+    except Exception:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Internal Server Error")
 

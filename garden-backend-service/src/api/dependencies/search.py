@@ -1,10 +1,6 @@
-import logging
-
 import globus_sdk
 from fastapi import Depends
 from src.auth.globus_auth import get_auth_client
-
-logger = logging.getLogger()
 
 
 def get_globus_search_client(
