@@ -63,7 +63,8 @@ resource "aws_db_instance" "garden_db" {
 
   # enable automatic backups
   backup_retention_period = 14
-  backup_window = "00:00-01:00"
+  # time is UTC
+  backup_window = "04:00-05:00"
 }
 
 
