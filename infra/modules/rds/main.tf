@@ -60,6 +60,10 @@ resource "aws_db_instance" "garden_db" {
     Environment = var.env
     Project     = "Garden"
   }
+
+  # enable automatic backups
+  backup_retention_period = 14
+  backup_window = "00:00-01:00"
 }
 
 
