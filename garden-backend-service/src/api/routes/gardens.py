@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,6 +95,64 @@ async def search_gardens(
 
     result = await db.scalars(stmt.limit(limit))
     return result.all()
+
+
+@router.get(
+    "/text-search",
+    response_model=list[GardenMetadataResponse],
+)
+async def text_search_gardens(
+    text_query: Annotated[str | None, Query()] = None,
+    limit: Annotated[int | None, Query(le=100)] = 50,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Perform full-text search on Gardens and Entrypoints.
+
+    See:
+    https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#full-text-search
+    https://www.postgresql.org/docs/16/textsearch-intro.html#TEXTSEARCH-MATCHING
+
+    Return matching gardens and gardens that have matching entrypoints.
+    """
+    # Search for matching entrypoints
+    entrypoint_stmt = select(Entrypoint)
+
+    if text_query:
+        ep_search_conditions = or_(
+            Entrypoint.description.match(text_query),
+            Entrypoint.title.match(text_query),
+            func.array_to_string(Entrypoint.authors, " ").match(text_query),
+            func.array_to_string(Entrypoint.tags, " ").match(text_query),
+        )
+        entrypoint_stmt = entrypoint_stmt.where(ep_search_conditions)
+
+    entrypoint_ids = [ep.id for ep in await db.scalars(entrypoint_stmt)]
+
+    # Get gardens referencing the matching entry points
+    if entrypoint_ids:
+        stmt = select(Garden).where(
+            Garden.entrypoints.any(Entrypoint.id.in_(entrypoint_ids))
+        )
+        result = await db.scalars(stmt)
+        gardens_with_matching_entrypoints = result.all()
+    else:
+        gardens_with_matching_entrypoints = []
+
+    garden_stmt = select(Garden)
+
+    # Search for gardens that match the query
+    if text_query:
+        garden_search_conditions = or_(
+            Garden.description.match(text_query),
+            func.array_to_string(Garden.authors, " ").match(text_query),
+            func.array_to_string(Garden.contributors, " ").match(text_query),
+            func.array_to_string(Garden.tags, " ").match(text_query),
+        )
+        garden_stmt = garden_stmt.where(garden_search_conditions)
+
+    # Limit results and ensure no duplicates
+    gardens = await db.scalars(garden_stmt.limit(limit))
+    return list(set((gardens.all() + gardens_with_matching_entrypoints)))
 
 
 @router.get(
