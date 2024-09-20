@@ -1,0 +1,1 @@
+These are helper functions that execute untrusted user code. They should not be executed in the same container that is running instances of the web app. We can invoke these directly when developing locally or running unit tests, but deployed app instances should invoke these via Modal so that they run in a sandboxed environment with no useful data or credentials to exfiltrate.

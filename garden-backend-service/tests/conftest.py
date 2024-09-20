@@ -15,6 +15,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.sandboxed_functions import validate_modal_file, deploy_modal_app
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -91,6 +92,18 @@ def mock_db_session(
 
 
 @pytest.fixture
+def mock_validate_modal_file():
+    mock_validate_modal_file = MagicMock(spec=validate_modal_file)
+    return mock_validate_modal_file
+
+
+@pytest.fixture
+def mock_deploy_modal_app():
+    mock_deploy_modal_app = MagicMock(spec=deploy_modal_app)
+    return mock_deploy_modal_app
+
+
+@pytest.fixture
 def override_authenticated_dependency(mock_auth_state):
     app.dependency_overrides[authenticated] = lambda: mock_auth_state
     yield
@@ -110,6 +123,18 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
     yield
     app.dependency_overrides.clear()
 
+@pytest.fixture
+def override_get_validate_modal_file_dependency(mock_validate_modal_file):
+    app.dependency_overrides[validate_modal_file] = lambda: mock_validate_modal_file
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_get_deploy_modal_app_dependency(mock_deploy_modal_app):
+    app.dependency_overrides[deploy_modal_app] = lambda: mock_deploy_modal_app
+    yield
+    app.dependency_overrides.clear()
 
 @pytest.fixture
 def mock_auth_state():
@@ -164,6 +189,9 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+    mock_settings.MODAL_ENV='dev'
+    mock_settings.MODAL_TOKEN_ID="fake-token-id"
+    mock_settings.MODAL_TOKEN_SECRET="fake-token-secret"
     return mock_settings
 
 
