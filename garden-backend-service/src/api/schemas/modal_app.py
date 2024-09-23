@@ -19,8 +19,6 @@ class ModalAppMetadata(BaseSchema):
 
 
 class ModalAppCreateRequest(ModalAppMetadata):
-    # Really this request will need the function metadata all bundled in, right?
-    # modal_function_ids: UniqueList[str] = Field(default_factory=list)
     owner_identity_id: UUID | None = None
     modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
 

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
+from typing import Annotated
 from src.api.schemas.modal_app import (
     ModalAppCreateRequest,
     ModalAppMetadataResponse,
@@ -11,7 +12,7 @@ from src.models import User
 from src.config import Settings, get_settings
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.dependencies.sandboxed_functions import validate_modal_file, deploy_modal_app
+from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
 # from src.sandboxed_functions.modal_publishing_helpers import validate_modal_file, deploy_modal_app
 
 from structlog import get_logger
@@ -19,14 +20,17 @@ from structlog import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
 
+validate_modal_file_dep = Depends(ValidateModalFileProvider)
+deploy_modal_app_dep = Depends(DeployModalAppProvider)
+
 @router.post("", response_model=ModalAppMetadataResponse)
 async def add_modal_app(
     modal_app: ModalAppCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
-    validate_modal_file = Depends(validate_modal_file),
-    deploy_modal_app = Depends(deploy_modal_app),
+    validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
+    deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
 ):
     # First, validate the request. 
     # This includes checking the function metadata provided against the functions present in the App.
