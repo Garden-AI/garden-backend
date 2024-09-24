@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,7 @@ from src.api.schemas.garden import (
     GardenCreateRequest,
     GardenMetadataResponse,
     GardenPatchRequest,
+    GardenSearchResponse,
 )
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
@@ -57,8 +58,9 @@ async def add_garden(
     return new_garden
 
 
-@router.get("", response_model=list[GardenMetadataResponse])
+@router.get("", response_model=GardenSearchResponse)
 async def search_gardens(
+    search_query: Annotated[str | None, Query()] = None,
     doi: Annotated[list[str] | None, Query()] = None,
     draft: Annotated[bool | None, Query()] = None,
     owner_uuid: Annotated[UUID | None, Query()] = None,
@@ -93,66 +95,51 @@ async def search_gardens(
     if year is not None:
         stmt = stmt.where(Garden.year == year)
 
+    if search_query is not None:
+        await _register_search_function(db)
+        search_func = func.search_gardens(search_query).table_valued(
+            "garden_id", "rank"
+        )
+        stmt = stmt.join(search_func, search_func.c.garden_id == Garden.id).order_by(
+            search_func.c.rank
+        )
+
     result = await db.scalars(stmt.limit(limit))
-    return result.all()
+    gardens = result.all()
+
+    return GardenSearchResponse(
+        count=len(gardens),
+        gardens=gardens,
+    )
 
 
-@router.get(
-    "/text-search",
-    response_model=list[GardenMetadataResponse],
-)
-async def text_search_gardens(
-    text_query: Annotated[str | None, Query()] = None,
-    limit: Annotated[int | None, Query(le=100)] = 50,
-    db: AsyncSession = Depends(get_db_session),
-):
-    """Perform full-text search on Gardens and Entrypoints.
-
-    See:
-    https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#full-text-search
-    https://www.postgresql.org/docs/16/textsearch-intro.html#TEXTSEARCH-MATCHING
-
-    Return matching gardens and gardens that have matching entrypoints.
+async def _register_search_function(session):
+    search_function_sql = """
+    CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
+    RETURNS TABLE (garden_id int, rank real) AS $$
+    DECLARE
+        query tsquery := plainto_tsquery(search_query);
+    BEGIN
+        RETURN QUERY
+        WITH garden_weighted_documents AS (
+            SELECT id,
+            setweight(to_tsvector(array_to_string(authors, ' ')), 'A') ||
+            setweight(to_tsvector(array_to_string(contributors, ' ')), 'A') ||
+            setweight(to_tsvector(array_to_string(tags, ' ')), 'B') ||
+            setweight(to_tsvector(description), 'D') ||
+            setweight(to_tsvector(title), 'D') AS document
+            FROM gardens
+        )
+        SELECT id, ts_rank(document, query) as rank
+        FROM garden_weighted_documents
+        WHERE query @@ document
+        ORDER BY rank DESC;
+    END;
+    $$ LANGUAGE plpgsql;
     """
-    # Search for matching entrypoints
-    entrypoint_stmt = select(Entrypoint)
 
-    if text_query:
-        ep_search_conditions = or_(
-            Entrypoint.description.match(text_query),
-            Entrypoint.title.match(text_query),
-            func.array_to_string(Entrypoint.authors, " ").match(text_query),
-            func.array_to_string(Entrypoint.tags, " ").match(text_query),
-        )
-        entrypoint_stmt = entrypoint_stmt.where(ep_search_conditions)
-
-    entrypoint_ids = [ep.id for ep in await db.scalars(entrypoint_stmt)]
-
-    # Get gardens referencing the matching entry points
-    if entrypoint_ids:
-        stmt = select(Garden).where(
-            Garden.entrypoints.any(Entrypoint.id.in_(entrypoint_ids))
-        )
-        result = await db.scalars(stmt)
-        gardens_with_matching_entrypoints = result.all()
-    else:
-        gardens_with_matching_entrypoints = []
-
-    garden_stmt = select(Garden)
-
-    # Search for gardens that match the query
-    if text_query:
-        garden_search_conditions = or_(
-            Garden.description.match(text_query),
-            func.array_to_string(Garden.authors, " ").match(text_query),
-            func.array_to_string(Garden.contributors, " ").match(text_query),
-            func.array_to_string(Garden.tags, " ").match(text_query),
-        )
-        garden_stmt = garden_stmt.where(garden_search_conditions)
-
-    # Limit results and ensure no duplicates
-    gardens = await db.scalars(garden_stmt.limit(limit))
-    return list(set((gardens.all() + gardens_with_matching_entrypoints)))
+    await session.execute(text(search_function_sql))
+    await session.commit()
 
 
 @router.get(

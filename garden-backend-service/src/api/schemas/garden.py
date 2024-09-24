@@ -47,6 +47,11 @@ class GardenMetadataResponse(GardenMetadata):
         return [mf.id for mf in self.modal_functions]
 
 
+class GardenSearchResponse(BaseSchema):
+    count: int
+    gardens: list[GardenMetadataResponse]
+
+
 class GardenPatchRequest(BaseSchema):
     title: str | None = None
     authors: UniqueList[str] | None = None
