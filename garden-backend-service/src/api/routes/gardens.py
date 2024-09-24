@@ -21,6 +21,7 @@ from src.api.schemas.garden import (
     GardenCreateRequest,
     GardenMetadataResponse,
     GardenPatchRequest,
+    GardenSearchRequest,
     GardenSearchResponse,
 )
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
@@ -58,9 +59,8 @@ async def add_garden(
     return new_garden
 
 
-@router.get("", response_model=GardenSearchResponse)
+@router.get("", response_model=list[GardenMetadataResponse])
 async def search_gardens(
-    search_query: Annotated[str | None, Query()] = None,
     doi: Annotated[list[str] | None, Query()] = None,
     draft: Annotated[bool | None, Query()] = None,
     owner_uuid: Annotated[UUID | None, Query()] = None,
@@ -95,7 +95,40 @@ async def search_gardens(
     if year is not None:
         stmt = stmt.where(Garden.year == year)
 
-    if search_query is not None:
+    result = await db.scalars(stmt.limit(limit))
+    return result.all()
+
+
+@router.put(
+    "/search",
+    status_code=status.HTTP_200_OK,
+    response_model=GardenSearchResponse,
+)
+async def search(
+    search_request: GardenSearchRequest,
+    db: AsyncSession = Depends(get_db_session),
+) -> GardenSearchResponse:
+    stmt = select(Garden)
+    array_columns = ["authors", "contributors", "tags"]
+
+    for filter in search_request.filters:
+        if not hasattr(Garden, filter.field_name):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Invalid field in filter: {filter.field_name}",
+            )
+        for value in filter.values:
+            if filter.field_name in array_columns:
+                stmt = stmt.where(
+                    # flatten the array to a list of strings
+                    func.array_to_string(getattr(Garden, filter.field_name), " ").match(
+                        value
+                    )
+                )
+            else:
+                stmt = stmt.where(getattr(Garden, filter.field_name).match(value))
+
+    if search_query := search_request.q:
         await _register_search_function(db)
         search_func = func.search_gardens(search_query).table_valued(
             "garden_id", "rank"
@@ -104,12 +137,12 @@ async def search_gardens(
             search_func.c.rank
         )
 
-    result = await db.scalars(stmt.limit(limit))
+    result = await db.scalars(stmt.limit(search_request.limit))
     gardens = result.all()
 
     return GardenSearchResponse(
         count=len(gardens),
-        gardens=gardens,
+        garden_meta=gardens,
     )
 
 
@@ -121,7 +154,7 @@ async def _register_search_function(session):
         query tsquery := plainto_tsquery(search_query);
     BEGIN
         RETURN QUERY
-        WITH garden_weighted_documents AS (
+        WITH gardens_weighted_documents AS (
             SELECT id,
             setweight(to_tsvector(array_to_string(authors, ' ')), 'A') ||
             setweight(to_tsvector(array_to_string(contributors, ' ')), 'A') ||
@@ -131,7 +164,7 @@ async def _register_search_function(session):
             FROM gardens
         )
         SELECT id, ts_rank(document, query) as rank
-        FROM garden_weighted_documents
+        FROM gardens_weighted_documents
         WHERE query @@ document
         ORDER BY rank DESC;
     END;

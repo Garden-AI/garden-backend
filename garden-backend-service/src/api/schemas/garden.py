@@ -47,11 +47,6 @@ class GardenMetadataResponse(GardenMetadata):
         return [mf.id for mf in self.modal_functions]
 
 
-class GardenSearchResponse(BaseSchema):
-    count: int
-    gardens: list[GardenMetadataResponse]
-
-
 class GardenPatchRequest(BaseSchema):
     title: str | None = None
     authors: UniqueList[str] | None = None
@@ -66,3 +61,19 @@ class GardenPatchRequest(BaseSchema):
     entrypoint_aliases: dict[str, str] = None
     is_archived: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
+
+
+class GardenSearchFilter(BaseSchema):
+    field_name: str
+    values: list[str]
+
+
+class GardenSearchRequest(BaseSchema):
+    q: str
+    limit: int
+    filters: list[GardenSearchFilter] = Field(default_factory=list)
+
+
+class GardenSearchResponse(BaseSchema):
+    count: int
+    garden_meta: list[GardenMetadataResponse]
