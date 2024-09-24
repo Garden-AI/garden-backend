@@ -99,7 +99,7 @@ async def search_gardens(
     return result.all()
 
 
-@router.put(
+@router.post(
     "/search",
     status_code=status.HTTP_200_OK,
     response_model=GardenSearchResponse,

@@ -70,7 +70,7 @@ class GardenSearchFilter(BaseSchema):
 
 class GardenSearchRequest(BaseSchema):
     q: str
-    limit: int
+    limit: int = 10
     filters: list[GardenSearchFilter] = Field(default_factory=list)
 
 
