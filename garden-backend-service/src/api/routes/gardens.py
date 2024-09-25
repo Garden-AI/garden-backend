@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
 from sqlalchemy import func, select, text
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import ARRAY, TEXT, array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
@@ -109,8 +109,11 @@ async def search(
     db: AsyncSession = Depends(get_db_session),
 ) -> GardenSearchResponse:
     stmt = select(Garden)
-    array_columns = ["authors", "contributors", "tags"]
-    stmt = _apply_filters(Garden, stmt, search_request.filters, array_columns)
+
+    try:
+        stmt = _apply_filters(Garden, stmt, search_request.filters)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     if search_query := search_request.q:
         await _register_search_function(db)
@@ -130,19 +133,21 @@ async def search(
     )
 
 
-def _apply_filters(cls, stmt, filters, array_columns):
+def _apply_filters(cls, stmt, filters):
     for filter in filters:
         if not hasattr(cls, filter.field_name):
-            raise ValueError(f"Invalid field_name: {filter.field_name}")
+            raise ValueError(f"Invalid filter field_name: {filter.field_name}")
         for value in filter.values:
-            if filter.field_name in array_columns:
-                return stmt.where(
+            if type(getattr(cls, filter.field_name).type) is ARRAY:
+                stmt = stmt.where(
                     func.array_to_string(getattr(cls, filter.field_name), " ").match(
                         value
                     )
                 )
             else:
-                stmt.where(getattr(cls, filter.field_name).match(value))
+                stmt = stmt.where(
+                    func.cast(getattr(cls, filter.field_name), TEXT).match(value)
+                )
     return stmt
 
 
