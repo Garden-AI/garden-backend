@@ -175,3 +175,4 @@ response.json
 .DS_Store
 .idea/
 *.zip
+/garden-backend-service/repopack-output.txt

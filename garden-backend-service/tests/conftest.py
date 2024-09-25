@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -15,6 +15,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -112,6 +113,15 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 
 @pytest.fixture
+def override_get_modal_client_dependency():
+    mock_modal_client = AsyncMock()
+    mock_modal_client.stub = MagicMock()
+    app.dependency_overrides[get_modal_client] = lambda: mock_modal_client
+    yield mock_modal_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def mock_auth_state():
     # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
@@ -164,6 +174,11 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+
+    mock_settings.MODAL_ENABLED = True
+    mock_settings.MODAL_TOKEN_ID = "testmodaltokenid"
+    mock_settings.MODAL_TOKEN_SECRET = "testmodaltokensecret"
+
     return mock_settings
 
 

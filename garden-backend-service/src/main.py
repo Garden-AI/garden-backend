@@ -13,6 +13,7 @@ from src.api.routes import (
     gardens,
     greet,
     hello_database,
+    modal,
     notebook,
     status,
     users,
@@ -68,6 +69,8 @@ app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
 app.include_router(status.router)
+
+app.include_router(modal.invocations.router)
 
 app.include_router(mdf_search.router)
 
