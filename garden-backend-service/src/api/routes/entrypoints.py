@@ -11,6 +11,7 @@ from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
     archive_on_datacite,
     assert_deletable_by_user,
+    assert_editable_by_user,
     get_gardens_for_entrypoint,
 )
 from src.api.schemas.entrypoint import (
@@ -203,6 +204,8 @@ async def update_entrypoint(
             detail=f"No Entrypoint with DOI {doi} found.",
         )
 
+    assert_editable_by_user(entrypoint, entrypoint_data, user)
+
     for key, value in entrypoint_data.model_dump(exclude_none=True).items():
         setattr(entrypoint, key, value)
 
@@ -211,6 +214,28 @@ async def update_entrypoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot archive a entrypoint in draft state.",
         )
+
+    # Prevent updating certain fields if entrypoint is published
+    if not entrypoint.doi_is_draft:
+        entrypoint_patch_dict = entrypoint_data.model_dump(exclude_none=True)
+        restricted_attrs = [
+            attr
+            for attr in [
+                "func_uuid",
+                "container_uuid",
+                "full_image_uri",
+                "base_image_uri",
+                "notebook_url",
+                "short_name",
+                "function_text",
+            ]
+            if attr in entrypoint_patch_dict
+        ]
+        if restricted_attrs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot update a published entrypoint's attribute(s): {', '.join(restricted_attrs)}.",
+            )
 
     await db.commit()
     if entrypoint.is_archived:
