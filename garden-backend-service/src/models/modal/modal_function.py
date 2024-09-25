@@ -15,12 +15,13 @@ else:
     ModalApp = "ModalApp"
     User = "User"
 
+
 class ModalFunction(Base):
     __tablename__ = "modal_functions"
     id: Mapped[int] = mapped_column(primary_key=True)
     doi: Mapped[str] = mapped_column(unique=True)
     doi_is_draft: Mapped[bool] = mapped_column(default=True)
-    
+
     authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     contributors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))

@@ -1,8 +1,4 @@
-import base64
-
-from pydantic import validator
-
-from ..base import BaseSchema
+from ..base import B64Bytes, BaseSchema
 
 
 class _ModalGenericResult(BaseSchema):
@@ -11,28 +7,16 @@ class _ModalGenericResult(BaseSchema):
     status: int
     exception: str = ""
     traceback: str = ""
-    serialized_tb: str = ""
-    tb_line_cache: str = ""
-    data: str = ""
+    serialized_tb: B64Bytes = b""
+    tb_line_cache: B64Bytes = b""
+    data: B64Bytes = b""
     data_blob_id: str = ""
-
-    @validator("serialized_tb", "tb_line_cache", "data", pre=True)
-    def encode_bytes(cls, v):
-        if isinstance(v, bytes):
-            return base64.b64encode(v).decode()
-        return v
 
 
 class ModalInvocationRequest(BaseSchema):
     app_name: str
     function_name: str
-    args_kwargs_serialized: bytes
-
-    @validator("args_kwargs_serialized", pre=True)
-    def decode_base64(cls, v):
-        if isinstance(v, str):
-            return base64.b64decode(v)
-        return v
+    args_kwargs_serialized: B64Bytes
 
 
 class ModalInvocationResponse(BaseSchema):
