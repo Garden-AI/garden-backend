@@ -1,8 +1,10 @@
+import base64
 from typing import Annotated, TypeVar
 
 from pydantic import (
     AfterValidator,
     BaseModel,
+    BeforeValidator,
     Field,
     HttpUrl,
     PlainSerializer,
@@ -48,3 +50,20 @@ UniqueList = Annotated[
     Field(json_schema_extra={"uniqueItems": True}, default_factory=list),
 ]
 Url = Annotated[HttpUrl, PlainSerializer(lambda url: str(url), return_type=type(""))]
+
+
+def _from_b64(v) -> bytes:
+    if isinstance(v, str):
+        return base64.b64decode(v)
+    return v
+
+
+def _to_b64(v) -> str:
+    if isinstance(v, bytes):
+        return base64.b64encode(v).decode()
+    return v
+
+
+B64Bytes = Annotated[
+    bytes, BeforeValidator(_from_b64), PlainSerializer(_to_b64, return_type=str)
+]

@@ -1,8 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
-from sqlalchemy.dialects import postgresql
-from sqlalchemy.dialects.postgresql import ARRAY, JSON
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from src.models._associations import modal_apps_modal_functions
 from src.models.base import Base
@@ -14,6 +12,7 @@ if TYPE_CHECKING:
 else:
     ModalFunction = "ModalFunction"
     User = "User"
+
 
 class ModalApp(Base):
     __tablename__ = "modal_apps"

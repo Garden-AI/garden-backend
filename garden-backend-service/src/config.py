@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     MDF_API_CLIENT_SECRET: str
     MDF_SEARCH_INDEX_UUID: str
 
+    MODAL_ENABLED: bool
     MODAL_TOKEN_ID: str
     MODAL_TOKEN_SECRET: str
     MODAL_ENV: str

@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -17,6 +17,7 @@ from src.api.dependencies.auth import (
 )
 from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
 from src.api.dependencies.sandboxed_functions import validate_modal_file, deploy_modal_app
+from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -142,6 +143,15 @@ def override_validate_modal_file_dependency(mock_validate_modal_file_provider):
     app.dependency_overrides.clear()
 
 
+def override_get_modal_client_dependency():
+    mock_modal_client = AsyncMock()
+    mock_modal_client.stub = MagicMock()
+    app.dependency_overrides[get_modal_client] = lambda: mock_modal_client
+    yield mock_modal_client
+
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
     app.dependency_overrides[DeployModalAppProvider] = lambda: mock_deploy_modal_app_provider
@@ -201,10 +211,13 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+
     mock_settings.MODAL_ENV = "dev"
     mock_settings.MODAL_TOKEN_ID = "fake-token-id"
     mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
     mock_settings.MODAL_USE_LOCAL = True
+    mock_settings.MODAL_ENABLED = True
+
     return mock_settings
 
 
