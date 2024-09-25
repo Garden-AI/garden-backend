@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, create_autospec
 from uuid import UUID
 
 import pytest
@@ -15,6 +15,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
 from src.api.dependencies.sandboxed_functions import validate_modal_file, deploy_modal_app
 from src.config import Settings, get_settings
 from src.main import app
@@ -123,16 +124,42 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
     yield
     app.dependency_overrides.clear()
 
+
+def create_mock_provider(provider_class):
+    # Create an instance of a provider class used to inject a Modal function as a dependency
+    provider_instance = provider_class()
+    
+    # Create an autospec of the __call__ method
+    mocked_call = create_autospec(provider_instance.__call__, side_effect=lambda *args, **kwargs: None)
+    
+    # Create a new class that mimics the original provider
+    class MockProvider:
+        def __call__(self, *args, **kwargs):
+            return mocked_call(*args, **kwargs)
+
+    return MockProvider()
+
+
 @pytest.fixture
-def override_get_validate_modal_file_dependency(mock_validate_modal_file):
-    app.dependency_overrides[validate_modal_file] = lambda: mock_validate_modal_file
+def mock_validate_modal_file_provider():
+    return create_mock_provider(ValidateModalFileProvider)
+
+
+@pytest.fixture
+def mock_deploy_modal_app_provider():
+    return create_mock_provider(DeployModalAppProvider)
+
+
+@pytest.fixture
+def override_validate_modal_file_dependency(mock_validate_modal_file_provider):
+    app.dependency_overrides[ValidateModalFileProvider] = lambda: mock_validate_modal_file_provider
     yield
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def override_get_deploy_modal_app_dependency(mock_deploy_modal_app):
-    app.dependency_overrides[deploy_modal_app] = lambda: mock_deploy_modal_app
+def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
+    app.dependency_overrides[DeployModalAppProvider] = lambda: mock_deploy_modal_app_provider
     yield
     app.dependency_overrides.clear()
 
@@ -189,9 +216,10 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
-    mock_settings.MODAL_ENV='dev'
-    mock_settings.MODAL_TOKEN_ID="fake-token-id"
-    mock_settings.MODAL_TOKEN_SECRET="fake-token-secret"
+    mock_settings.MODAL_ENV = "dev"
+    mock_settings.MODAL_TOKEN_ID = "fake-token-id"
+    mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
+    mock_settings.MODAL_USE_LOCAL = True
     return mock_settings
 
 
