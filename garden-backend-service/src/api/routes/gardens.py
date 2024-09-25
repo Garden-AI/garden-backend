@@ -110,23 +110,7 @@ async def search(
 ) -> GardenSearchResponse:
     stmt = select(Garden)
     array_columns = ["authors", "contributors", "tags"]
-
-    for filter in search_request.filters:
-        if not hasattr(Garden, filter.field_name):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Invalid field in filter: {filter.field_name}",
-            )
-        for value in filter.values:
-            if filter.field_name in array_columns:
-                stmt = stmt.where(
-                    # flatten the array to a list of strings
-                    func.array_to_string(getattr(Garden, filter.field_name), " ").match(
-                        value
-                    )
-                )
-            else:
-                stmt = stmt.where(getattr(Garden, filter.field_name).match(value))
+    stmt = _apply_filters(Garden, stmt, search_request.filters, array_columns)
 
     if search_query := search_request.q:
         await _register_search_function(db)
@@ -146,12 +130,28 @@ async def search(
     )
 
 
+def _apply_filters(cls, stmt, filters, array_columns):
+    for filter in filters:
+        if not hasattr(cls, filter.field_name):
+            raise ValueError(f"Invalid field_name: {filter.field_name}")
+        for value in filter.values:
+            if filter.field_name in array_columns:
+                return stmt.where(
+                    func.array_to_string(getattr(cls, filter.field_name), " ").match(
+                        value
+                    )
+                )
+            else:
+                stmt.where(getattr(cls, filter.field_name).match(value))
+    return stmt
+
+
 async def _register_search_function(session):
     search_function_sql = """
     CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
     RETURNS TABLE (garden_id int, rank real) AS $$
     DECLARE
-        query tsquery := plainto_tsquery(search_query);
+        query tsquery := websearch_to_tsquery(search_query);
     BEGIN
         RETURN QUERY
         WITH gardens_weighted_documents AS (
