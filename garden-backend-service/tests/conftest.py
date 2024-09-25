@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -15,6 +15,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -108,6 +109,15 @@ def override_get_settings_dependency(mock_settings):
 def override_get_settings_dependency_with_sync(mock_settings_with_sync):
     app.dependency_overrides[get_settings] = lambda: mock_settings_with_sync
     yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_get_modal_client_dependency():
+    mock_modal_client = AsyncMock()
+    mock_modal_client.stub = MagicMock()
+    app.dependency_overrides[get_modal_client] = lambda: mock_modal_client
+    yield mock_modal_client
     app.dependency_overrides.clear()
 
 

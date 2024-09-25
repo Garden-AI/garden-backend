@@ -24,12 +24,14 @@ async def invoke_modal_fn(
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
 ):
+    log = logger.bind(app_name=body.app_name, function_name=body.function_name)
     # We want to mimic the behavior of the modal.Function._call_function method when the sdk hits this route.
-    # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request, then
-    # awaiting a run_function helper to both collect and de-serialize the results.
-    #
-    # In this route we want to mimic their logic as closely as possible modulo (de-)serialization, with
-    # those steps performed on the user's machine (like it would if they were using modal directly).
+    # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request,
+    # then awaiting a run_function helper to both collect and de-serialize the results.
+    # (see: https://github.com/modal-labs/modal-client/blob/9507909d066785591b1d4f79f76b9e3ec4a07a33/modal/functions.py#L1191)
+
+    # In this route we want to mimic their logic as closely as possible modulo (de-)serialization, with those steps performed on the user's machine
+    # (like it would if they were using modal directly).
 
     # fetch the function from modal
     function = await modal.functions._Function.lookup(
@@ -37,7 +39,7 @@ async def invoke_modal_fn(
     )
 
     # create the _Invocation object
-    logger.info("creating modal invocation")
+    log.debug("creating modal invocation")
     invocation = await _create_invocation(
         function, body.args_kwargs_serialized, modal_client
     )
@@ -45,13 +47,15 @@ async def invoke_modal_fn(
     outputs_response = await invocation.pop_function_call_outputs(
         timeout=None, clear_on_success=True
     )
-    logger.info("received modal RPC response", outputs_response=outputs_response)
+    log.debug("received modal RPC response", outputs_response=outputs_response)
 
     if not outputs_response.outputs:
+        log.warning("No outputs received from function call")
         raise Exception("No outputs received from function call")
 
     output: api_pb2.FunctionGetOutputsItem = outputs_response.outputs[0]
 
+    log.info("Invoked modal function")
     # we duplicate enough of the modal response schema that modal can process the
     # results "naturally" itself on the client side. (including e.g. formatting
     # the traceback for the user if things went wrong)
@@ -84,11 +88,11 @@ async def _create_invocation(
         # see: https://github.com/modal-labs/modal-client/blob/9507909d066785591b1d4f79f76b9e3ec4a07a33/modal/functions.py#L1208
     )
 
-    logger.info("sending FunctionMap request")
+    logger.debug("sending FunctionMap request", map_request=map_request)
     # First request is necessary to get the function_call_id
     map_response = await retry_transient_errors(client.stub.FunctionMap, map_request)
     function_call_id = map_response.function_call_id
-    logger.info("received FunctionMap RPC response", map_response=map_response)
+    logger.debug("received FunctionMap RPC response", map_response=map_response)
 
     if map_response.pipelined_inputs:
         return modal.functions._Invocation(client.stub, function_call_id, client)
