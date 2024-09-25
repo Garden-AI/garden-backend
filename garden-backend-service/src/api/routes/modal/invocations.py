@@ -24,6 +24,8 @@ async def invoke_modal_fn(
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
 ):
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
     log = logger.bind(app_name=body.app_name, function_name=body.function_name)
     # We want to mimic the behavior of the modal.Function._call_function method when the sdk hits this route.
     # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request,

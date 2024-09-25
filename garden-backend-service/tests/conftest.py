@@ -174,6 +174,11 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+
+    mock_settings.MODAL_ENABLED = True
+    mock_settings.MODAL_TOKEN_ID = "testmodaltokenid"
+    mock_settings.MODAL_TOKEN_SECRET = "testmodaltokensecret"
+
     return mock_settings
 
 
