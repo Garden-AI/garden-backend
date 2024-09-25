@@ -17,7 +17,6 @@ from src.api.routes import (
     notebook,
     status,
     users,
-    modal_apps,
 )
 from src.api.routes.mdf import search as mdf_search
 from src.api.tasks import retry_failed_updates
@@ -68,11 +67,11 @@ app.include_router(garden_search_record.router)
 app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
-app.include_router(modal_apps.router)
 app.include_router(users.router)
 app.include_router(status.router)
 
 app.include_router(modal.invocations.router)
+app.include_router(modal.modal_apps.router)
 
 app.include_router(mdf_search.router)
 

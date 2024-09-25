@@ -13,7 +13,6 @@ from src.config import Settings, get_settings
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
-# from src.sandboxed_functions.modal_publishing_helpers import validate_modal_file, deploy_modal_app
 
 from structlog import get_logger
 
@@ -32,8 +31,12 @@ async def add_modal_app(
     validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
 ):
+    
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
+    
     # First, validate the request. 
-    # This includes checking the function metadata provided against the functions present in the App.
+    # This will include checking the function metadata provided against the functions present in the App.
     metadata = validate_modal_file(modal_app.file_contents)
     
     # If everything looks good, we will go on to deploy the App.

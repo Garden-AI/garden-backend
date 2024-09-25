@@ -16,7 +16,6 @@ from src.api.dependencies.auth import (
     authenticated,
 )
 from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
-from src.api.dependencies.sandboxed_functions import validate_modal_file, deploy_modal_app
 from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
@@ -91,18 +90,6 @@ def mock_db_session(
     yield
     Base.metadata.drop_all(engine)
     engine.dispose()
-
-
-@pytest.fixture
-def mock_validate_modal_file():
-    mock_validate_modal_file = MagicMock(spec=validate_modal_file)
-    return mock_validate_modal_file
-
-
-@pytest.fixture
-def mock_deploy_modal_app():
-    mock_deploy_modal_app = MagicMock(spec=deploy_modal_app)
-    return mock_deploy_modal_app
 
 
 @pytest.fixture
