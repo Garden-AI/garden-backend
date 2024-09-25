@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     MODAL_ENABLED: bool
     MODAL_TOKEN_ID: str
     MODAL_TOKEN_SECRET: str
-    MODAL_ENV: str
+    MODAL_ENV: str = "dev"
     MODAL_USE_LOCAL: bool = False
 
     @computed_field
