@@ -130,6 +130,14 @@ def override_validate_modal_file_dependency(mock_validate_modal_file_provider):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture
+def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
+    app.dependency_overrides[DeployModalAppProvider] = lambda: mock_deploy_modal_app_provider
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def override_get_modal_client_dependency():
     mock_modal_client = AsyncMock()
     mock_modal_client.stub = MagicMock()
@@ -138,12 +146,6 @@ def override_get_modal_client_dependency():
 
     app.dependency_overrides.clear()
 
-
-@pytest.fixture
-def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
-    app.dependency_overrides[DeployModalAppProvider] = lambda: mock_deploy_modal_app_provider
-    yield
-    app.dependency_overrides.clear()
 
 @pytest.fixture
 def mock_auth_state():
