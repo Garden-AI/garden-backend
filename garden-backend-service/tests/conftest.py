@@ -125,29 +125,14 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
     app.dependency_overrides.clear()
 
 
-def create_mock_provider(provider_class):
-    # Create an instance of a provider class used to inject a Modal function as a dependency
-    provider_instance = provider_class()
-    
-    # Create an autospec of the __call__ method
-    mocked_call = create_autospec(provider_instance.__call__, side_effect=lambda *args, **kwargs: None)
-    
-    # Create a new class that mimics the original provider
-    class MockProvider:
-        def __call__(self, *args, **kwargs):
-            return mocked_call(*args, **kwargs)
-
-    return MockProvider()
-
-
 @pytest.fixture
 def mock_validate_modal_file_provider():
-    return create_mock_provider(ValidateModalFileProvider)
+    return MagicMock(spec=ValidateModalFileProvider)
 
 
 @pytest.fixture
 def mock_deploy_modal_app_provider():
-    return create_mock_provider(DeployModalAppProvider)
+    return MagicMock(spec=DeployModalAppProvider)
 
 
 @pytest.fixture

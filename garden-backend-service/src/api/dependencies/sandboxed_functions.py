@@ -8,7 +8,6 @@ import modal
 
 class ValidateModalFileProvider:
     def __init__(self, settings: Settings = Depends(get_settings)):
-        self.settings = settings
         if settings.MODAL_USE_LOCAL:
             self.f = validate_modal_file
         else:
@@ -24,7 +23,6 @@ class ValidateModalFileProvider:
 
 class DeployModalAppProvider:
     def __init__(self, settings: Settings = Depends(get_settings)):
-        self.settings = settings
         if settings.MODAL_USE_LOCAL:
             self.f = deploy_modal_app
         else:
