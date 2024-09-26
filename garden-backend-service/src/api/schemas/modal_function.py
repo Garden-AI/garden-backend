@@ -20,6 +20,6 @@ class ModalFunctionMetadata(BaseSchema):
 
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
-    id: UUID
+    id: int
     parent_app_name: str
-    parent_app_id: UUID
+    parent_app_id: int

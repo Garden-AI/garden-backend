@@ -55,13 +55,13 @@ async def add_modal_app(
 
     # If that worked smoothly within the time limit, we can save the App and its Functions to the DB.
     # (This will happen in the next PR.)
-    app_id = "12345678-1234-5678-1234-567812345678"
+    app_id = "12345678123456781234567812345678"
     modal_functions = modal_app.modal_functions
     mf = modal_functions[0]
     modal_function_responses = [
         ModalFunctionMetadataResponse(
             **mf.model_dump(exclude_unset=True),
-            id="12345678-1234-5678-1234-567812345678",
+            id="12345678123456781234567812345678",
             parent_app_name=modal_app.app_name,
             parent_app_id=app_id,
         )
