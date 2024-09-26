@@ -20,12 +20,12 @@ class ModalAppMetadata(BaseSchema):
 
 
 class ModalAppCreateRequest(ModalAppMetadata):
-    owner_identity_id: UUID | None = None
+    owner_identity_id: int | None = None
     modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
 
 
 class ModalAppMetadataResponse(ModalAppMetadata):
-    owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
+    owner_identity_id: int = Field(alias=AliasPath("owner", "identity_id"))
     id: int
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
 
