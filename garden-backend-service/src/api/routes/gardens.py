@@ -1,10 +1,9 @@
-import asyncio
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
-from sqlalchemy import desc, func, select, text
+from sqlalchemy import column, func, select, text
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT, array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,18 +127,18 @@ async def search(
             search_func.c.rank
         )
 
+    # Calculate the facets after apply the filters and search
+    facets = await _calculate_facets(db, stmt)
+
     # Get totals for offset/pagination
     total_count_stmt = select(func.count()).select_from(stmt.subquery())
     total_count = await db.scalar(total_count_stmt)
 
-    # Run the query
+    # Run the search query
     result = await db.scalars(
         stmt.limit(search_request.limit).offset(search_request.offset)
     )
     gardens = result.all()
-
-    # Get the facet information
-    facets = await _calculate_facets(db)
 
     return GardenSearchResponse(
         count=len(gardens),
@@ -214,37 +213,26 @@ async def _register_search_function(session):
     await session.commit()
 
 
-async def _calculate_facets(db: AsyncSession) -> Facets:
-    # For `tags` and `authors`, we need to unnest arrays and count distinct elements
-    tags_stmt = (
-        select(func.unnest(Garden.tags).label("tag"), func.count().label("count"))
-        .filter(Garden.tags.isnot(None))
-        .group_by("tag")
-        .order_by(desc("count"))
-    )
-    authors_stmt = (
-        select(func.unnest(Garden.authors).label("author"), func.count().label("count"))
-        .filter(Garden.authors.isnot(None))
-        .group_by("author")
-        .order_by(desc("count"))
-    )
+async def _calculate_facets(db: AsyncSession, query) -> Facets:
+    filtered_gardens = query.cte("filtered_gardens")
 
-    # For `year`, just count by distinct year values
-    year_stmt = (
-        select(Garden.year, func.count(Garden.year).label("count"))
-        .filter(Garden.year.isnot(None))
-        .group_by(Garden.year)
-        .order_by(desc("count"))
-    )
+    tags_query = select(
+        func.unnest(filtered_gardens.c.tags).label("tag"), func.count().label("count")
+    ).group_by(column("tag"))
 
-    # Execute all queries concurrently for better performance
-    tags_result, authors_result, year_result = await asyncio.gather(
-        db.execute(tags_stmt),
-        db.execute(authors_stmt),
-        db.execute(year_stmt),
-    )
+    authors_query = select(
+        func.unnest(filtered_gardens.c.authors).label("author"),
+        func.count().label("count"),
+    ).group_by(column("author"))
 
-    # Transform results into dictionaries for easier consumption
+    year_query = select(
+        filtered_gardens.c.year.label("year"), func.count().label("count")
+    ).group_by(column("year"))
+
+    tags_result = await db.execute(tags_query)
+    authors_result = await db.execute(authors_query)
+    year_result = await db.execute(year_query)
+
     tags = {row[0]: row[1] for row in tags_result.all()}
     authors = {row[0]: row[1] for row in authors_result.all()}
     year = {str(row[0]): row[1] for row in year_result.all()}
