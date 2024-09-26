@@ -15,7 +15,10 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
-from src.api.dependencies.sandboxed_functions import ValidateModalFileProvider, DeployModalAppProvider
+from src.api.dependencies.sandboxed_functions import (
+    ValidateModalFileProvider,
+    DeployModalAppProvider,
+)
 from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
@@ -125,14 +128,18 @@ def mock_deploy_modal_app_provider():
 
 @pytest.fixture
 def override_validate_modal_file_dependency(mock_validate_modal_file_provider):
-    app.dependency_overrides[ValidateModalFileProvider] = lambda: mock_validate_modal_file_provider
+    app.dependency_overrides[ValidateModalFileProvider] = (
+        lambda: mock_validate_modal_file_provider
+    )
     yield
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
-    app.dependency_overrides[DeployModalAppProvider] = lambda: mock_deploy_modal_app_provider
+    app.dependency_overrides[DeployModalAppProvider] = (
+        lambda: mock_deploy_modal_app_provider
+    )
     yield
     app.dependency_overrides.clear()
 

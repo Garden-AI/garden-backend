@@ -4,10 +4,11 @@ from pydantic import AliasPath, Field
 
 from .base import BaseSchema, UniqueList, Url
 
+
 class ModalFunctionMetadata(BaseSchema):
     # Identifiers
     doi: str | None
-    
+
     # DataCite Metadata
     title: str
     description: str | None
@@ -16,6 +17,7 @@ class ModalFunctionMetadata(BaseSchema):
     # Function Metadata
     is_archived: bool = False
     function_name: str
+
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
     id: UUID

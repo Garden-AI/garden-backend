@@ -6,6 +6,7 @@ from pydantic import AliasPath, Field, computed_field
 from .base import BaseSchema, UniqueList
 from .modal_function import ModalFunctionMetadataResponse, ModalFunctionMetadata
 
+
 class ModalAppMetadata(BaseSchema):
     app_name: str
     version: str = "0.0.1"
