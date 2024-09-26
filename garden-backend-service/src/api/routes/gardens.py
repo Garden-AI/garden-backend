@@ -153,24 +153,41 @@ def _apply_filters(cls, stmt, filters):
 
 async def _register_search_function(session):
     search_function_sql = """
+    -- Do a ranked full-text search on gardens and entrypoints
+    -- Gardens are ranked by their relevance to the search plus thier entrypoints relevance to the search
     CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
     RETURNS TABLE (garden_id int, rank real) AS $$
     DECLARE
         query tsquery := websearch_to_tsquery(search_query);
     BEGIN
         RETURN QUERY
-        WITH gardens_weighted_documents AS (
+        WITH entrypoints_weighted_documents AS (
             SELECT id,
-            setweight(to_tsvector(array_to_string(authors, ' ')), 'A') ||
-            setweight(to_tsvector(array_to_string(contributors, ' ')), 'A') ||
-            setweight(to_tsvector(array_to_string(tags, ' ')), 'B') ||
-            setweight(to_tsvector(description), 'D') ||
-            setweight(to_tsvector(title), 'D') AS document
-            FROM gardens
+            setweight(to_tsvector(array_to_string(e.authors, ' ')), 'A') ||
+            setweight(to_tsvector(array_to_string(e.tags, ' ')), 'B') ||
+            setweight(to_tsvector(e.title), 'D') ||
+            setweight(to_tsvector(e.description), 'D') AS ep_document
+            FROM entrypoints e
+        ), gardens_weighted_documents AS (
+            SELECT g.id AS garden_id,
+            setweight(to_tsvector(array_to_string(g.authors, ' ')), 'A') ||
+            setweight(to_tsvector(array_to_string(g.contributors, ' ')), 'A') ||
+            setweight(to_tsvector(array_to_string(g.tags, ' ')), 'B') ||
+            setweight(to_tsvector(g.description), 'D') ||
+            setweight(to_tsvector(g.title), 'D') AS garden_document
+            FROM gardens g
+        ), garden_entrypoint_ranks AS (
+            SELECT gwd.garden_id,
+                   ts_rank(gwd.garden_document, query) AS garden_rank,
+                   SUM(ts_rank(ep.ep_document, query)) AS total_entrypoint_rank
+            FROM gardens_weighted_documents gwd
+            LEFT JOIN gardens_entrypoints ge ON gwd.garden_id = ge.garden_id
+            LEFT JOIN entrypoints_weighted_documents ep ON ep.id = ge.entrypoint_id
+            GROUP BY gwd.garden_id, gwd.garden_document
         )
-        SELECT id, ts_rank(document, query) as rank
-        FROM gardens_weighted_documents
-        WHERE query @@ document
+        SELECT ger.garden_id, ger.garden_rank + COALESCE(ger.total_entrypoint_rank, 0) AS rank
+        FROM garden_entrypoint_ranks ger
+        WHERE garden_rank > 0 OR COALESCE(total_entrypoint_rank, 0) > 0
         ORDER BY rank DESC;
     END;
     $$ LANGUAGE plpgsql;
