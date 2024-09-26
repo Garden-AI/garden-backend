@@ -16,6 +16,7 @@ else:
     ModalFunction = "ModalFunction"
     User = "User"
 
+
 class Garden(Base):
     __tablename__ = "gardens"
     id: Mapped[int] = mapped_column(primary_key=True)
