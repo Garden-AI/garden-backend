@@ -1,9 +1,10 @@
+import asyncio
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
-from sqlalchemy import func, select, text
+from sqlalchemy import desc, func, select, text
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT, array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from src.api.routes._utils import (
     is_doi_registered,
 )
 from src.api.schemas.garden import (
+    Facets,
     GardenCreateRequest,
     GardenMetadataResponse,
     GardenPatchRequest,
@@ -110,11 +112,13 @@ async def search(
 ) -> GardenSearchResponse:
     stmt = select(Garden)
 
+    # Apply filter to query
     try:
         stmt = _apply_filters(Garden, stmt, search_request.filters)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    # Do the ranked full-text search
     if search_query := search_request.q:
         await _register_search_function(db)
         search_func = func.search_gardens(search_query).table_valued(
@@ -124,12 +128,25 @@ async def search(
             search_func.c.rank
         )
 
-    result = await db.scalars(stmt.limit(search_request.limit))
+    # Get totals for offset/pagination
+    total_count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_count = await db.scalar(total_count_stmt)
+
+    # Run the query
+    result = await db.scalars(
+        stmt.limit(search_request.limit).offset(search_request.offset)
+    )
     gardens = result.all()
+
+    # Get the facet information
+    facets = await _calculate_facets(db)
 
     return GardenSearchResponse(
         count=len(gardens),
+        total=total_count,
+        offset=search_request.offset,
         garden_meta=gardens,
+        facets=facets,
     )
 
 
@@ -195,6 +212,44 @@ async def _register_search_function(session):
 
     await session.execute(text(search_function_sql))
     await session.commit()
+
+
+async def _calculate_facets(db: AsyncSession) -> Facets:
+    # For `tags` and `authors`, we need to unnest arrays and count distinct elements
+    tags_stmt = (
+        select(func.unnest(Garden.tags).label("tag"), func.count().label("count"))
+        .filter(Garden.tags.isnot(None))
+        .group_by("tag")
+        .order_by(desc("count"))
+    )
+    authors_stmt = (
+        select(func.unnest(Garden.authors).label("author"), func.count().label("count"))
+        .filter(Garden.authors.isnot(None))
+        .group_by("author")
+        .order_by(desc("count"))
+    )
+
+    # For `year`, just count by distinct year values
+    year_stmt = (
+        select(Garden.year, func.count(Garden.year).label("count"))
+        .filter(Garden.year.isnot(None))
+        .group_by(Garden.year)
+        .order_by(desc("count"))
+    )
+
+    # Execute all queries concurrently for better performance
+    tags_result, authors_result, year_result = await asyncio.gather(
+        db.execute(tags_stmt),
+        db.execute(authors_stmt),
+        db.execute(year_stmt),
+    )
+
+    # Transform results into dictionaries for easier consumption
+    tags = {row[0]: row[1] for row in tags_result.all()}
+    authors = {row[0]: row[1] for row in authors_result.all()}
+    year = {str(row[0]): row[1] for row in year_result.all()}
+
+    return Facets(tags=tags, authors=authors, year=year)
 
 
 @router.get(
