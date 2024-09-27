@@ -20,7 +20,8 @@ async def test_add_modal_app(
     response = await client.post(
         "/modal-apps", json=mock_modal_app_create_request_one_function
     )
-    print(f"Response content: {response.content}")
+    # print(f"Response content: {response.content}")
+    # TODO: add GET call
     assert response.status_code == 200
     response_data = response.json()
     assert (

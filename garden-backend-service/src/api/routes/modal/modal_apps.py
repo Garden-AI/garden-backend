@@ -8,7 +8,7 @@ from src.api.schemas.modal_app import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models import User
+from src.models import User, ModalApp
 from src.config import Settings, get_settings
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
@@ -76,3 +76,22 @@ async def add_modal_app(
         owner={"identity_id": "12345678-1234-5678-1234-567812345678"},
         modal_functions=modal_function_responses,
     )
+
+
+@router.get("", response_model=ModalAppMetadataResponse)
+async def get_modal_apps(
+    id: str,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+):
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
+
+    stmt = db.query(ModalApp).where(ModalApp.id == id)
+    app = await stmt.first()
+    if not app:
+        raise ValueError(f"Modal App with id {id} not found")
+    
+
+
