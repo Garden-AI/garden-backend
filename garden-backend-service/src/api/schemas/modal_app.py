@@ -9,11 +9,9 @@ from .modal_function import ModalFunctionMetadataResponse, ModalFunctionMetadata
 
 class ModalAppMetadata(BaseSchema):
     app_name: str
-    version: str = "0.0.1"
+    # version: str = "0.0.1"
     modal_function_names: list[str] = Field(default_factory=list)
     file_contents: str
-
-    is_archived: bool = False
 
     requirements: list[str] = Field(default_factory=list)
     base_image_name: str

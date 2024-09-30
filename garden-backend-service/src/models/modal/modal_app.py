@@ -20,7 +20,7 @@ class ModalApp(Base):
     app_name: Mapped[str]
 
     # The whole Python file the user submitted with the Modal App definition
-    file_text: Mapped[str]
+    file_contents: Mapped[str]
 
     modal_functions: Mapped[list[ModalFunction]] = relationship(
         ModalFunction,

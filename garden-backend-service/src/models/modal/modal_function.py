@@ -18,22 +18,21 @@ else:
 
 class ModalFunction(Base):
     __tablename__ = "modal_functions"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    doi: Mapped[str] = mapped_column(unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True) 
+    doi: Mapped[str | None] = mapped_column(unique=True)
     doi_is_draft: Mapped[bool] = mapped_column(default=True)
-
+    
+    title: Mapped[str]
     authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
-    contributors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
+    # contributors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     description: Mapped[str | None]
-    publisher: Mapped[str]
     year: Mapped[str]
-    language: Mapped[str]
-    version: Mapped[str]
+    language: Mapped[str] = "en"
+    version: Mapped[str] = "0.0.1"
     is_archived: Mapped[bool] = mapped_column(default=False)
 
-    # short_name is name of the function
-    short_name: Mapped[str]
+    function_name: Mapped[str]
     function_text: Mapped[str]
 
     tags: Mapped[list[str]] = mapped_column(ARRAY(String))
@@ -46,10 +45,6 @@ class ModalFunction(Base):
     repositories: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     papers: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     datasets: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
-
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    user: Mapped[User] = relationship(lazy="selectin")
-    owner: Mapped[User] = synonym("user")
 
     modal_app: Mapped[ModalApp] = relationship(
         ModalApp,
