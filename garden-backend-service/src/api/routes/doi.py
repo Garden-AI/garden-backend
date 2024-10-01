@@ -3,6 +3,9 @@ from fastapi import APIRouter, Body, Depends, exceptions, status
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas import datacite
 from src.config import Settings, get_settings
+from structlog import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/doi")
 
@@ -34,6 +37,7 @@ async def mint_draft_doi(
         )
 
     # note: datacite response body uses same schema
+    logger.info("Minted draft DOI")
     result = datacite.Doi(**resp.json())
     return {"doi": result.data.attributes.doi}
 
@@ -89,10 +93,10 @@ async def update_datacite(
             auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
         )
         resp.raise_for_status()
+        logger.info("Updated metadata on datacite", doi=doi)
     except requests.HTTPError as e:
         raise exceptions.HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
-
     result = datacite.Doi(**resp.json())
     return result.model_dump(exclude_defaults=True)

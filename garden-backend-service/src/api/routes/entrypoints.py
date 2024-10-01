@@ -1,4 +1,3 @@
-from logging import getLogger
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
@@ -22,8 +21,9 @@ from src.api.schemas.entrypoint import (
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
+from structlog import get_logger
 
-logger = getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/entrypoints")
 
@@ -98,6 +98,7 @@ async def delete_entrypoint(
     settings: Settings = Depends(get_settings),
     app_auth_client=Depends(get_auth_client),
 ):
+    log = logger.bind(doi=doi)
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
     if entrypoint is not None:
@@ -111,7 +112,11 @@ async def delete_entrypoint(
                     db.refresh(garden)
                     if settings.SYNC_SEARCH_INDEX:
                         # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
-                        logger.info(msg=f"Updating garden {garden.doi} on search index")
+                        log.info(
+                            "Scheduled background task",
+                            operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+                            garden_doi=garden.doi,
+                        )
                         background_tasks.add_task(
                             schedule_search_index_update,
                             SearchIndexOperation.CREATE_OR_UPDATE,
@@ -126,10 +131,11 @@ async def delete_entrypoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to delete Entrypoint with DOI {doi}",
             ) from e
-
+        log.info("Successfully deleted entrypoint")
         return {"detail": f"Successfully deleted entrypoint with DOI {doi}."}
     else:
         # no error if not found so DELETE is idempotent
+        log.info("No entrypoint to delete")
         return {"detail": f"No entrypoint found with DOI {doi}."}
 
 
@@ -143,6 +149,7 @@ async def create_or_replace_entrypoint(
     settings: Settings = Depends(get_settings),
     app_auth_client=Depends(get_auth_client),
 ):
+    log = logger.bind(doi=doi)
     existing_entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
 
     if existing_entrypoint is None:
@@ -155,6 +162,11 @@ async def create_or_replace_entrypoint(
             db, identity_id=entrypoint_data.owner_identity_id
         )
         existing_entrypoint.owner = new_owner or user
+        log.info(
+            "Assigned entrypoint ownership",
+            owner_identity_id=(new_owner or user).identity_id,
+            owner_username=(new_owner or user).username,
+        )
 
     try:
         # naive update with all other values from payload
@@ -169,7 +181,6 @@ async def create_or_replace_entrypoint(
         )
         if gardens and settings.SYNC_SEARCH_INDEX:
             for garden in gardens:
-                logger.info(msg=f"Sending garden {garden.doi} to search index")
                 background_tasks.add_task(
                     schedule_search_index_update,
                     SearchIndexOperation.CREATE_OR_UPDATE,
@@ -178,7 +189,14 @@ async def create_or_replace_entrypoint(
                     db,
                     app_auth_client,
                 )
+                log.info(
+                    "Scheduled background task",
+                    garden_doi=garden.doi,
+                    operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+                )
+        log.info("Updated entrypoint in DB")
     except IntegrityError as e:
+        log.exception("Failed to update entrypoint", exc_info=True)
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -197,6 +215,7 @@ async def update_entrypoint(
     user: User = Depends(authed_user),
     app_auth_client=Depends(get_auth_client),
 ) -> EntrypointMetadataResponse:
+    log = logger.bind(doi=doi)
     entrypoint: Entrypoint | None = await Entrypoint.get(db, doi=doi)
     if entrypoint is None:
         raise HTTPException(
@@ -210,6 +229,7 @@ async def update_entrypoint(
         setattr(entrypoint, key, value)
 
     if entrypoint.is_archived and entrypoint.doi_is_draft:
+        log.warning("Could not archive entrypoint from draft state")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot archive a entrypoint in draft state.",
@@ -238,6 +258,7 @@ async def update_entrypoint(
             )
 
     await db.commit()
+    log.info("Updated entrypoint")
     if entrypoint.is_archived:
         await archive_on_datacite(doi, settings)
 
@@ -252,6 +273,11 @@ async def update_entrypoint(
                 db,
                 app_auth_client,
             )
+            log.info(
+                "Scheduled background task",
+                garden_doi=garden.doi,
+                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
+            )
 
     return entrypoint
 
@@ -262,17 +288,23 @@ async def _create_new_entrypoint(
     user: User,
 ) -> Entrypoint:
     # default owner is authed_user unless owner_identity_id is explicitly provided
+    log = logger.bind(doi=entrypoint.doi)
     owner: User = user
     if entrypoint.owner_identity_id is not None:
         explicit_owner: User | None = await User.get(
             db, identity_id=entrypoint.owner_identity_id
         )
         if explicit_owner is not None:
+            log.info(
+                "Assigned entrypoint ownership to other user",
+                owner_identity_id=entrypoint.owner_identity_id,
+                owner_username=explicit_owner.username,
+            )
             owner = explicit_owner
         else:
-            logger.warning(
-                f"No user found with Globus identity ID {entrypoint.owner_identity_id}. "
-                f"Assigning default ownership to {user.identity_id} ({user.username}). "
+            log.warning(
+                "Could not assign ownership to unknown user",
+                unknown_id=entrypoint.owner_identity_id,
             )
 
     new_entrypoint = Entrypoint.from_dict(
@@ -283,9 +315,11 @@ async def _create_new_entrypoint(
     try:
         await db.commit()
     except IntegrityError as e:
+        log.exception()
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Entrypoint with this DOI already exists",
         ) from e
+    log.info("Saved new entrypoint")
     return new_entrypoint

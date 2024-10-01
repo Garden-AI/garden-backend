@@ -11,6 +11,9 @@ from src.api.schemas.garden import GardenMetadataResponse
 from src.api.schemas.user import UserMetadataResponse, UserUpdateRequest
 from src.models import Garden, User
 from src.models._associations import users_saved_gardens
+from structlog import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users")
 
@@ -60,6 +63,7 @@ async def update_user_info(
         **authed_user.__dict__,
         saved_garden_dois=saved_garden_dois,
     )
+    logger.info("Updated user info")
     return user_response
 
 
@@ -121,6 +125,7 @@ async def save_garden(
 
     try:
         await db.commit()
+        logger.info("Saved garden", doi=doi)
         return user.saved_gardens
     except IntegrityError as e:
         await db.rollback()
@@ -165,6 +170,7 @@ async def remove_saved_garden(
         user.saved_gardens.remove(garden)
 
     try:
+        logger.info("Removed saved garden", doi=doi)
         await db.commit()
         return [
             GardenMetadataResponse.model_validate(garden)

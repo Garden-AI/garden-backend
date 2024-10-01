@@ -1,0 +1,19 @@
+{
+    "app_name": "my-modal-app",
+    "modal_function_names": ["predict_iris_type"],
+    "version": "0.0.1",
+    "requirements": ["sklearn==0.24.2"],
+    "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef say_hello():\n    return 'Hello, World!'\n",
+    "base_image_name": "python:3.11-slim",
+    "modal_functions": [
+        {
+            "year": "2024",
+            "description": "tells you what flower you are looking at",
+            "title": "Iris Predictor",
+            "is_archived": false,
+            "function_name": "predict_iris_type",
+            "doi": null
+        }
+    ],
+    "is_archived": false
+}

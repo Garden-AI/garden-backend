@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -15,6 +15,11 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.sandboxed_functions import (
+    ValidateModalFileProvider,
+    DeployModalAppProvider,
+)
+from src.api.dependencies.modal import get_modal_client
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -112,6 +117,44 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 
 @pytest.fixture
+def mock_validate_modal_file_provider():
+    return MagicMock(spec=ValidateModalFileProvider)
+
+
+@pytest.fixture
+def mock_deploy_modal_app_provider():
+    return MagicMock(spec=DeployModalAppProvider)
+
+
+@pytest.fixture
+def override_validate_modal_file_dependency(mock_validate_modal_file_provider):
+    app.dependency_overrides[ValidateModalFileProvider] = (
+        lambda: mock_validate_modal_file_provider
+    )
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
+    app.dependency_overrides[DeployModalAppProvider] = (
+        lambda: mock_deploy_modal_app_provider
+    )
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_get_modal_client_dependency():
+    mock_modal_client = AsyncMock()
+    mock_modal_client.stub = MagicMock()
+    app.dependency_overrides[get_modal_client] = lambda: mock_modal_client
+    yield mock_modal_client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def mock_auth_state():
     # Mock auth state for authentic user
     mock_auth = MagicMock(spec=AuthenticationState)
@@ -128,7 +171,7 @@ def mock_auth_state_other_user():
     # this one's a joke about The Other
     mock_auth = MagicMock(spec=AuthenticationState)
     mock_auth.username = "Madame.deBeauvoir@ens-paris.fr"
-    mock_auth.identity_id = UUID("10101010-1010-1010-1010-101020101010")
+    mock_auth.identity_id = UUID("10101010-1010-1010-1010-101010101010")
     mock_auth.token = "tokentokentoken"
     mock_auth.email = "simone.debeauvoir@ens-paris.fr"
     mock_auth.name = "Mme. de Beauvoir"
@@ -164,6 +207,13 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
+
+    mock_settings.MODAL_ENV = "dev"
+    mock_settings.MODAL_TOKEN_ID = "fake-token-id"
+    mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
+    mock_settings.MODAL_USE_LOCAL = True
+    mock_settings.MODAL_ENABLED = True
+
     return mock_settings
 
 
@@ -238,6 +288,16 @@ def mock_entrypoint_create_request_json() -> dict:
 def mock_garden_create_request_no_entrypoints_json() -> dict:
     path = (
         Path(__file__).parent / "fixtures" / "GardenCreateRequest-no-entrypoints.json"
+    )
+    assert path.exists()
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
+def mock_modal_app_create_request_one_function() -> dict:
+    path = (
+        Path(__file__).parent / "fixtures" / "ModalAppCreateRequest-one-function.json"
     )
     assert path.exists()
     with open(path, "r") as f_in:

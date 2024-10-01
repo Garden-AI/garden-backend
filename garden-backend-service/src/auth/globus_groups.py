@@ -1,12 +1,8 @@
-import logging
-
 import globus_sdk as glb
 from src.config import Settings
 
 from .auth_state import AuthenticationState
 from .globus_auth import get_auth_client
-
-logger = logging.getLogger(__name__)
 
 
 def add_user_to_group(

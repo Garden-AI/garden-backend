@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+import src.logging  # noqa  # import to ensure logger is configured
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -12,6 +13,7 @@ from src.api.routes import (
     gardens,
     greet,
     hello_database,
+    modal,
     notebook,
     status,
     users,
@@ -20,6 +22,7 @@ from src.api.routes.mdf import search as mdf_search
 from src.api.tasks import retry_failed_updates
 from src.auth.globus_auth import get_auth_client
 from src.config import Settings, get_settings
+from src.middleware.logging import LogProcessTimeMiddleware, LogRequestIdMiddleware
 
 
 def get_db_session_maker(settings: Settings) -> async_sessionmaker[AsyncSession]:
@@ -53,6 +56,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LogProcessTimeMiddleware)
+app.add_middleware(LogRequestIdMiddleware)
 
 app.include_router(greet.router)
 app.include_router(doi.router)
@@ -64,6 +69,9 @@ app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
 app.include_router(status.router)
+
+app.include_router(modal.invocations.router)
+app.include_router(modal.modal_apps.router)
 
 app.include_router(mdf_search.router)
 
