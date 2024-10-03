@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import AliasPath, Field
 
-from .base import BaseSchema, UniqueList, Url
+from ..base import BaseSchema, UniqueList, Url
 
 # TODO: consolidate this with EntrypointMetadata
 class _RepositoryMetadata(BaseSchema):
@@ -60,5 +60,4 @@ class ModalFunctionMetadata(BaseSchema):
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
     id: int
-    parent_app_name: str
-    parent_app_id: int
+    modal_app_id: int

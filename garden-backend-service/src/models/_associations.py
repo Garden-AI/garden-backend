@@ -15,13 +15,6 @@ gardens_modal_functions = Table(
     Column("modal_function_id", ForeignKey("modal_functions.id"), primary_key=True),
 )
 
-modal_apps_modal_functions = Table(
-    "modal_apps_modal_functions",
-    Base.metadata,
-    Column("modal_app_id", ForeignKey("modal_apps.id"), primary_key=True),
-    Column("modal_function_id", ForeignKey("modal_functions.id"), primary_key=True),
-)
-
 users_saved_gardens = Table(
     "users_saved_gardens",
     Base.metadata,

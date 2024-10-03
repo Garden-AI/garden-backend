@@ -1,10 +1,7 @@
-from fastapi import APIRouter, Depends, Body
-from typing import Annotated
-from src.api.schemas.modal_app import (
+from fastapi import APIRouter, Depends, Body, status, HTTPException
+from src.api.schemas.modal.modal_app import (
     ModalAppCreateRequest,
     ModalAppMetadataResponse,
-    ModalAppMetadata,
-    ModalFunctionMetadataResponse,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,7 +52,7 @@ async def add_modal_app(
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
     
     # TODO: set a timeout for this and/or make it async
-    deployed_app_id = deploy_modal_app(
+    deploy_modal_app(
         modal_app.file_contents,
         prefixed_app_name,
         settings.MODAL_TOKEN_ID,
@@ -66,8 +63,6 @@ async def add_modal_app(
     # Need to take this metadata and save it to the DB
     model_dict = modal_app.model_dump(exclude={
         "modal_function_names", 
-        "requirements", 
-        "base_image_name", 
         "owner_identity_id",
         "id"
     }, exclude_unset=True)
@@ -75,39 +70,17 @@ async def add_modal_app(
     modal_app_db_model = ModalApp.from_dict(model_dict)
     
     db.add(modal_app_db_model)
-    await db.flush()
-    modal_app_id = modal_app_db_model.id
-    function_name_to_id = {mf.function_name: mf.id for mf in modal_app_db_model.modal_functions}
-
-    # If that worked smoothly within the time limit, we can save the App and its Functions to the DB.
-    # (This will happen in the next PR.)
-    modal_functions = modal_app.modal_functions
-    modal_function_responses = [
-        ModalFunctionMetadataResponse(
-            **mf.model_dump(exclude_unset=True),
-            parent_app_name=prefixed_app_name,
-            parent_app_id=modal_app_id,
-            id=function_name_to_id[mf.function_name],
-            requirements=modal_app.requirements,
-            base_image_name=modal_app.base_image_name,
-            user_id=user.id,
-        ) for mf in modal_functions
-    ]    
-
-    return ModalAppMetadataResponse(
-        **modal_app.model_dump(
-            exclude_unset=True, exclude={"modal_function_names", "modal_functions"}
-        ),
-        id=modal_app_id,
-        modal_function_names=modal_app.modal_function_names,
-        owner={"identity_id": user.identity_id},
-        modal_functions=modal_function_responses,
-    )
+    await db.commit()
+    return modal_app_db_model
 
 
-@router.get("", response_model=ModalAppMetadataResponse)
+@router.get(
+    "/{id:path}", 
+    status_code=status.HTTP_200_OK, 
+    response_model=ModalAppMetadataResponse
+)
 async def get_modal_apps(
-    id: str,
+    id: int,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
@@ -115,10 +88,10 @@ async def get_modal_apps(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    stmt = db.query(ModalApp).where(ModalApp.id == id)
-    app = await stmt.first()
-    if not app:
-        raise ValueError(f"Modal App with id {id} not found")
-    
-
-
+    modal_app = await ModalApp.get(db, id=id)
+    if modal_app is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Modal App not found with id {id}",
+        )
+    return modal_app
