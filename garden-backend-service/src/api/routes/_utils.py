@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.config import Settings
 from src.models import Entrypoint, Garden, User
 from src.models._associations import gardens_entrypoints
+from src.api.schemas.entrypoint import EntrypointPatchRequest
+from src.api.schemas.garden import GardenPatchRequest
 from structlog import get_logger
 
 logger = get_logger(__name__)
@@ -35,6 +37,31 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete or replace {str(type(obj).__name__).lower()} (DOI {obj.doi} is registered as 'findable')",
         )
+    return
+
+
+def assert_editable_by_user(
+    obj: Garden | Entrypoint,
+    patch_request: GardenPatchRequest | EntrypointPatchRequest,
+    user: User,
+) -> None:
+    """Check that a given Garden or Entrypoint can be edited, i.e. is owned by the user and is not archived.
+
+    Raises:
+        HTTPException: If obj is not owned by user or is an archived resource (and resource is not being unarchived).
+    """
+
+    if obj.owner.identity_id != user.identity_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Failed to edit {str(type(obj).__name__).lower()} (not owned by user {user.username})",
+        )
+    elif obj.is_archived and patch_request.is_archived is not False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to edit {str(type(obj).__name__).lower()} (DOI {obj.doi} is archived)",
+        )
+
     return
 
 

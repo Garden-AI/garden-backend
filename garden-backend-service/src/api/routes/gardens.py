@@ -12,6 +12,7 @@ from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
     archive_on_datacite,
     assert_deletable_by_user,
+    assert_editable_by_user,
     is_doi_registered,
 )
 from src.api.schemas.garden import (
@@ -253,7 +254,24 @@ async def update_garden(
             detail=f"No Garden with DOI {doi} found.",
         )
 
-    for key, value in garden_data.model_dump(exclude_none=True).items():
+    assert_editable_by_user(garden, garden_data, user)
+
+    garden_patch_dict = garden_data.model_dump(exclude_none=True)
+
+    # NOTE: This is commented out because currently entrypoint_ids are not part of the GardenPatchRequest,
+    # so any attempt to update entrypoint_ids will not change anything. If we want to allow updating entrypoint_ids
+    # in the future, we will need to add it to the GardenPatchRequest and uncomment this block.
+    # # Prevent updating entrypoints on published gardens
+    # if (
+    #     not garden.doi_is_draft
+    #     and "entrypoint_ids" in garden_patch_dict
+    # ):
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Cannot update a published garden's entrypoints.",
+    #     )
+
+    for key, value in garden_patch_dict.items():
         setattr(garden, key, value)
 
     if garden.is_archived and garden.doi_is_draft:
