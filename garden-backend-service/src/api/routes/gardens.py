@@ -170,7 +170,7 @@ def _apply_filters(cls, stmt, filters):
 async def _register_search_function(session):
     search_function_sql = """
     -- Do a ranked full-text search on gardens and entrypoints
-    -- Gardens are ranked by their relevance to the search plus their entrypoints relevance to the search
+    -- Gardens are ranked by their relevance to the search plus their associated entrypoint's relevance to the search
     CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
     RETURNS TABLE (garden_id int, rank real) AS $$
     DECLARE
