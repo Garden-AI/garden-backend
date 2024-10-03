@@ -376,3 +376,82 @@ async def test_patch_entrypoint_archive_and_draft(
     updated_data = {"is_archived": True}
     patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
     assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_archived_entrypoint_fails(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_entrypoint_archived_json,
+):
+    # post a new entrypoint
+    post_response = await client.post(
+        "/entrypoints", json=create_entrypoint_archived_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the entrypoint, should return an error code
+    # Cannot update an archived entrypoint
+    doi = create_entrypoint_archived_json["doi"]
+    updated_data = {"title": "New Title"}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_unarchive_entrypoint(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_entrypoint_archived_json,
+):
+    # post a new entrypoint
+    post_response = await client.post(
+        "/entrypoints", json=create_entrypoint_archived_json
+    )
+    assert post_response.status_code == 200
+
+    # Unarchive the entrypoint
+    # Should return a 200 status code
+    doi = create_entrypoint_archived_json["doi"]
+    updated_data = {"is_archived": False, "title": "Other Update"}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 200
+    assert not patch_response.json()["is_archived"]
+    assert patch_response.json()["title"] == "Other Update"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_disallow_editing_published_entrypoint_fields(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_published_entrypoint_json,
+):
+    # post a new entrypoint
+    post_response = await client.post(
+        "/entrypoints", json=create_published_entrypoint_json
+    )
+    assert post_response.status_code == 200
+    # Ensure the entrypoint is marked as published
+    assert post_response.json()["doi_is_draft"] is False
+    assert post_response.json()["is_archived"] is False
+
+    # Update various disallowed fields of the entrypoint
+    # Should return a 400 status code
+    doi = create_published_entrypoint_json["doi"]
+    updated_data = {"short_name": "new_short_name"}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 400
+
+    updated_data = {"func_uuid": "12345678-1234-5678-1234-567812345678"}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 400
+
+    updated_data = {"container_uuid": "12345678-1234-5678-1234-567812345678"}
+    patch_response = await client.patch(f"/entrypoints/{doi}", json=updated_data)
+    assert patch_response.status_code == 400

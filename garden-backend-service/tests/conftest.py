@@ -235,6 +235,20 @@ def create_entrypoint_with_related_metadata_json() -> dict:
 
 
 @pytest.fixture
+def create_entrypoint_archived_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "EntrypointCreateRequest-archived.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
+def create_published_entrypoint_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "EntrypointCreateRequest-published.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
 def create_shared_entrypoint_json() -> dict:
     path = (
         Path(__file__).parent
@@ -268,6 +282,13 @@ def create_garden_shares_entrypoint_json() -> dict:
         / "fixtures"
         / "GardenCreateRequest-shares-entrypoint.json"
     )
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
+def mock_garden_create_request_archived_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "GardenCreateRequest-archived.json"
     with open(path, "r") as f_in:
         return json.load(f_in)
 

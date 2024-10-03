@@ -1,0 +1,16 @@
+{
+  "title": "Archived Garden",
+  "authors": ["Shane J"],
+  "contributors": ["Shane", "Et", "Al"],
+  "doi": "10.23677/garden-archived",
+  "doi_is_draft": false,
+  "description": "",
+  "publisher": "Garden-AI",
+  "year": "2023",
+  "language": "en",
+  "tags": ["I", "AM", "ARCHIVED"],
+  "version": "0.0.1",
+  "entrypoint_aliases": {},
+  "entrypoint_ids": [],
+  "is_archived": true
+}

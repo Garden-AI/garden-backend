@@ -558,3 +558,49 @@ async def test_patch_garden_archive_and_draft(
     updated_data = {"is_archived": True}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_archived_garden_fails(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_archived_json,
+):
+    # post a new garden
+    post_response = await client.post(
+        "/gardens", json=mock_garden_create_request_archived_json
+    )
+    assert post_response.status_code == 200
+
+    # Update the garden, should return an error code
+    # Cannot update an archived garden
+    doi = mock_garden_create_request_archived_json["doi"]
+    updated_data = {"title": "New Title"}
+    patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_unarchive_garden(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_archived_json,
+):
+    # post a new garden
+    post_response = await client.post(
+        "/gardens", json=mock_garden_create_request_archived_json
+    )
+    assert post_response.status_code == 200
+
+    # Unarchive the garden
+    # Should return a 200 status code
+    doi = mock_garden_create_request_archived_json["doi"]
+    updated_data = {"is_archived": False, "title": "Other Update"}
+    patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 200
+    assert patch_response.json()["title"] == "Other Update"
+    assert not patch_response.json()["is_archived"]
