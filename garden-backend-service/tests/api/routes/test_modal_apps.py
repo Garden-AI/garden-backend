@@ -42,8 +42,8 @@ async def test_get_modal_app(
     override_deploy_modal_app_dependency,
 ):  
     post_response = await post_modal_app(client, mock_modal_app_create_request_one_function)
-    
-    get_response = await client.get(f"/modal_apps/{post_response['id']}")
+
+    get_response = await client.get(f"/modal-apps/{post_response['id']}")
     assert get_response.status_code == 200
     get_response_data = get_response.json()
     assert get_response_data["app_name"] == mock_modal_app_create_request_one_function["app_name"]
