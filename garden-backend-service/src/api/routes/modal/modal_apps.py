@@ -48,7 +48,6 @@ async def add_modal_app(
 
 
     # If everything looks good, we will go on to deploy the App.
-    # TODO: can I cut down the args?
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
     
     # TODO: set a timeout for this and/or make it async
@@ -60,7 +59,6 @@ async def add_modal_app(
         settings.MODAL_ENV,
     )
 
-    # Need to take this metadata and save it to the DB
     model_dict = modal_app.model_dump(exclude={
         "modal_function_names", 
         "owner_identity_id",
