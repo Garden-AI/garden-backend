@@ -118,7 +118,12 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 @pytest.fixture
 def mock_validate_modal_file_provider():
-    return MagicMock(spec=ValidateModalFileProvider)
+    mock_provider = MagicMock(spec=ValidateModalFileProvider)
+    mock_provider.return_value = {
+        "app_name": "my-modal-app",
+        "function_names": ["predict_iris_type"],
+    }
+    return mock_provider
 
 
 @pytest.fixture

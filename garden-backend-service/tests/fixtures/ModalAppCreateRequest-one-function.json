@@ -8,10 +8,14 @@
     "modal_functions": [
         {
             "year": "2024",
+            "authors": ["John Doe"],
+            "tags": [],
+            "test_functions": [],
             "description": "tells you what flower you are looking at",
             "title": "Iris Predictor",
             "is_archived": false,
             "function_name": "predict_iris_type",
+            "function_text": "def predict_iris_type():\n    return 'Iris-setosa'",
             "doi": null
         }
     ],
