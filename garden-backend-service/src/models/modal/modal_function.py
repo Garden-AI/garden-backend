@@ -47,5 +47,4 @@ class ModalFunction(Base):
         ModalApp,
         back_populates="modal_functions",
         lazy="selectin",
-        cascade="save-update, merge, refresh-expire, expunge",
     )
