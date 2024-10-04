@@ -39,17 +39,18 @@ async def add_modal_app(
     # First, validate the request.
     # This will include checking the function metadata provided against the functions present in the App.
     metadata = validate_modal_file(modal_app.file_contents)
-    
+
     if metadata["app_name"] != modal_app.app_name:
         raise ValueError("App name in metadata does not match the provided app name")
-    
-    if set(metadata["function_names"]) != set(modal_app.modal_function_names):
-        raise ValueError("Function names in metadata do not match the provided function names")
 
+    if set(metadata["function_names"]) != set(modal_app.modal_function_names):
+        raise ValueError(
+            "Function names in metadata do not match the provided function names"
+        )
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
-    
+
     # TODO: set a timeout for this and/or make it async
     deploy_modal_app(
         modal_app.file_contents,
@@ -59,23 +60,21 @@ async def add_modal_app(
         settings.MODAL_ENV,
     )
 
-    model_dict = modal_app.model_dump(exclude={
-        "modal_function_names", 
-        "owner_identity_id",
-        "id"
-    }, exclude_unset=True)
-    model_dict['user_id'] = user.id
+    model_dict = modal_app.model_dump(
+        exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
+    )
+    model_dict["user_id"] = user.id
     modal_app_db_model = ModalApp.from_dict(model_dict)
-    
+
     db.add(modal_app_db_model)
     await db.commit()
     return modal_app_db_model
 
 
 @router.get(
-    "/{id:path}", 
-    status_code=status.HTTP_200_OK, 
-    response_model=ModalAppMetadataResponse
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    response_model=ModalAppMetadataResponse,
 )
 async def get_modal_apps(
     id: int,

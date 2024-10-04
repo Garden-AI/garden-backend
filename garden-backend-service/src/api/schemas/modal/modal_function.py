@@ -4,6 +4,7 @@ from pydantic import AliasPath, Field
 
 from ..base import BaseSchema, UniqueList, Url
 
+
 # TODO: consolidate this with EntrypointMetadata
 class _RepositoryMetadata(BaseSchema):
     repo_name: str

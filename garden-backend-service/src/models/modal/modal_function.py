@@ -17,10 +17,10 @@ else:
 
 class ModalFunction(Base):
     __tablename__ = "modal_functions"
-    id: Mapped[int] = mapped_column(primary_key=True) 
+    id: Mapped[int] = mapped_column(primary_key=True)
     doi: Mapped[str | None] = mapped_column(unique=True)
     doi_is_draft: Mapped[bool] = mapped_column(default=True)
-    
+
     title: Mapped[str]
     authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
@@ -44,7 +44,5 @@ class ModalFunction(Base):
 
     modal_app_id: Mapped[int] = mapped_column(ForeignKey("modal_apps.id"))
     modal_app: Mapped[ModalApp] = relationship(
-        ModalApp,
-        back_populates="modal_functions",
-        lazy="selectin",
+        ModalApp, back_populates="modal_functions", lazy="selectin"
     )

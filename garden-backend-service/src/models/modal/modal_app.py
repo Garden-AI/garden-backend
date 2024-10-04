@@ -28,7 +28,7 @@ class ModalApp(Base):
         ModalFunction,
         back_populates="modal_app",
         lazy="selectin",
-        cascade="all, delete"
+        cascade="delete, delete-orphan, save-update, merge",
     )
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
