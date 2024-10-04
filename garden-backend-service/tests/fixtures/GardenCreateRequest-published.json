@@ -1,0 +1,16 @@
+{
+  "title": "Garden that is published",
+  "authors": ["Shane"],
+  "contributors": ["Shane J", "Et", "Al"],
+  "doi": "10.23677/garden-published",
+  "description": "",
+  "publisher": "Garden-AI",
+  "year": "2023",
+  "language": "en",
+  "tags": [],
+  "version": "0.0.1",
+  "entrypoint_aliases": {},
+  "entrypoint_ids": [],
+  "is_archived": false,
+  "doi_is_draft": false
+}
