@@ -22,7 +22,7 @@ from src.api.schemas.garden import (
 )
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
-from src.models import Entrypoint, Garden, User
+from src.models import Entrypoint, Garden, User, ModalFunction
 from structlog import get_logger
 
 logger = get_logger(__name__)
@@ -210,7 +210,7 @@ async def create_or_replace_garden(
 
     # naive update with remaining values from payload
     for key, value in garden_data.model_dump(
-        exclude={"owner_identity_id", "entrypoint_ids"}
+        exclude={"owner_identity_id", "entrypoint_ids", "modal_function_ids"}
     ).items():
         setattr(existing_garden, key, value)
     try:
@@ -324,6 +324,20 @@ async def _collect_entrypoints(dois: list[str], db: AsyncSession) -> list[Entryp
     return entrypoints
 
 
+async def _collect_modal_functions(ids: list[int], db: AsyncSession) -> list[ModalFunction]:
+    stmt = select(ModalFunction).where(ModalFunction.id.in_(ids))
+    result = await db.execute(stmt)
+    modal_functions: list[ModalFunction] = result.scalars().all()
+
+    if len(modal_functions) != len(ids):
+        missing_ids = [mf.id for mf in modal_functions if mf.id not in ids]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not find modal function(s) with IDs: {missing_ids}",
+        )
+    return modal_functions
+
+
 async def _create_new_garden(
     garden_data: GardenCreateRequest,
     db: AsyncSession,
@@ -337,6 +351,8 @@ async def _create_new_garden(
 
     # collect entrypoints by DOI
     entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
+    # collect modal functions by ID
+    modal_functions = await _collect_modal_functions(garden_data.modal_function_ids, db)
 
     # default owner is authed_user unless owner_identity_id is explicitly provided
     owner: User = user
@@ -358,10 +374,11 @@ async def _create_new_garden(
             )
 
     new_garden: Garden = Garden.from_dict(
-        garden_data.model_dump(exclude={"entrypoint_ids", "owner_identity_id"})
+        garden_data.model_dump(exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"})
     )
     new_garden.owner = owner
     new_garden.entrypoints = entrypoints
+    new_garden.modal_functions = modal_functions
 
     db.add(new_garden)
     try:

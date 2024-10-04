@@ -66,9 +66,9 @@ def deploy_modal_app(
         ensure_env(env)
         app = get_app_from_file_contents(file_contents)
         client = Client.from_credentials(token_id, token_secret)
-        deploy_app(app, name=app_name, client=client, environment_name=env)
+        res = deploy_app(app, name=app_name, client=client, environment_name=env)
 
-    return True
+    return res.app_id
 
 
 @app.function(image=modal_helper_image)

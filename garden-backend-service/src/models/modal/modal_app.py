@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
-from src.models._associations import modal_apps_modal_functions
 from src.models.base import Base
 
 if TYPE_CHECKING:
@@ -18,15 +18,17 @@ class ModalApp(Base):
     __tablename__ = "modal_apps"
     id: Mapped[int] = mapped_column(primary_key=True)
     app_name: Mapped[str]
+    base_image_name: Mapped[str]
+    requirements: Mapped[list[str]] = mapped_column(ARRAY(String))
 
     # The whole Python file the user submitted with the Modal App definition
-    file_text: Mapped[str]
+    file_contents: Mapped[str]
 
     modal_functions: Mapped[list[ModalFunction]] = relationship(
         ModalFunction,
         back_populates="modal_app",
-        secondary=modal_apps_modal_functions,
         lazy="selectin",
+        cascade="delete, delete-orphan, save-update, merge",
     )
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
