@@ -17,7 +17,7 @@ class ModalAppMetadata(BaseSchema):
 
 
 class ModalAppCreateRequest(ModalAppMetadata):
-    owner_identity_id: int | None = None
+    owner_identity_id: str | None = None
     modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
 
 
