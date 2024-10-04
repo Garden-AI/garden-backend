@@ -604,3 +604,26 @@ async def test_unarchive_garden(
     assert patch_response.status_code == 200
     assert patch_response.json()["title"] == "Other Update"
     assert not patch_response.json()["is_archived"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_disallow_editing_published_garden_fields(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_published_garden_json,
+):
+    # post a new garden
+    post_response = await client.post("/gardens", json=create_published_garden_json)
+    assert post_response.status_code == 200
+    # Ensure the garden is marked as published
+    assert post_response.json()["doi_is_draft"] is False
+    assert post_response.json()["is_archived"] is False
+
+    # Update various disallowed fields of the garden
+    # Should return a 400 status code
+    doi = create_published_garden_json["doi"]
+    updated_data = {"entrypoint_ids": ["changed", "entrypoint", "ids"]}
+    patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 400

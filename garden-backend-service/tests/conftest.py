@@ -260,6 +260,13 @@ def create_shared_entrypoint_json() -> dict:
 
 
 @pytest.fixture
+def create_published_garden_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "GardenCreateRequest-published.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
 def create_garden_two_entrypoints_json() -> dict:
     """Request payload to create a garden referencing two other entrypoints by DOI.
     Note: Trying to create the garden before these entrypoints exist in the DB will cause an error.

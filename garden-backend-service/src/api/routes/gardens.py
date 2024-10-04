@@ -258,18 +258,15 @@ async def update_garden(
 
     garden_patch_dict = garden_data.model_dump(exclude_none=True)
 
-    # NOTE: This is commented out because currently entrypoint_ids are not part of the GardenPatchRequest,
-    # so any attempt to update entrypoint_ids will not change anything. If we want to allow updating entrypoint_ids
-    # in the future, we will need to add it to the GardenPatchRequest and uncomment this block.
-    # # Prevent updating entrypoints on published gardens
-    # if (
-    #     not garden.doi_is_draft
-    #     and "entrypoint_ids" in garden_patch_dict
-    # ):
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Cannot update a published garden's entrypoints.",
-    #     )
+    # Prevent updating entrypoints on published gardens
+    if "entrypoint_ids" in garden_patch_dict:
+        if not garden.doi_is_draft:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update a published garden's entrypoints.",
+            )
+        # collect entrypoints by DOI
+        garden.entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
 
     for key, value in garden_patch_dict.items():
         setattr(garden, key, value)

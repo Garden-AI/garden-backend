@@ -52,3 +52,4 @@ class GardenPatchRequest(BaseSchema):
     version: str | None = None
     entrypoint_aliases: dict[str, str] = None
     is_archived: bool | None = None
+    entrypoint_ids: UniqueList[str] | None = None
