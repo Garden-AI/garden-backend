@@ -15,10 +15,10 @@ async def init(db_session: async_sessionmaker):
     with open(custom_sql, "r") as f:
         raw_sql = f.read()
     statements = sqlparse.split(raw_sql)
-
     async with db_session() as db:
         for stmt in statements:
             await db.execute(text(stmt))
+        await db.commit()
 
 
 async def get_db_session(settings=Depends(get_settings)) -> AsyncSession:
