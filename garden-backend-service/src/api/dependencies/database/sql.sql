@@ -1,5 +1,4 @@
-DROP FUNCTION search_gardens;
-CREATE FUNCTION search_gardens(search_query TEXT)
+CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
 RETURNS TABLE (garden_id int, rank real) AS $$
 DECLARE
     query tsquery := websearch_to_tsquery(search_query);
@@ -51,8 +50,7 @@ CREATE INDEX IF NOT EXISTS garden_documents_index ON garden_documents USING GIN(
 CREATE INDEX IF NOT EXISTS entrypoint_documents_index ON entrypoint_documents USING GIN(ep_document);
 
 
-DROP FUNCTION refresh_garden_documents CASCADE;
-CREATE FUNCTION refresh_garden_documents()
+CREATE OR REPLACE FUNCTION refresh_garden_documents()
 RETURNS TRIGGER AS $$
 BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY garden_documents;
@@ -61,8 +59,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-DROP FUNCTION refresh_entrypoint_documents CASCADE;
-CREATE FUNCTION refresh_entrypoint_documents()
+CREATE OR REPLACE FUNCTION refresh_entrypoint_documents()
 RETURNS TRIGGER AS $$
 BEGIN
     REFRESH MATERIALIZED VIEW CONCURRENTLY entrypoint_documents;
@@ -71,7 +68,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE TRIGGER garden_documents_trigger
+CREATE OR REPLACE TRIGGER garden_documents_trigger
 AFTER UPDATE OF authors,
                 contributors,
                 tags,
@@ -81,7 +78,7 @@ ON gardens
 EXECUTE FUNCTION refresh_garden_documents();
 
 
-CREATE TRIGGER entrypoint_documents_trigger
+CREATE OR REPLACE TRIGGER entrypoint_documents_trigger
 AFTER UPDATE OF authors,
                 tags,
                 description,
