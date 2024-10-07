@@ -72,6 +72,7 @@ app.include_router(status.router)
 
 app.include_router(modal.invocations.router)
 app.include_router(modal.modal_apps.router)
+app.include_router(modal.modal_functions.router)
 
 app.include_router(mdf_search.router)
 
