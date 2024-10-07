@@ -68,7 +68,7 @@ class GardenSearchFilter(BaseSchema):
     values: list[str]
 
 
-class Facets(BaseSchema):
+class GardenSearchFacets(BaseSchema):
     tags: dict[str, int] = Field(default_factory=dict)
     authors: dict[str, int] = Field(default_factory=dict)
     year: dict[str, int] = Field(default_factory=dict)
@@ -88,4 +88,4 @@ class GardenSearchResponse(BaseSchema):
     total: int
     offset: int
     garden_meta: list[GardenMetadataResponse]
-    facets: Facets
+    facets: GardenSearchFacets

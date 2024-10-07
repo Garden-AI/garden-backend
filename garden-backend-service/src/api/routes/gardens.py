@@ -24,11 +24,7 @@ from src.api.schemas.garden import (
     GardenSearchRequest,
     GardenSearchResponse,
 )
-from src.api.search.utils import (
-    apply_filters,
-    calculate_facets,
-    register_search_function,
-)
+from src.api.search.utils import apply_filters, calculate_facets
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, ModalFunction, User
@@ -115,15 +111,14 @@ async def search(
 ) -> GardenSearchResponse:
     stmt = select(Garden)
 
-    # Apply filter to query
+    # Apply filters to query
     try:
         stmt = apply_filters(Garden, stmt, search_request.filters)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    # Do the ranked full-text search
+    # Do a ranked full-text search
     if search_query := search_request.q:
-        await register_search_function(db)
         search_func = func.search_gardens(search_query).table_valued(
             "garden_id", "rank"
         )
@@ -131,7 +126,7 @@ async def search(
             search_func.c.rank
         )
 
-    # Calculate the facets after apply the filters and search
+    # Calculate facets after applying the filters and searching
     facets = await calculate_facets(db, stmt)
 
     # Get totals for offset/pagination

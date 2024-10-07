@@ -1,75 +1,93 @@
-from sqlalchemy import column, func, select, text
+from sqlalchemy import column, func, select
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.api.schemas.garden import Facets
+from sqlalchemy.sql.selectable import Select
+from src.api.schemas.garden import GardenSearchFacets, GardenSearchFilter
+from src.models.base import Base
 
 
-def apply_filters(cls, stmt, filters):
+def apply_filters(
+    model: Base, stmt: Select, filters: list[GardenSearchFilter]
+) -> Select:
+    """
+    Construct a new SQLAlchemy `Select` statement with applied filters.
+
+    This function takes an existing SQLAlchemy `Select` statement and applies additional
+    `WHERE` clauses based on the provided `filters`. Each filter in the `filters` list is
+    ANDed together, meaning that all conditions must be satisfied for a row to be included
+    in the result.
+
+    Args:
+        model (Base): The SQLAlchemy model to which the filters should be applied.
+                      This should be a class derived from `src.models.base.Base`.
+        stmt (Select): The initial SQLAlchemy `Select` statement to be modified.
+        filters (list[GardenSearchFilter]): A list of `GardenSearchFilter` instances, where each filter
+                                            specifies a `field_name` and a list of `values` to match.
+
+    Returns:
+        Select: A new `Select` statement with the additional `WHERE` clauses based on the provided filters.
+
+    Raises:
+        ValueError: If a `field_name` in a filter does not correspond to an attribute on the `model`.
+
+    Example:
+        Given a model `Garden` with attributes `title`, `description`, and `tags`:
+
+        ```
+        filters = [
+            GardenSearchFilter(field_name="title", values=["flower"]),
+            GardenSearchFilter(field_name="tags", values=["botany"])
+        ]
+        query = select(Garden)
+        query_with_filters = apply_filters(Garden, query, filters)
+        ```
+
+        This will generate a query with `WHERE` clauses matching the title and tags.
+    """
     for filter in filters:
-        if not hasattr(cls, filter.field_name):
+        if not hasattr(model, filter.field_name):
             raise ValueError(f"Invalid filter field_name: {filter.field_name}")
         for value in filter.values:
-            if type(getattr(cls, filter.field_name).type) is ARRAY:
+            if type(getattr(model, filter.field_name).type) is ARRAY:
                 stmt = stmt.where(
-                    func.array_to_string(getattr(cls, filter.field_name), " ").match(
+                    func.array_to_string(getattr(model, filter.field_name), " ").match(
                         value
                     )
                 )
             else:
                 stmt = stmt.where(
-                    func.cast(getattr(cls, filter.field_name), TEXT).match(value)
+                    func.cast(getattr(model, filter.field_name), TEXT).match(value)
                 )
     return stmt
 
 
-async def register_search_function(session):
-    search_function_sql = """
-    -- Do a ranked full-text search on gardens and entrypoints
-    -- Gardens are ranked by their relevance to the search plus their associated entrypoint's relevance to the search
-    CREATE OR REPLACE FUNCTION search_gardens(search_query TEXT)
-    RETURNS TABLE (garden_id int, rank real) AS $$
-    DECLARE
-        query tsquery := websearch_to_tsquery(search_query);
-    BEGIN
-        RETURN QUERY
-        WITH entrypoints_weighted_documents AS (
-            SELECT id,
-            setweight(to_tsvector(array_to_string(e.authors, ' ')), 'A') ||
-            setweight(to_tsvector(array_to_string(e.tags, ' ')), 'B') ||
-            setweight(to_tsvector(e.title), 'D') ||
-            setweight(to_tsvector(e.description), 'D') AS ep_document
-            FROM entrypoints e
-        ), gardens_weighted_documents AS (
-            SELECT g.id AS garden_id,
-            setweight(to_tsvector(array_to_string(g.authors, ' ')), 'A') ||
-            setweight(to_tsvector(array_to_string(g.contributors, ' ')), 'A') ||
-            setweight(to_tsvector(array_to_string(g.tags, ' ')), 'B') ||
-            setweight(to_tsvector(g.description), 'D') ||
-            setweight(to_tsvector(g.title), 'D') AS garden_document
-            FROM gardens g
-        ), garden_entrypoint_ranks AS (
-            SELECT gwd.garden_id,
-                   ts_rank(gwd.garden_document, query) AS garden_rank,
-                   SUM(ts_rank(ep.ep_document, query)) AS total_entrypoint_rank
-            FROM gardens_weighted_documents gwd
-            LEFT JOIN gardens_entrypoints ge ON gwd.garden_id = ge.garden_id
-            LEFT JOIN entrypoints_weighted_documents ep ON ep.id = ge.entrypoint_id
-            GROUP BY gwd.garden_id, gwd.garden_document
-        )
-        SELECT ger.garden_id, ger.garden_rank + COALESCE(ger.total_entrypoint_rank, 0) AS rank
-        FROM garden_entrypoint_ranks ger
-        WHERE garden_rank > 0 OR COALESCE(total_entrypoint_rank, 0) > 0
-        ORDER BY rank DESC;
-    END;
-    $$ LANGUAGE plpgsql;
+async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacets:
+    """Calculate and return search facets for a given query.
+
+    This function computes facet counts for tags, authors, and years based on the
+    result set from the provided SQLAlchemy Select statement. Facets are calculated
+    by grouping on specific fields (`tags`, `authors`, and `year`) and counting
+    occurrences within the subset of gardens returned by the query.
+
+    Args:
+        db (AsyncSession): The asynchronous SQLAlchemy session used to execute queries.
+        query (Select): A SQLAlchemy `Select` statement representing the filtered subset
+                        of gardens to calculate facets from.
+
+    Returns:
+        GardenSearchFacets: An instance of `GardenSearchFacets` containing three fields:
+            - `tags` (dict[str, int]): A dictionary where keys are individual tags and values
+              are the count of gardens associated with each tag.
+            - `authors` (dict[str, int]): A dictionary where keys are author names and values
+              are the count of gardens authored by each individual.
+            - `year` (dict[str, int]): A dictionary where keys are years (as strings) and values
+              are the count of gardens created in each year.
+
+    Note:
+        This function assumes that the query provided returns results from a table or view that
+        includes the columns `tags`, `authors`, and `year` as arrays or individual fields.
     """
-
-    await session.execute(text(search_function_sql))
-    await session.commit()
-
-
-async def calculate_facets(db: AsyncSession, query) -> Facets:
-    filtered_gardens = query.cte("filtered_gardens")
+    filtered_gardens = query.subquery("filtered_gardens")
 
     tags_query = select(
         func.unnest(filtered_gardens.c.tags).label("tag"), func.count().label("count")
@@ -92,4 +110,4 @@ async def calculate_facets(db: AsyncSession, query) -> Facets:
     authors = {row[0]: row[1] for row in authors_result.all()}
     year = {str(row[0]): row[1] for row in year_result.all()}
 
-    return Facets(tags=tags, authors=authors, year=year)
+    return GardenSearchFacets(tags=tags, authors=authors, year=year)
