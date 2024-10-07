@@ -1,16 +1,19 @@
 import modal
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from modal._utils.grpc_utils import retry_transient_errors
 from modal_proto import api_pb2
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import authed_user, modal_vip
+from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
     ModalInvocationRequest,
     ModalInvocationResponse,
 )
 from src.config import Settings, get_settings
+from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
 
 logger = structlog.get_logger(__name__)
@@ -25,10 +28,10 @@ async def invoke_modal_fn(
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
     modal_vip: bool = Depends(modal_vip),
+    db: AsyncSession = Depends(get_db_session),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
-    log = logger.bind(app_name=body.app_name, function_name=body.function_name)
     # We want to mimic the behavior of the modal.Function._call_function method when the sdk hits this route.
     # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request,
     # then awaiting a run_function helper to both collect and de-serialize the results.
@@ -36,17 +39,29 @@ async def invoke_modal_fn(
 
     # In this route we want to mimic their logic as closely as possible modulo (de-)serialization, with those steps performed on the user's machine
     # (like it would if they were using modal directly).
+    #
+    # fetch function from db
+    modal_fn: ModalFunction | None = await ModalFunction.get(db, id=body.function_id)
+    if modal_fn is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No Modal Function with id {body.function_id} found.",
+        )
+
+    app_name = modal_fn.modal_app.app_name
+    function_name = modal_fn.function_name
+    log = logger.bind(app_name=app_name, function_name=function_name)
 
     # fetch the function from modal
     function = await modal.functions._Function.lookup(
-        app_name=body.app_name,
-        tag=body.function_name,
+        app_name=modal_fn.modal_app.app_name,
+        tag=modal_fn.function_name,
         client=modal_client,
         environment_name=settings.MODAL_ENV,
     )
 
     # create the _Invocation object
-    log.debug("creating modal invocation")
+    log.info("Requesting invocation with modal")
     invocation = await _create_invocation(
         function, body.args_kwargs_serialized, modal_client
     )
