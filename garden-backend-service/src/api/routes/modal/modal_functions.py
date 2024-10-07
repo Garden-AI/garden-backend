@@ -7,6 +7,7 @@ from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.modal.modal_function import (
     ModalFunctionMetadataResponse,
+    ModalFunctionPatchRequest,
 )
 
 from structlog import get_logger
@@ -35,3 +36,13 @@ async def get_modal_function(
             detail=f"Modal Function not found with id {id}",
         )
     return modal_function
+
+@router.patch("/{doi:path}", response_model=ModalFunctionMetadataResponse)
+async def update_modal_function(
+    id: int,
+    function_data: ModalFunctionPatchRequest,
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(authed_user),
+):
+    pass
