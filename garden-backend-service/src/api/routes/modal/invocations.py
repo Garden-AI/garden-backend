@@ -37,7 +37,10 @@ async def invoke_modal_fn(
 
     # fetch the function from modal
     function = await modal.functions._Function.lookup(
-        app_name=body.app_name, tag=body.function_name, client=modal_client
+        app_name=body.app_name,
+        tag=body.function_name,
+        client=modal_client,
+        environment_name=settings.MODAL_ENV,
     )
 
     # create the _Invocation object

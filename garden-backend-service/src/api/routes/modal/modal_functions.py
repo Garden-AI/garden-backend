@@ -14,6 +14,7 @@ from structlog import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-functions")
 
+
 @router.get(
     "/{id}",
     status_code=status.HTTP_200_OK,
@@ -27,7 +28,7 @@ async def get_modal_function(
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
-    
+
     modal_function = await ModalFunction.get(db, id=id)
     if modal_function is None:
         raise HTTPException(
