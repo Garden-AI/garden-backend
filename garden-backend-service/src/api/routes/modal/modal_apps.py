@@ -76,7 +76,7 @@ async def add_modal_app(
     status_code=status.HTTP_200_OK,
     response_model=ModalAppMetadataResponse,
 )
-async def get_modal_apps(
+async def get_modal_app(
     id: int,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
