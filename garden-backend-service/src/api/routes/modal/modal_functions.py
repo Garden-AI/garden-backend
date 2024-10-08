@@ -9,6 +9,9 @@ from src.api.schemas.modal.modal_function import (
     ModalFunctionMetadataResponse,
     ModalFunctionPatchRequest,
 )
+from src.api.routes._utils import (
+    assert_editable_by_user,
+)
 
 from structlog import get_logger
 
@@ -37,7 +40,7 @@ async def get_modal_function(
         )
     return modal_function
 
-@router.patch("/{doi:path}", response_model=ModalFunctionMetadataResponse)
+@router.patch("/{id}", response_model=ModalFunctionMetadataResponse)
 async def update_modal_function(
     id: int,
     function_data: ModalFunctionPatchRequest,
@@ -45,4 +48,48 @@ async def update_modal_function(
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
 ):
-    pass
+    log = logger.bind(id=id)
+    modal_function: ModalFunction | None = await ModalFunction.get(db, id=id)
+    if modal_function is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No Modal Function with ID {id} found.",
+        )
+    
+    assert_editable_by_user(modal_function, function_data, user)
+
+    # Don't allow the function to go directly from draft state to archived state
+    patch_fields = function_data.model_dump(exclude_none=True)
+    #    "was_draft" tells us if this function was in draft state before the patch
+    was_draft = modal_function.doi is None
+    if was_draft and patch_fields.get('is_archived', False):
+        log.warning("Could not archive Modal Function from draft state")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot archive a Modal Function in draft state.",
+        )
+
+    # Prevent updating certain fields if modal function was already published
+    if not was_draft:
+        restricted_attrs = [
+            attr
+            for attr in [
+                "doi",
+                "function_name",
+                "function_text",
+            ]
+            if attr in patch_fields
+        ]
+        if restricted_attrs:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot update a published entrypoint's attribute(s): {', '.join(restricted_attrs)}.",
+            )
+
+    # Apply the patch fields and persist the changes
+    for key, value in patch_fields.items():
+        setattr(modal_function, key, value)
+    await db.commit()
+    log.info("Updated Modal Function")
+
+    return modal_function
