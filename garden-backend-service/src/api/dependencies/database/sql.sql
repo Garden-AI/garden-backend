@@ -21,7 +21,7 @@ BEGIN
     SELECT gr.garden_id,
            gr.rank
     FROM garden_ranks gr
-    WHERE gr.rank > 0.001
+    WHERE gr.rank > 0.0
     ORDER BY gr.rank DESC;
 END;
 $$ LANGUAGE plpgsql;
@@ -53,7 +53,7 @@ CREATE INDEX IF NOT EXISTS entrypoint_documents_index ON entrypoint_documents US
 CREATE OR REPLACE FUNCTION refresh_garden_documents()
 RETURNS TRIGGER AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY garden_documents;
+    REFRESH MATERIALIZED VIEW garden_documents;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -62,14 +62,14 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION refresh_entrypoint_documents()
 RETURNS TRIGGER AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY entrypoint_documents;
+    REFRESH MATERIALIZED VIEW entrypoint_documents;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE TRIGGER garden_documents_trigger
-AFTER UPDATE OF authors,
+AFTER INSERT OR UPDATE OF authors,
                 contributors,
                 tags,
                 description,
@@ -79,7 +79,7 @@ EXECUTE FUNCTION refresh_garden_documents();
 
 
 CREATE OR REPLACE TRIGGER entrypoint_documents_trigger
-AFTER UPDATE OF authors,
+AFTER INSERT OR UPDATE OF authors,
                 tags,
                 description,
                 title

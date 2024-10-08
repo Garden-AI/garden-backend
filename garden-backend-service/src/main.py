@@ -1,12 +1,13 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import src.logging  # noqa  # import to ensure logger is configured
-from src.api.dependencies.database import init
+from src.api.dependencies.database import async_init
 from src.api.routes import (
     docker_push_token,
     doi,
@@ -40,8 +41,8 @@ async def lifespan(app: FastAPI):
     db_session = get_db_session_maker(settings=settings)
     auth_client = get_auth_client()
 
-    # load custom sql
-    await init(db_session)
+    # load text-search sql
+    await async_init(db_session, Path("src/api/dependencies/database/sql.sql"))
 
     if settings.SYNC_SEARCH_INDEX:
         task = asyncio.create_task(

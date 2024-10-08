@@ -9,9 +9,11 @@ import pytest
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.engine import create_engine
 from testcontainers.postgres import PostgresContainer
 
+from sqlalchemy.orm import Session
 from src.api.dependencies.auth import (
     AuthenticationState,
     _get_auth_token,
@@ -22,6 +24,7 @@ from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
 )
+from src.api.dependencies.database import init
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
@@ -72,28 +75,45 @@ def db_url(pg_container) -> str:
 
 
 @pytest.fixture
-def mock_db_session(
-    override_get_settings_dependency,
-    mock_settings,
-):
-    """override_get_settings_dependency gives get_db_session the url of the database.
-    To make sure tests don't interfere with each other we first need to initialize the schema,
-    then let the test run and drop the schema after the test.
-    """
+def _sync_engine(mock_settings):
     url = mock_settings.SQLALCHEMY_DATABASE_URL
     if "postgres" not in url:
         raise ValueError(
             f"Can only run integration tests against postgres, got: {url} "
             'Try `pytest -m "not integration"`'
         )
-
-    # create synchronous engine so we can drop and rebuild the schema between tests
     sync_url = url.replace("asyncpg", "psycopg2")
     engine = create_engine(sync_url)
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
+    yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def mock_db_session(
+    override_get_settings_dependency,
+    _sync_engine,
+):
+    """Provide a mock database session to the test.
+
+    override_get_settings_dependency gives get_db_session the url of the database
+    so routes that need the database will automatically be given the url of the test db.
+    """
+    # Initialize the database schema
+    Base.metadata.create_all(_sync_engine)
+    with Session(_sync_engine) as db:
+        init(db, Path("src/api/dependencies/database/sql.sql"))
+
+    # Let the test use the database
+    yield
+
+    # Clean up after the test
+    with Session(_sync_engine) as db:
+        db.execute(text("DELETE FROM gardens_entrypoints;"))
+        db.execute(text("DROP TABLE entrypoints CASCADE;"))
+        db.execute(text("DROP TABLE gardens CASCADE;"))
+        db.execute(text("DROP TABLE users CASCADE;"))
+        db.execute(text("DROP TABLE failed_search_index_updates CASCADE;"))
+        db.commit()
 
 
 @pytest.fixture

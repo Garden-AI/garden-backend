@@ -5,20 +5,28 @@ from fastapi import Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from sqlalchemy.orm import Session
 from src.config import get_settings
 
 
-async def init(db_session: async_sessionmaker):
+async def async_init(db_session: async_sessionmaker, sql_path: Path):
     """Initialize the database with custom SQL"""
-    custom_sql = Path(f"{__file__}").parent / "sql.sql"
-
-    with open(custom_sql, "r") as f:
+    with open(sql_path, "r") as f:
         raw_sql = f.read()
     statements = sqlparse.split(raw_sql)
     async with db_session() as db:
         for stmt in statements:
             await db.execute(text(stmt))
         await db.commit()
+
+
+def init(db: Session, sql_path: Path):
+    with open(sql_path, "r") as f:
+        raw_sql = f.read()
+    statements = sqlparse.split(raw_sql)
+    for stmt in statements:
+        db.execute(text(stmt))
+    db.commit()
 
 
 async def get_db_session(settings=Depends(get_settings)) -> AsyncSession:

@@ -627,3 +627,54 @@ async def test_disallow_editing_published_garden_fields(
     updated_data = {"entrypoint_ids": ["changed", "entrypoint", "ids"]}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_rejects_invalid_filter(
+    client,
+):
+    body = {
+        "q": "some search query",
+        "filters": [
+            {
+                "field_name": "some_invalid_field",
+                "values": ["some value"],
+            },
+        ],
+    }
+    response = await client.post("/gardens/search", json=body)
+    assert response.status_code == 400
+    assert "Invalid filter" in response.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_returns_gardens(
+    client,
+    mock_db_session,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    create_garden_two_entrypoints_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+
+    body = {
+        "q": "Owen",
+        "limit": 10,
+        "offset": 0,
+    }
+    response = await client.post("/gardens/search", json=body)
+    assert response.status_code == 200
+    search_result = response.json()
+    assert len(search_result["garden_meta"]) == 1
+    assert search_result["count"] == 1
+    assert search_result["offset"] == 0
+    assert search_result["facets"]["authors"] == {"Owen": 1}
+    assert search_result["facets"]["year"] == {"2023": 1}
