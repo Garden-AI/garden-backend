@@ -1,0 +1,52 @@
+name: Deploy Modal function
+
+on:
+  push:
+    branches:
+      - dev
+      - prod
+  workflow_dispatch:
+
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    # Determine the environment suffix to target to based on the branch
+    # note than manually running this from a branch other than dev or prod
+    # will set env=dev, as though running from the real dev branch.
+    - name: Set Environment
+      id: vars
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
+          echo "env=prod" >> $GITHUB_OUTPUT
+        else
+          echo "env=dev" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
+    
+    - name: Install Modal
+      run: |
+        python -m pip install --upgrade pip
+        pip install modal
+    
+    - name: Deploy Modal app
+      env:
+        MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+        MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        MODAL_ENVIRONMENT: ${{ steps.vars.outputs.env }}
+      run: |
+        modal deploy ./garden-backend-service/src/sandboxed_functions/modal_publishing_helpers.py
+    

@@ -321,7 +321,9 @@ async def _collect_entrypoints(dois: list[str], db: AsyncSession) -> list[Entryp
     return entrypoints
 
 
-async def _collect_modal_functions(ids: list[int], db: AsyncSession) -> list[ModalFunction]:
+async def _collect_modal_functions(
+    ids: list[int], db: AsyncSession
+) -> list[ModalFunction]:
     stmt = select(ModalFunction).where(ModalFunction.id.in_(ids))
     result = await db.execute(stmt)
     modal_functions: list[ModalFunction] = result.scalars().all()
@@ -371,7 +373,9 @@ async def _create_new_garden(
             )
 
     new_garden: Garden = Garden.from_dict(
-        garden_data.model_dump(exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"})
+        garden_data.model_dump(
+            exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"}
+        )
     )
     new_garden.owner = owner
     new_garden.entrypoints = entrypoints

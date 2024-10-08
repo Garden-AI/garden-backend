@@ -13,7 +13,9 @@ class ValidateModalFileProvider:
             self.f = validate_modal_file
         else:
             remote_function = modal.Function.lookup(
-                "garden-publishing-helpers", "remote_validate_modal_file"
+                "garden-publishing-helpers",
+                "remote_validate_modal_file",
+                environment_name=settings.MODAL_ENV,
             )
             self.f = remote_function.remote
 
