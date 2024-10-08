@@ -633,6 +633,7 @@ async def test_disallow_editing_published_garden_fields(
 @pytest.mark.integration
 async def test_search_gardens_rejects_invalid_filters(
     client,
+    override_get_settings_dependency,
 ):
     body = {
         "q": "some search query",
