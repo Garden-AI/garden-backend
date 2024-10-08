@@ -1,10 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-import src.logging  # noqa  # import to ensure logger is configured
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+import src.logging  # noqa  # import to ensure logger is configured
 from src.api.routes import (
     docker_push_token,
     doi,

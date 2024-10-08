@@ -41,7 +41,7 @@ def get_app_from_file_contents(file_contents: str):
 
 def validate_modal_file(file_contents: str):
     user_app = get_app_from_file_contents(file_contents)
-    function_names = [f for f in user_app.registered_functions if not "*" in f]
+    function_names = [f for f in user_app.registered_functions if "*" not in f]
     app_name = user_app.name
     return {"function_names": function_names, "app_name": app_name}
 
@@ -57,10 +57,8 @@ def deploy_modal_app(
     file_contents: str, app_name: str, token_id: str, token_secret: str, env: str
 ):
     from modal import enable_output
-    from modal.cli.run import deploy_app
+    from modal.cli.run import deploy_app, ensure_env
     from modal.client import Client
-    from modal.cli.utils import stream_app_logs
-    from modal.cli.run import ensure_env
 
     with enable_output():
         ensure_env(env)

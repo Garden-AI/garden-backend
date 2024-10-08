@@ -1,5 +1,6 @@
 import modal
 from fastapi import Depends
+
 from src.config import Settings, get_settings
 
 

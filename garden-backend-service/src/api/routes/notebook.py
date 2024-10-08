@@ -3,10 +3,11 @@ import json
 
 import boto3
 from fastapi import APIRouter, Depends, status
+from structlog import get_logger
+
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas.notebook import UploadNotebookRequest, UploadNotebookResponse
 from src.config import Settings, get_settings
-from structlog import get_logger
 
 router = APIRouter(prefix="/notebook")
 logger = get_logger(__name__)

@@ -5,13 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.garden import GardenMetadataResponse
 from src.api.schemas.user import UserMetadataResponse, UserUpdateRequest
 from src.models import Garden, User
 from src.models._associations import users_saved_gardens
-from structlog import get_logger
 
 logger = get_logger(__name__)
 

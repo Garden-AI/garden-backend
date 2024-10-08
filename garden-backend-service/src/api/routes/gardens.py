@@ -7,6 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
@@ -22,8 +24,7 @@ from src.api.schemas.garden import (
 )
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
-from src.models import Entrypoint, Garden, User, ModalFunction
-from structlog import get_logger
+from src.models import Entrypoint, Garden, ModalFunction, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
@@ -321,7 +322,9 @@ async def _collect_entrypoints(dois: list[str], db: AsyncSession) -> list[Entryp
     return entrypoints
 
 
-async def _collect_modal_functions(ids: list[int], db: AsyncSession) -> list[ModalFunction]:
+async def _collect_modal_functions(
+    ids: list[int], db: AsyncSession
+) -> list[ModalFunction]:
     stmt = select(ModalFunction).where(ModalFunction.id.in_(ids))
     result = await db.execute(stmt)
     modal_functions: list[ModalFunction] = result.scalars().all()
@@ -371,7 +374,9 @@ async def _create_new_garden(
             )
 
     new_garden: Garden = Garden.from_dict(
-        garden_data.model_dump(exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"})
+        garden_data.model_dump(
+            exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"}
+        )
     )
     new_garden.owner = owner
     new_garden.entrypoints = entrypoints

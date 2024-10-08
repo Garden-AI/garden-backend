@@ -11,9 +11,8 @@ otherwise if we want to change the behavior of some sub-field prefer inheriting 
 pydantic class (like below).
 """
 
-from ._full_schema import Data3
+from ._full_schema import Data3, DoiAttributes
 from ._full_schema import Doi as _Doi
-from ._full_schema import DoiAttributes
 
 
 class DoiData(Data3):

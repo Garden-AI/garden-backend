@@ -6,12 +6,13 @@ from fastapi import HTTPException, exceptions, status
 from globus_sdk import SearchClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
+from src.api.schemas.entrypoint import EntrypointPatchRequest
+from src.api.schemas.garden import GardenPatchRequest
 from src.config import Settings
 from src.models import Entrypoint, Garden, User
 from src.models._associations import gardens_entrypoints
-from src.api.schemas.entrypoint import EntrypointPatchRequest
-from src.api.schemas.garden import GardenPatchRequest
-from structlog import get_logger
 
 logger = get_logger(__name__)
 
