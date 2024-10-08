@@ -6,22 +6,21 @@ BEGIN
     RETURN QUERY
     WITH ep_ranks AS (
          SELECT ge.garden_id,
-                SUM(ts_rank(ed.ep_document, query)) AS rank
+                COALESCE(SUM(ts_rank(ed.ep_document, query)), 0) AS rank
          FROM gardens_entrypoints ge
          INNER JOIN entrypoint_documents ed
          ON ge.entrypoint_id = ed.id
          GROUP BY ge.garden_id
     ), garden_ranks AS (
        SELECT gd.garden_id,
-              ts_rank(gd.garden_document, query) + ep_ranks.rank AS rank
+              COALESCE(ts_rank(gd.garden_document, query), 0) + COALESCE(ep_ranks.rank, 0) AS rank
        FROM garden_documents gd
        LEFT JOIN ep_ranks
        ON ep_ranks.garden_id = gd.garden_id
     )
-    SELECT gr.garden_id,
-           gr.rank
+    SELECT gr.garden_id, gr.rank
     FROM garden_ranks gr
-    WHERE gr.rank > 0.0
+    WHERE gr.rank > 0
     ORDER BY gr.rank DESC;
 END;
 $$ LANGUAGE plpgsql;
