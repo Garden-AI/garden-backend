@@ -90,6 +90,7 @@ def _sync_engine(mock_settings):
 
 @pytest.fixture
 def mock_db_session(
+    mock_settings,
     override_get_settings_dependency,
     _sync_engine,
 ):
@@ -101,7 +102,7 @@ def mock_db_session(
     # Initialize the database schema
     Base.metadata.create_all(_sync_engine)
     with Session(_sync_engine) as db:
-        init(db, Path("src/api/search/sql.sql"))
+        init(db, Path(mock_settings.GARDEN_SEARCH_SQL_DIR))
 
     # Let the test use the database
     yield
@@ -233,13 +234,12 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
-
     mock_settings.MODAL_ENV = "dev"
     mock_settings.MODAL_TOKEN_ID = "fake-token-id"
     mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
     mock_settings.MODAL_USE_LOCAL = True
     mock_settings.MODAL_ENABLED = True
-
+    mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
     return mock_settings
 
 
