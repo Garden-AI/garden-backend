@@ -561,7 +561,6 @@ async def test_patch_garden_archive_and_draft(
 
 
 @pytest.mark.asyncio
-<<<<<<< HEAD
 @pytest.mark.integration
 async def test_patch_archived_garden_fails(
     client,
