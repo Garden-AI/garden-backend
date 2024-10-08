@@ -24,7 +24,8 @@ jobs:
 
       - name: Install pipx
         run: |
-          python -m pip install --user pipx
+          pip install --upgrade pip
+          python -m pip install pipx
           python -m pipx ensurepath
         shell: bash
 
@@ -52,15 +53,24 @@ jobs:
       - name: Install dependencies
         run: |
           cd ./garden-backend-service
-          pip install --upgrade pip
           poetry install --no-interaction --no-ansi --with=develop
-
-      - name: Test with pytest
-        run: |
-          cd ./garden-backend-service
-          poetry run pytest
 
       - name: Check for vulnerable libraries with safety
         run: |
           cd ./garden-backend-service
           poetry run safety check
+
+      - name: Format with Ruff
+        run: |
+          cd ./garden-backend-service
+          poetry run ruff format
+
+      - name: Lint with Ruff
+        run: |
+          cd ./garden-backend-service
+          poetry run ruff check --output-format=github
+
+      - name: Test with pytest
+        run: |
+          cd ./garden-backend-service
+          poetry run pytest
