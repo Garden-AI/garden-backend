@@ -101,14 +101,14 @@ def mock_db_session(
     # Initialize the database schema
     Base.metadata.create_all(_sync_engine)
     with Session(_sync_engine) as db:
-        init(db, Path("src/api/dependencies/database/sql.sql"))
+        init(db, Path("src/api/search/sql.sql"))
 
     # Let the test use the database
     yield
 
     # Clean up after the test
     with Session(_sync_engine) as db:
-        db.execute(text("DELETE FROM gardens_entrypoints;"))
+        db.execute(text("DROP TABLE gardens_entrypoints;"))
         db.execute(text("DROP TABLE entrypoints CASCADE;"))
         db.execute(text("DROP TABLE gardens CASCADE;"))
         db.execute(text("DROP TABLE users CASCADE;"))

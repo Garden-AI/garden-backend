@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     auth_client = get_auth_client()
 
     # load text-search sql
-    await async_init(db_session, Path("src/api/dependencies/database/sql.sql"))
+    await async_init(db_session, Path("src/api/search/sql.sql"))
 
     if settings.SYNC_SEARCH_INDEX:
         task = asyncio.create_task(
