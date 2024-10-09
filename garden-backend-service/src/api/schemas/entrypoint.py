@@ -40,3 +40,5 @@ class EntrypointPatchRequest(CommonFunctionPatchRequest):
     base_image_uri: str | None = None
     full_image_uri: str | None = None
     notebook_url: Url | None = None
+
+    short_name: str | None = None
