@@ -16,9 +16,9 @@ from testcontainers.postgres import PostgresContainer
 
 from src.api.dependencies.auth import (
     AuthenticationState,
-    modal_vip,
     _get_auth_token,
     authenticated,
+    modal_vip,
 )
 from src.api.dependencies.database import init
 from src.api.dependencies.modal import get_modal_client
@@ -174,9 +174,7 @@ def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
 
 @pytest.fixture
 def override_modal_vip():
-    app.dependency_overrides[modal_vip] = (
-        lambda: True
-    )
+    app.dependency_overrides[modal_vip] = lambda: True
     yield
     app.dependency_overrides.clear()
 

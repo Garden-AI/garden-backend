@@ -84,7 +84,9 @@ async def modal_vip(
     if email in settings.MODAL_VIP_LIST:
         return True
     else:
-        raise HTTPException(status_code=403, detail="Modal endpoints are in limited preview")
+        raise HTTPException(
+            status_code=403, detail="Modal endpoints are in limited preview"
+        )
 
 
 def get_auth_client(
