@@ -107,8 +107,15 @@ async def delete_modal_app(
     # see if it's deletable by the user
     log = logger.bind(id=id)
     modal_app: ModalApp | None = await ModalApp.get(db, id=id)
+    if not modal_app:
+        log.info("No Modal App to delete")
+        raise HTTPException(
+            status_code=status.HTTP_200_OK,
+            detail=f"No Modal App found with id {id}.",
+        )
+
     if modal_app.owner.identity_id != user.identity_id:
-        logger.info(
+        log.info(
             f"Failed to delete Modal App (not owned by user)"
         )
         raise HTTPException(
@@ -119,7 +126,7 @@ async def delete_modal_app(
     if len(published_children) > 0:
         published_child_ids = [mf.id for mf in published_children]
         published_child_dois = [mf.doi for mf in published_children]
-        logger.info("Failed to delete Modal App (has published children)", child_functions=published_child_ids)
+        log.info("Failed to delete Modal App (has published children)", child_functions=published_child_ids)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete or replace Modal App {id}. It has published children with DOIs {published_child_dois}",
@@ -127,3 +134,5 @@ async def delete_modal_app(
     
     await db.delete(modal_app)
     await db.commit()
+    log.info("Deleted Modal App from database")
+    return {"detail": f"Successfully deleted garden with id {id}."}

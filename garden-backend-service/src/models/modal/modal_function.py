@@ -46,3 +46,7 @@ class ModalFunction(Base):
     modal_app: Mapped[ModalApp] = relationship(
         ModalApp, back_populates="modal_functions", lazy="selectin"
     )
+
+    @property
+    def owner(self) -> User:
+        return self.modal_app.owner
