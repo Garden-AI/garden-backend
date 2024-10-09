@@ -114,7 +114,7 @@ async def delete_modal_app(
         )
 
     if modal_app.owner.identity_id != user.identity_id:
-        log.info(f"Failed to delete Modal App (not owned by user)")
+        log.info("Failed to delete Modal App (not owned by user)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to delete or replace (not owned by user {user.username})",

@@ -4,12 +4,12 @@ from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
+from src.api.routes._utils import (
+    assert_editable_by_user,
+)
 from src.api.schemas.modal.modal_function import (
     ModalFunctionMetadataResponse,
     ModalFunctionPatchRequest,
-)
-from src.api.routes._utils import (
-    assert_editable_by_user,
 )
 from src.config import Settings, get_settings
 from src.models import ModalFunction, User

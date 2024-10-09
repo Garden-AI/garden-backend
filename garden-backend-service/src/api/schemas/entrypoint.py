@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import AliasPath, Field
 
-from .base import BaseSchema, UniqueList, Url
+from .base import Url
 from .shared_function_schemas import CommonFunctionMetadata, CommonFunctionPatchRequest
 
 
