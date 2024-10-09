@@ -1,9 +1,10 @@
 import requests
 from fastapi import APIRouter, Body, Depends, exceptions, status
+from structlog import get_logger
+
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas import datacite
 from src.config import Settings, get_settings
-from structlog import get_logger
 
 logger = get_logger(__name__)
 

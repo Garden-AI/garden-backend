@@ -1,6 +1,4 @@
-from uuid import UUID
-
-from pydantic import AliasPath, Field
+from pydantic import Field
 
 from ..base import BaseSchema, UniqueList, Url
 

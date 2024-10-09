@@ -2,6 +2,7 @@ from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
+
 from src.api.dependencies.auth import authenticated
 from src.main import app
 from tests.utils import post_entrypoints, post_garden
@@ -229,7 +230,6 @@ async def test_search_gardens_by_owner_uuid(
     mock_auth_state,
     mock_auth_state_other_user,
 ):
-
     # Add a garden by another user
     app.dependency_overrides[authenticated] = lambda: mock_auth_state_other_user
     _ = await client.get("/greet")

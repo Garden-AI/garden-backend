@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+
 from src.api.dependencies.auth import authed_user
 from src.models.user import User
 

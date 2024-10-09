@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.failed_search_index_update import FailedSearchIndexUpdateResponse
 from src.models import FailedSearchIndexUpdate

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.api.dependencies.database import get_db_session
 
 router = APIRouter(prefix="/hello-database")

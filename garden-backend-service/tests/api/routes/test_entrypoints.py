@@ -2,6 +2,7 @@ import copy
 from unittest.mock import patch
 
 import pytest
+
 from src.api.dependencies.auth import authenticated
 from src.main import app
 

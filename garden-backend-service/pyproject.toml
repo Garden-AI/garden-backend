@@ -37,9 +37,7 @@ pytest = "^7.2.0"
 pytest-mock = "^3.10.0"
 pytest-cov = "^4.0.0"
 pytest-asyncio = "^0.23.7"
-flake8 = "^5.0.4"
 pre-commit = "^3.1.1"
-black = "^24.1.0"
 jupyter = "1.1.1"
 isort = "^5.12.0"
 mypy = "^1.9.0"
@@ -51,6 +49,7 @@ ipython = "^8.25.0"
 testcontainers = "^4.5.1"
 flake8-pytest-style = "^2.0.0"
 pytest-random-order = "^1.1.1"
+ruff = "^0.6.9"
 
 
 [build-system]
@@ -60,3 +59,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 markers = ["integration"]
 addopts = "--random-order"
+
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]

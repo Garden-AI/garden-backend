@@ -1,10 +1,11 @@
-from fastapi import Depends
-from src.config import get_settings, Settings
-from src.sandboxed_functions.modal_publishing_helpers import (
-    validate_modal_file,
-    deploy_modal_app,
-)
 import modal
+from fastapi import Depends
+
+from src.config import Settings, get_settings
+from src.sandboxed_functions.modal_publishing_helpers import (
+    deploy_modal_app,
+    validate_modal_file,
+)
 
 
 class ValidateModalFileProvider:

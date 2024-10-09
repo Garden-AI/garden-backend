@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.models._associations import users_saved_gardens
 from src.models.base import Base
 

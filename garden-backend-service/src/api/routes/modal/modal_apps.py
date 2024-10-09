@@ -1,20 +1,19 @@
-from fastapi import APIRouter, Depends, Body, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
+from src.api.dependencies.auth import authed_user
+from src.api.dependencies.database import get_db_session
+from src.api.dependencies.sandboxed_functions import (
+    DeployModalAppProvider,
+    ValidateModalFileProvider,
+)
 from src.api.schemas.modal.modal_app import (
     ModalAppCreateRequest,
     ModalAppMetadataResponse,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.models import User, ModalApp
 from src.config import Settings, get_settings
-from src.api.dependencies.auth import authed_user
-from src.api.dependencies.database import get_db_session
-from src.api.dependencies.sandboxed_functions import (
-    ValidateModalFileProvider,
-    DeployModalAppProvider,
-)
-
-from structlog import get_logger
+from src.models import ModalApp, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -32,7 +31,6 @@ async def add_modal_app(
     validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
 ):
-
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 

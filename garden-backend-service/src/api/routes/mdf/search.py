@@ -3,12 +3,13 @@ from typing import Any, Dict
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.mdf.dataset import AccelerateDatasetMetadata, MDFSearchResponse
 from src.api.schemas.search.globus_search import GSearchRequestBody
 from src.config import Settings, get_settings
 from src.models import Dataset
-from structlog import get_logger
 
 logger = get_logger(__name__)
 
