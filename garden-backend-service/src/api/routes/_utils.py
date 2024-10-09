@@ -44,7 +44,9 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
 
 def assert_editable_by_user(
     obj: Garden | Entrypoint | ModalFunction,
-    patch_request: GardenPatchRequest | EntrypointPatchRequest | ModalFunctionPatchRequest,
+    patch_request: (
+        GardenPatchRequest | EntrypointPatchRequest | ModalFunctionPatchRequest
+    ),
     user: User,
 ) -> None:
     """Check that a given Garden or Entrypoint can be edited, i.e. is owned by the user and is not archived.

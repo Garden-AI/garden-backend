@@ -91,6 +91,7 @@ async def get_modal_app(
         )
     return modal_app
 
+
 @router.delete(
     "/{id}",
     status_code=status.HTTP_200_OK,
@@ -113,9 +114,7 @@ async def delete_modal_app(
         )
 
     if modal_app.owner.identity_id != user.identity_id:
-        log.info(
-            f"Failed to delete Modal App (not owned by user)"
-        )
+        log.info(f"Failed to delete Modal App (not owned by user)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to delete or replace (not owned by user {user.username})",
@@ -124,12 +123,15 @@ async def delete_modal_app(
     if len(published_children) > 0:
         published_child_ids = [mf.id for mf in published_children]
         published_child_dois = [mf.doi for mf in published_children]
-        log.info("Failed to delete Modal App (has published children)", child_functions=published_child_ids)
+        log.info(
+            "Failed to delete Modal App (has published children)",
+            child_functions=published_child_ids,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete or replace Modal App {id}. It has published children with DOIs {published_child_dois}",
         )
-    
+
     await db.delete(modal_app)
     await db.commit()
     log.info("Deleted Modal App from database")

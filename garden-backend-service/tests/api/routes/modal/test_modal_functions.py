@@ -25,6 +25,7 @@ async def test_get_modal_function(
         == mock_modal_app_create_request_one_function["modal_functions"][0]["title"]
     )
 
+
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_patch_modal_function_partial_update(
@@ -39,9 +40,11 @@ async def test_patch_modal_function_partial_update(
     )
 
     # Update the Modal Function
-    created_function_id = create_app_response["modal_functions"][0]['id']
+    created_function_id = create_app_response["modal_functions"][0]["id"]
     new_tags = {"tags": ["Some", "New", "Tags"]}
-    patch_response = await client.patch(f"/modal-functions/{created_function_id}", json=new_tags)
+    patch_response = await client.patch(
+        f"/modal-functions/{created_function_id}", json=new_tags
+    )
     assert patch_response.status_code == 200
     patched_data = patch_response.json()
     assert patched_data["tags"] == new_tags["tags"]

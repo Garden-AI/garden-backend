@@ -66,10 +66,12 @@ async def test_delete_modal_app(
         client, mock_modal_app_create_request_one_function
     )
 
-    app_id = post_response['id']
+    app_id = post_response["id"]
     delete_response = await client.delete(f"/modal-apps/{app_id}")
     assert delete_response.status_code == 200
-    assert delete_response.json() == {"detail": f"Successfully deleted garden with id {app_id}."}
+    assert delete_response.json() == {
+        "detail": f"Successfully deleted garden with id {app_id}."
+    }
 
     # Verify deletion is idempotent
     response = await client.delete(f"/modal-apps/{app_id}")

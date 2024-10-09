@@ -35,9 +35,9 @@ class _ModelMetadata(BaseSchema, protected_namespaces=()):
 
 class CommonFunctionMetadata(BaseSchema):
     is_archived: bool = False
-    
+
     function_text: str
-    
+
     title: str
     description: str | None
     year: str
@@ -46,7 +46,7 @@ class CommonFunctionMetadata(BaseSchema):
     tags: UniqueList[str] = Field(default_factory=list)
     test_functions: list[str] = Field(default_factory=list)
     requirements: list[str] = Field(default_factory=list)
-    
+
     models: list[_ModelMetadata] = Field(default_factory=list)
     repositories: list[_RepositoryMetadata] = Field(default_factory=list)
     papers: list[_PaperMetadata] = Field(default_factory=list)
@@ -55,11 +55,11 @@ class CommonFunctionMetadata(BaseSchema):
 
 class CommonFunctionPatchRequest(BaseSchema):
     is_archived: bool | None = None
-    
+
     title: str | None = None
     description: str | None = None
     year: str | None = None
-    
+
     function_text: str | None = None
 
     authors: UniqueList[str] | None = None

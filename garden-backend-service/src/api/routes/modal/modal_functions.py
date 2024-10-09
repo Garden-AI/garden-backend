@@ -40,6 +40,7 @@ async def get_modal_function(
         )
     return modal_function
 
+
 @router.patch("/{id}", response_model=ModalFunctionMetadataResponse)
 async def update_modal_function(
     id: int,
@@ -55,14 +56,14 @@ async def update_modal_function(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No Modal Function with ID {id} found.",
         )
-    
+
     assert_editable_by_user(modal_function, function_data, user)
 
     # Don't allow the function to go directly from draft state to archived state
     patch_fields = function_data.model_dump(exclude_none=True)
     #    "was_draft" tells us if this function was in draft state before the patch
     was_draft = modal_function.doi is None
-    if was_draft and patch_fields.get('is_archived', False):
+    if was_draft and patch_fields.get("is_archived", False):
         log.warning("Could not archive Modal Function from draft state")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -34,7 +34,7 @@ class EntrypointMetadataResponse(EntrypointMetadata):
 
 class EntrypointPatchRequest(CommonFunctionPatchRequest):
     doi_is_draft: bool | None = None
-    
+
     func_uuid: UUID | None = None
     container_uuid: UUID | None = None
     base_image_uri: str | None = None
