@@ -11,20 +11,20 @@ from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 
-from sqlalchemy.orm import Session
 from src.api.dependencies.auth import (
     AuthenticationState,
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.database import init
 from src.api.dependencies.modal import get_modal_client
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
 )
-from src.api.dependencies.database import init
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
