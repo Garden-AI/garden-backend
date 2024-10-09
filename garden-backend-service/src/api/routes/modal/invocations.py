@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from modal._utils.grpc_utils import retry_transient_errors
 from modal_proto import api_pb2
 
-from src.api.dependencies.auth import authed_user
+from src.api.dependencies.auth import authed_user, modal_vip
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
     ModalInvocationRequest,
@@ -24,6 +24,7 @@ async def invoke_modal_fn(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
+    modal_vip: bool = Depends(modal_vip),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")

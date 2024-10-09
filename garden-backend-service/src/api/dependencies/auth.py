@@ -14,6 +14,14 @@ from src.models.user import User
 log = get_logger(__name__)
 
 
+# MODAL_VIP_LIST = [
+#     "willengler@uchicago.edu",
+#     "owenpriceskelly@uchicago.edu",
+#     "hholbroo@unca.edu",
+
+#     # Add more email addresses as needed
+# ]
+
 def _get_auth_token(
     authorization: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -74,6 +82,17 @@ async def authed_user(
         username=auth.username, user_identity_id=auth.identity_id
     ):
         yield user
+
+
+async def modal_vip(
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+) -> bool:
+    email = user.email.lower()
+    if email in settings.MODAL_VIP_LIST:
+        return True
+    else:
+        raise HTTPException(status_code=403, detail="Modal endpoints are in limited preview")
 
 
 def get_auth_client(

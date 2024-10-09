@@ -16,6 +16,7 @@ from testcontainers.postgres import PostgresContainer
 
 from src.api.dependencies.auth import (
     AuthenticationState,
+    modal_vip,
     _get_auth_token,
     authenticated,
 )
@@ -172,6 +173,15 @@ def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
 
 
 @pytest.fixture
+def override_modal_vip():
+    app.dependency_overrides[modal_vip] = (
+        lambda: True
+    )
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def override_get_modal_client_dependency():
     mock_modal_client = AsyncMock()
     mock_modal_client.stub = MagicMock()
@@ -240,6 +250,7 @@ def mock_settings(db_url):
     mock_settings.MODAL_USE_LOCAL = True
     mock_settings.MODAL_ENABLED = True
     mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
+    mock_settings.MODAL_VIP_LIST = []
     return mock_settings
 
 
