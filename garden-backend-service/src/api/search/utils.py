@@ -1,9 +1,13 @@
-from sqlalchemy import column, func, select
+from sqlalchemy import asc, column, desc, func, select
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import Select
 
-from src.api.schemas.garden import GardenSearchFacets, GardenSearchFilter
+from src.api.schemas.garden import (
+    GardenSearchFacets,
+    GardenSearchFilter,
+    GardenSearchSort,
+)
 from src.models.base import Base
 
 
@@ -112,3 +116,18 @@ async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacet
     year = {str(row[0]): row[1] for row in year_result.all()}
 
     return GardenSearchFacets(tags=tags, authors=authors, year=year)
+
+
+def sort_results(model: Base, stmt: Select, sort: GardenSearchSort):
+    if not hasattr(model, sort.field_name):
+        raise ValueError(f"Invalid sort field_name: {sort.field_name}")
+
+    match sort.order:
+        case "asc":
+            return stmt.order_by(asc(getattr(model, sort.field_name)))
+        case "desc":
+            return stmt.order_by(desc(getattr(model, sort.field_name)))
+        case _:
+            raise ValueError(
+                f"Invalid sort order: {sort.order}. Must be 'asc' or 'desc'"
+            )

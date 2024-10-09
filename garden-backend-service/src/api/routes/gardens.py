@@ -24,7 +24,7 @@ from src.api.schemas.garden import (
     GardenSearchRequest,
     GardenSearchResponse,
 )
-from src.api.search.utils import apply_filters, calculate_facets
+from src.api.search.utils import apply_filters, calculate_facets, sort_results
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, ModalFunction, User
@@ -133,10 +133,16 @@ async def search(
     total_count_stmt = select(func.count()).select_from(stmt.subquery())
     total_count = await db.scalar(total_count_stmt)
 
+    stmt = stmt.limit(search_request.limit).offset(search_request.offset)
+
+    if search_request.sort:
+        try:
+            stmt = sort_results(Garden, stmt, search_request.sort)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
     # Run the search query
-    result = await db.scalars(
-        stmt.limit(search_request.limit).offset(search_request.offset)
-    )
+    result = await db.scalars(stmt)
     gardens = result.all()
 
     return GardenSearchResponse(

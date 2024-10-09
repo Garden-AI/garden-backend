@@ -74,6 +74,11 @@ class GardenSearchFacets(BaseSchema):
     year: dict[str, int] = Field(default_factory=dict)
 
 
+class GardenSearchSort(BaseSchema):
+    field_name: str
+    order: str
+
+
 class GardenSearchRequest(BaseSchema):
     q: str
     limit: int = 10
@@ -81,6 +86,7 @@ class GardenSearchRequest(BaseSchema):
         0, ge=0, description="Offset for pagination (number of results to skip)"
     )
     filters: list[GardenSearchFilter] = Field(default_factory=list)
+    sort: GardenSearchSort | None = None
 
 
 class GardenSearchResponse(BaseSchema):
