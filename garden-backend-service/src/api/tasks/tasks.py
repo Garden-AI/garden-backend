@@ -5,11 +5,12 @@ from enum import Enum
 from globus_sdk import ConfidentialAppAuthClient, SearchAPIError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from structlog import get_logger
+
 from src.api.dependencies.search import get_globus_search_client
 from src.api.schemas.garden import GardenMetadataResponse
 from src.config import Settings
 from src.models import FailedSearchIndexUpdate, Garden
-from structlog import get_logger
 
 logger = get_logger(__name__)
 

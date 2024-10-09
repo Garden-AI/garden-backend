@@ -1,4 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Integer, Table
+
 from src.models.base import Base
 
 gardens_entrypoints = Table(

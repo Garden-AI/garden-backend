@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, Body, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
 
-from src.models import User, ModalFunction
-from src.config import Settings, get_settings
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.modal.modal_function import (
@@ -12,11 +11,12 @@ from src.api.schemas.modal.modal_function import (
 from src.api.routes._utils import (
     assert_editable_by_user,
 )
-
-from structlog import get_logger
+from src.config import Settings, get_settings
+from src.models import ModalFunction, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-functions")
+
 
 @router.get(
     "/{id}",
@@ -31,7 +31,7 @@ async def get_modal_function(
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
-    
+
     modal_function = await ModalFunction.get(db, id=id)
     if modal_function is None:
         raise HTTPException(

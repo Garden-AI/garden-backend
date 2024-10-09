@@ -10,20 +10,21 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.engine import create_engine
+from testcontainers.postgres import PostgresContainer
+
 from src.api.dependencies.auth import (
     AuthenticationState,
     _get_auth_token,
     authenticated,
 )
-from src.api.dependencies.sandboxed_functions import (
-    ValidateModalFileProvider,
-    DeployModalAppProvider,
-)
 from src.api.dependencies.modal import get_modal_client
+from src.api.dependencies.sandboxed_functions import (
+    DeployModalAppProvider,
+    ValidateModalFileProvider,
+)
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
-from testcontainers.postgres import PostgresContainer
 
 
 @pytest.fixture

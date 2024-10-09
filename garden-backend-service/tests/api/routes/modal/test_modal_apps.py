@@ -1,9 +1,5 @@
-from copy import deepcopy
-from unittest.mock import patch
-
 import pytest
-from src.api.dependencies.auth import authenticated
-from src.main import app
+
 from tests.utils import post_modal_app
 
 

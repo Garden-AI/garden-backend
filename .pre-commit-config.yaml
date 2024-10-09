@@ -13,23 +13,11 @@ repos:
     -   id: no-commit-to-branch
         args: ["--branch", "dev"]
 
--   repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
     hooks:
-    -   id: flake8
-        args: ["--ignore=E203,E501,W503"]
-        exclude: (migrations/|fixtures/)
-
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
-        args: ["--profile", "black", "--multi-line", "3"]
-        exclude: (fixtures/)
-
--   repo: https://github.com/psf/black
-    rev: 24.4.2
-    hooks:
-    -   id: black
-        language_version: python3
-        exclude: (fixtures/)
+      # Run the linter.
+    -   id: ruff
+        args: [ --fix ]
+      # Run the formatter.
+    -   id: ruff-format

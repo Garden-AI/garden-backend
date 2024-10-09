@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from modal_proto import api_pb2
+
 from src.api.schemas.modal.invocations import (
     ModalInvocationRequest,
     ModalInvocationResponse,

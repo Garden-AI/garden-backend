@@ -2,6 +2,7 @@ import json
 
 import boto3
 from fastapi import APIRouter, Depends, status
+
 from src.api.dependencies.auth import AuthenticationState, authenticated
 from src.api.schemas.docker import ECRPushCredentials
 from src.config import Settings, get_settings

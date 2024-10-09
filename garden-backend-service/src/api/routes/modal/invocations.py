@@ -3,6 +3,7 @@ import structlog
 from fastapi import APIRouter, Depends
 from modal._utils.grpc_utils import retry_transient_errors
 from modal_proto import api_pb2
+
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
@@ -37,7 +38,10 @@ async def invoke_modal_fn(
 
     # fetch the function from modal
     function = await modal.functions._Function.lookup(
-        app_name=body.app_name, tag=body.function_name, client=modal_client
+        app_name=body.app_name,
+        tag=body.function_name,
+        client=modal_client,
+        environment_name=settings.MODAL_ENV,
     )
 
     # create the _Invocation object

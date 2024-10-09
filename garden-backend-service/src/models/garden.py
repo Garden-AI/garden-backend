@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
+
 from src.models._associations import gardens_entrypoints, gardens_modal_functions
 from src.models.base import Base
 

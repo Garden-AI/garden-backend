@@ -1,10 +1,9 @@
-from datetime import datetime
 from uuid import UUID
 
 from pydantic import AliasPath, Field, computed_field
 
-from ..base import BaseSchema, UniqueList
-from .modal_function import ModalFunctionMetadataResponse, ModalFunctionMetadata
+from ..base import BaseSchema
+from .modal_function import ModalFunctionMetadata, ModalFunctionMetadataResponse
 
 
 class ModalAppMetadata(BaseSchema):

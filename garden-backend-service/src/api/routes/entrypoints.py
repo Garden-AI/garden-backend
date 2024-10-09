@@ -5,6 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
+
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
@@ -21,7 +23,6 @@ from src.api.schemas.entrypoint import (
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, User
-from structlog import get_logger
 
 logger = get_logger(__name__)
 

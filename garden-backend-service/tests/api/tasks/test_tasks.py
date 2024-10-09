@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 from src.api.tasks import SearchIndexUpdateError
 from tests.utils import post_entrypoints
 
@@ -14,7 +15,6 @@ async def test_failed_create_request(
     override_get_settings_dependency_with_sync,
     mock_garden_create_request_no_entrypoints_json,
 ):
-
     with patch(
         "src.api.tasks.tasks._create_or_update_on_search_index",
         side_effect=SearchIndexUpdateError("INTENTIONAL ERROR FOR TESTING", ""),
@@ -129,7 +129,6 @@ async def test_failed_entrypoint_update(
     create_shared_entrypoint_json,
     create_garden_two_entrypoints_json,
 ):
-
     with patch(
         "src.api.tasks.tasks._create_or_update_on_search_index",
         side_effect=[None, SearchIndexUpdateError("INTENTIONAL ERROR FOR TESTING", "")],
