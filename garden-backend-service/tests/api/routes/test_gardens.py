@@ -829,7 +829,9 @@ async def test_search_gardens_sort_by_title(
     sorted_titles = ["A", "B", "C", "D", "E", "F"]
 
     random_titles = list(sorted_titles)
-    random.shuffle(random_titles)
+    # shuffle until we know the lists are different
+    while random_titles == sorted_titles:
+        random.shuffle(random_titles)
 
     for title in random_titles:
         garden_data = deepcopy(mock_garden_create_request_no_entrypoints_json)
