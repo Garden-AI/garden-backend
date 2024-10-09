@@ -14,14 +14,6 @@ from src.models.user import User
 log = get_logger(__name__)
 
 
-# MODAL_VIP_LIST = [
-#     "willengler@uchicago.edu",
-#     "owenpriceskelly@uchicago.edu",
-#     "hholbroo@unca.edu",
-
-#     # Add more email addresses as needed
-# ]
-
 def _get_auth_token(
     authorization: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
