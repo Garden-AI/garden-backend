@@ -60,11 +60,6 @@ jobs:
           cd ./garden-backend-service
           poetry run safety check
 
-      - name: Format with Ruff
-        run: |
-          cd ./garden-backend-service
-          poetry run ruff format
-
       - name: Lint with Ruff
         run: |
           cd ./garden-backend-service
