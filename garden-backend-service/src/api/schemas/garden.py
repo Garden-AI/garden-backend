@@ -61,3 +61,31 @@ class GardenPatchRequest(BaseSchema):
     entrypoint_aliases: dict[str, str] = None
     is_archived: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
+
+
+class GardenSearchFilter(BaseSchema):
+    field_name: str
+    values: list[str]
+
+
+class GardenSearchFacets(BaseSchema):
+    tags: dict[str, int] = Field(default_factory=dict)
+    authors: dict[str, int] = Field(default_factory=dict)
+    year: dict[str, int] = Field(default_factory=dict)
+
+
+class GardenSearchRequest(BaseSchema):
+    q: str
+    limit: int = 10
+    offset: int = Field(
+        0, ge=0, description="Offset for pagination (number of results to skip)"
+    )
+    filters: list[GardenSearchFilter] = Field(default_factory=list)
+
+
+class GardenSearchResponse(BaseSchema):
+    count: int
+    total: int
+    offset: int
+    garden_meta: list[GardenMetadataResponse]
+    facets: GardenSearchFacets

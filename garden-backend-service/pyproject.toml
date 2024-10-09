@@ -28,6 +28,7 @@ pydantic-extra-types = "^2.9.0"
 phonenumbers = "^8.13.40"
 structlog = "^24.4.0"
 modal = "^0.64.122"
+sqlparse = "^0.5.1"
 
 [tool.poetry.group.develop]
 optional = true

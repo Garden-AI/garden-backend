@@ -627,3 +627,191 @@ async def test_disallow_editing_published_garden_fields(
     updated_data = {"entrypoint_ids": ["changed", "entrypoint", "ids"]}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_rejects_invalid_filters(
+    client,
+    override_get_settings_dependency,
+):
+    body = {
+        "q": "some search query",
+        "filters": [
+            {
+                "field_name": "some_invalid_field",
+                "values": ["some value"],
+            },
+        ],
+    }
+    response = await client.post("/gardens/search", json=body)
+    assert response.status_code == 400
+    assert "Invalid filter" in response.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_returns_gardens(
+    client,
+    mock_db_session,
+    create_shared_entrypoint_json,
+    create_entrypoint_with_related_metadata_json,
+    create_garden_two_entrypoints_json,
+    override_authenticated_dependency,
+):
+    await post_entrypoints(
+        client,
+        create_shared_entrypoint_json,
+        create_entrypoint_with_related_metadata_json,
+    )
+    await post_garden(client, create_garden_two_entrypoints_json)
+
+    body = {
+        "q": "Owen",
+    }
+    response = await client.post("/gardens/search", json=body)
+    assert response.status_code == 200
+    search_result = response.json()
+
+    assert len(search_result["garden_meta"]) == 1
+    assert search_result["count"] == 1
+    assert search_result["offset"] == 0
+    assert search_result["facets"]["authors"] == {"Owen": 1}
+    assert search_result["facets"]["year"] == {"2023": 1}
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_applies_filters_correctly(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    g1 = mock_garden_create_request_no_entrypoints_json
+
+    g2 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g2["authors"] = ["Phillip J. Fry"]
+    g2["doi"] = "12.345/fake-doi"
+
+    g3 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g3["doi"] = "34.567/fake-doi"
+    g3["tags"] = ["testing"]
+    g3["description"] = "a garden for testing"
+
+    await post_garden(client, g1)
+    await post_garden(client, g2)
+    await post_garden(client, g3)
+
+    body = {
+        "q": "Garden",
+        "filters": [
+            {"field_name": "authors", "values": ["Owen"]},
+            {"field_name": "tags", "values": ["testing"]},
+            {"field_name": "description", "values": ["testing"]},
+        ],
+    }
+    response = await client.post("gardens/search", json=body)
+    assert response.status_code == 200
+
+    search_result = response.json()
+    assert len(search_result["garden_meta"]) == 1
+    assert search_result["garden_meta"][0]["authors"][0] == "Owen"
+    assert search_result["facets"]["authors"] == {"Owen": 1}
+    assert search_result
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_returns_empty_list_when_no_matches(
+    client,
+    mock_db_session,
+):
+    body = {
+        "q": "some query",
+    }
+    response = await client.post("/gardens/search", json=body)
+    assert response.status_code == 200
+    search_result = response.json()
+    assert search_result["total"] == 0
+    assert search_result["count"] == 0
+    assert len(search_result["garden_meta"]) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_facet_counts_are_correct(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    g1 = mock_garden_create_request_no_entrypoints_json
+
+    g2 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g2["doi"] = "12.345/fake-doi"
+
+    g3 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g3["doi"] = "34.567/fake-doi"
+    g3["tags"] = ["testing"]
+
+    await post_garden(client, g1)
+    await post_garden(client, g2)
+    await post_garden(client, g3)
+
+    q1 = {
+        "q": "garden",
+    }
+    res1 = await client.post("gardens/search", json=q1)
+    assert res1.status_code == 200
+    search_res1 = res1.json()
+    facets1 = search_res1["facets"]
+    assert facets1["authors"]["Owen"] == 3
+    assert facets1["tags"]["python"] == 2
+    assert facets1["tags"]["testing"] == 1
+    assert facets1["year"]["2023"] == 3
+
+    q2 = {
+        "q": "garden",
+        "filters": [
+            {"field_name": "tags", "values": ["testing"]},
+        ],
+    }
+    res2 = await client.post("gardens/search", json=q2)
+    assert res2.status_code == 200
+    search_res2 = res2.json()
+    facets2 = search_res2["facets"]
+    assert facets2["authors"]["Owen"] == 1
+    assert facets2["tags"]["testing"] == 1
+    assert facets2["year"]["2023"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_offset_paginates_results(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    for i in range(20):
+        garden_data = deepcopy(mock_garden_create_request_no_entrypoints_json)
+        garden_data["doi"] = f"12.345/some-doi-{i}"
+        await post_garden(client, garden_data)
+
+    body = {"q": "garden"}
+
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 200
+    result = res.json()
+    assert result["total"] == 20
+    assert result["count"] == 10
+    assert result["offset"] == 0
+
+    body = {"q": "garden", "offset": 15}
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 200
+    result = res.json()
+    assert result["total"] == 20
+    assert result["count"] == 5
+    assert result["offset"] == 15

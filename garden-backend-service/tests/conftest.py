@@ -9,7 +9,9 @@ import pytest
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.engine import create_engine
+from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 
 from src.api.dependencies.auth import (
@@ -17,6 +19,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
 )
+from src.api.dependencies.database import init
 from src.api.dependencies.modal import get_modal_client
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
@@ -72,28 +75,46 @@ def db_url(pg_container) -> str:
 
 
 @pytest.fixture
-def mock_db_session(
-    override_get_settings_dependency,
-    mock_settings,
-):
-    """override_get_settings_dependency gives get_db_session the url of the database.
-    To make sure tests don't interfere with each other we first need to initialize the schema,
-    then let the test run and drop the schema after the test.
-    """
+def _sync_engine(mock_settings):
     url = mock_settings.SQLALCHEMY_DATABASE_URL
     if "postgres" not in url:
         raise ValueError(
             f"Can only run integration tests against postgres, got: {url} "
             'Try `pytest -m "not integration"`'
         )
-
-    # create synchronous engine so we can drop and rebuild the schema between tests
     sync_url = url.replace("asyncpg", "psycopg2")
     engine = create_engine(sync_url)
-    Base.metadata.create_all(engine)
-    yield
-    Base.metadata.drop_all(engine)
+    yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def mock_db_session(
+    mock_settings,
+    override_get_settings_dependency,
+    _sync_engine,
+):
+    """Provide a mock database session to the test.
+
+    override_get_settings_dependency gives get_db_session the url of the database
+    so routes that need the database will automatically be given the url of the test db.
+    """
+    # Initialize the database schema
+    Base.metadata.create_all(_sync_engine)
+    with Session(_sync_engine) as db:
+        init(db, Path(mock_settings.GARDEN_SEARCH_SQL_DIR))
+
+    # Let the test use the database
+    yield
+
+    # Clean up after the test
+    with Session(_sync_engine) as db:
+        db.execute(text("DROP TABLE gardens_entrypoints;"))
+        db.execute(text("DROP TABLE entrypoints CASCADE;"))
+        db.execute(text("DROP TABLE gardens CASCADE;"))
+        db.execute(text("DROP TABLE users CASCADE;"))
+        db.execute(text("DROP TABLE failed_search_index_updates CASCADE;"))
+        db.commit()
 
 
 @pytest.fixture
@@ -213,13 +234,12 @@ def mock_settings(db_url):
     mock_settings.API_CLIENT_SECRET = "secretfakeid"
     mock_settings.RETRY_INTERVAL_SECS = 1
     mock_settings.MDF_SEARCH_INDEX = "mdfsearchindex"
-
     mock_settings.MODAL_ENV = "dev"
     mock_settings.MODAL_TOKEN_ID = "fake-token-id"
     mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
     mock_settings.MODAL_USE_LOCAL = True
     mock_settings.MODAL_ENABLED = True
-
+    mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
     return mock_settings
 
 
