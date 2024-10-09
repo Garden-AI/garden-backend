@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     MODAL_ENV: str = "dev"
     MODAL_USE_LOCAL: bool = False
 
+    GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:

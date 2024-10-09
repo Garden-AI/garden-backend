@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from globus_sdk import ConfidentialAppAuthClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +21,10 @@ from src.api.schemas.garden import (
     GardenCreateRequest,
     GardenMetadataResponse,
     GardenPatchRequest,
+    GardenSearchRequest,
+    GardenSearchResponse,
 )
+from src.api.search.utils import apply_filters, calculate_facets
 from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, ModalFunction, User
@@ -95,6 +98,54 @@ async def search_gardens(
 
     result = await db.scalars(stmt.limit(limit))
     return result.all()
+
+
+@router.post(
+    "/search",
+    status_code=status.HTTP_200_OK,
+    response_model=GardenSearchResponse,
+)
+async def search(
+    search_request: GardenSearchRequest,
+    db: AsyncSession = Depends(get_db_session),
+) -> GardenSearchResponse:
+    stmt = select(Garden)
+
+    # Apply filters to query
+    try:
+        stmt = apply_filters(Garden, stmt, search_request.filters)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    # Do a ranked full-text search
+    if search_query := search_request.q:
+        search_func = func.search_gardens(search_query).table_valued(
+            "garden_id", "rank"
+        )
+        stmt = stmt.join(search_func, search_func.c.garden_id == Garden.id).order_by(
+            search_func.c.rank
+        )
+
+    # Calculate facets after applying the filters and searching
+    facets = await calculate_facets(db, stmt)
+
+    # Get totals for offset/pagination
+    total_count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_count = await db.scalar(total_count_stmt)
+
+    # Run the search query
+    result = await db.scalars(
+        stmt.limit(search_request.limit).offset(search_request.offset)
+    )
+    gardens = result.all()
+
+    return GardenSearchResponse(
+        count=len(gardens),
+        total=total_count,
+        offset=search_request.offset,
+        garden_meta=gardens,
+        facets=facets,
+    )
 
 
 @router.get(
