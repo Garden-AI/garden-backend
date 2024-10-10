@@ -2,7 +2,8 @@ import time
 import uuid
 
 import structlog
-from fastapi import Request, Response
+from fastapi import HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 
@@ -49,3 +50,26 @@ class LogProcessTimeMiddleware(BaseHTTPMiddleware):
         response.headers["X-Process-Time"] = formatted_process_time
 
         return response
+
+
+class ErrorHandlingMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except HTTPException:
+            raise
+        except Exception:
+            logger = structlog.get_logger()
+            logger.error(
+                "Unhandled exception",
+                exc_info=True,
+                method=request.method,
+                path=request.url.path,
+            )
+
+            return JSONResponse(
+                status_code=500, content={"detail": "Internal Server Error"}
+            )
