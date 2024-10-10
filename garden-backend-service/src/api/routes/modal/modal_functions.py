@@ -49,6 +49,7 @@ async def update_modal_function(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
+    modal_vip: bool = Depends(modal_vip),
 ):
     log = logger.bind(id=id)
     modal_function: ModalFunction | None = await ModalFunction.get(db, id=id)
