@@ -76,6 +76,19 @@ async def authed_user(
         yield user
 
 
+async def modal_vip(
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+) -> bool:
+    email = user.email.lower()
+    if email in settings.MODAL_VIP_LIST:
+        return True
+    else:
+        raise HTTPException(
+            status_code=403, detail="Modal endpoints are in limited preview"
+        )
+
+
 def get_auth_client(
     settings: Settings = Depends(get_settings),
 ) -> globus_sdk.ConfidentialAppAuthClient:

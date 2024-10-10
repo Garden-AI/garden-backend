@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     MODAL_TOKEN_SECRET: str
     MODAL_ENV: str = "dev"
     MODAL_USE_LOCAL: bool = False
+    MODAL_VIP_LIST: list[str]
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 

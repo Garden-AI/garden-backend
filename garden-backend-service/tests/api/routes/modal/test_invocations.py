@@ -11,6 +11,7 @@ from src.api.schemas.modal.invocations import (
 
 @pytest.mark.asyncio
 async def test_invoke_modal_fn(
+    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,
