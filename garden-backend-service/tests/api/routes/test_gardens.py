@@ -1,3 +1,4 @@
+import random
 from copy import deepcopy
 from unittest.mock import patch
 
@@ -815,3 +816,75 @@ async def test_search_gardens_offset_paginates_results(
     assert result["total"] == 20
     assert result["count"] == 5
     assert result["offset"] == 15
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_sort_by_title(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    sorted_titles = ["A", "B", "C", "D", "E", "F"]
+
+    random_titles = list(sorted_titles)
+    # shuffle until we know the lists are different
+    while random_titles == sorted_titles:
+        random.shuffle(random_titles)
+
+    for title in random_titles:
+        garden_data = deepcopy(mock_garden_create_request_no_entrypoints_json)
+        garden_data["title"] = title
+        garden_data["doi"] = f"12.345/some-doi-{title}"
+        await post_garden(client, garden_data)
+
+    body = {"q": "gardens", "sort": {"field_name": "title", "order": "asc"}}
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 200
+    result = res.json()
+    titles = [g["title"] for g in result["garden_meta"]]
+    assert titles == sorted_titles
+
+    body = {"q": "gardens", "sort": {"field_name": "title", "order": "desc"}}
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 200
+    result = res.json()
+    titles = [g["title"] for g in result["garden_meta"]]
+    assert titles == list(reversed(sorted_titles))
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_rejects_invalid_sort_field(
+    client,
+    mock_db_session,
+):
+    body = {
+        "q": "some query",
+        "sort": {
+            "field_name": "some invalid field",
+            "order": "desc",
+        },
+    }
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 400
+    assert "Invalid sort field_name" in res.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_search_gardens_rejects_invalid_sort_order(
+    client,
+    mock_db_session,
+):
+    body = {
+        "q": "some query",
+        "sort": {
+            "field_name": "authors",
+            "order": "not a valid sort order",
+        },
+    }
+    res = await client.post("/gardens/search", json=body)
+    assert res.status_code == 400
+    assert "Invalid sort order" in res.text
