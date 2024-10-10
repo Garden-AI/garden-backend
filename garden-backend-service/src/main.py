@@ -25,7 +25,11 @@ from src.api.routes.mdf import search as mdf_search
 from src.api.tasks import retry_failed_updates
 from src.auth.globus_auth import get_auth_client
 from src.config import Settings, get_settings
-from src.middleware.logging import LogProcessTimeMiddleware, LogRequestIdMiddleware
+from src.middleware.logging import (
+    ErrorHandlingMiddleware,
+    LogProcessTimeMiddleware,
+    LogRequestIdMiddleware,
+)
 
 
 def get_db_session_maker(settings: Settings) -> async_sessionmaker[AsyncSession]:
@@ -62,6 +66,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(LogProcessTimeMiddleware)
 app.add_middleware(LogRequestIdMiddleware)
 
