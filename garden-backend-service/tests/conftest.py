@@ -173,6 +173,13 @@ def override_deploy_modal_app_dependency(mock_deploy_modal_app_provider):
 
 
 @pytest.fixture
+def override_sandboxed_functions(
+    override_deploy_modal_app_dependency, override_validate_modal_file_dependency
+):
+    return
+
+
+@pytest.fixture
 def override_modal_vip():
     app.dependency_overrides[modal_vip] = lambda: True
     yield

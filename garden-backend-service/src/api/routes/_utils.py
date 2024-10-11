@@ -10,8 +10,9 @@ from structlog import get_logger
 
 from src.api.schemas.entrypoint import EntrypointPatchRequest
 from src.api.schemas.garden import GardenPatchRequest
+from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
 from src.config import Settings
-from src.models import Entrypoint, Garden, User
+from src.models import Entrypoint, Garden, ModalFunction, User
 from src.models._associations import gardens_entrypoints
 
 logger = get_logger(__name__)
@@ -42,8 +43,10 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
 
 
 def assert_editable_by_user(
-    obj: Garden | Entrypoint,
-    patch_request: GardenPatchRequest | EntrypointPatchRequest,
+    obj: Garden | Entrypoint | ModalFunction,
+    patch_request: (
+        GardenPatchRequest | EntrypointPatchRequest | ModalFunctionPatchRequest
+    ),
     user: User,
 ) -> None:
     """Check that a given Garden or Entrypoint can be edited, i.e. is owned by the user and is not archived.

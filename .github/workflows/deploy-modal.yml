@@ -31,17 +31,17 @@ jobs:
         else
           echo "env=dev" >> $GITHUB_OUTPUT
         fi
-    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: 3.12
-    
+
     - name: Install Modal
       run: |
         python -m pip install --upgrade pip
         pip install modal
-    
+
     - name: Deploy Modal app
       env:
         MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
@@ -49,4 +49,3 @@ jobs:
         MODAL_ENVIRONMENT: ${{ steps.vars.outputs.env }}
       run: |
         modal deploy ./garden-backend-service/src/sandboxed_functions/modal_publishing_helpers.py
-    

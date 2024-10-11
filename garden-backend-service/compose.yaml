@@ -34,7 +34,7 @@ services:
     restart: always
     environment:
       # compose reads these from the default .env
-      - PGADMIN_DEFAULT_EMAIL=${DB_USERNAME}
+      - PGADMIN_DEFAULT_EMAIL=${DB_USERNAME}@example.com
       - PGADMIN_DEFAULT_PASSWORD=${DB_PASSWORD}
     volumes:
       - pgadmin-data:/root/.pgadmin
