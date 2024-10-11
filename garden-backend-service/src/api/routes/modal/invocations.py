@@ -53,9 +53,11 @@ async def invoke_modal_fn(
     log = logger.bind(app_name=app_name, function_name=function_name)
 
     # fetch the function from modal
+    log.info("fetching function object from modal")
     function = await modal.functions._Function.lookup(
         app_name=modal_fn.modal_app.app_name,
         tag=modal_fn.function_name,
+        environment_name=settings.MODAL_ENV,
         client=modal_client,
         environment_name=settings.MODAL_ENV,
     )

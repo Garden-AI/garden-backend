@@ -1,9 +1,9 @@
 {
-    "app_name": "my-modal-app",
+    "app_name": "test-app",
     "modal_function_names": ["predict_iris_type"],
     "version": "0.0.1",
     "requirements": ["sklearn==0.24.2"],
-    "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef say_hello():\n    return 'Hello, World!'\n",
+    "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
     "base_image_name": "python:3.11-slim",
     "modal_functions": [
         {
