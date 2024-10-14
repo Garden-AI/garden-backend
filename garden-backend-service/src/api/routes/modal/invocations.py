@@ -1,3 +1,5 @@
+import time
+
 import modal
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -15,6 +17,7 @@ from src.api.schemas.modal.invocations import (
 from src.config import Settings, get_settings
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
+from src.usage import estimate_usage
 
 logger = structlog.get_logger(__name__)
 
@@ -63,6 +66,7 @@ async def invoke_modal_fn(
 
     # create the _Invocation object
     log.info("Requesting invocation with modal")
+    invocation_time = time.time()
     invocation = await _create_invocation(
         function, body.args_kwargs_serialized, modal_client
     )
@@ -70,7 +74,12 @@ async def invoke_modal_fn(
     outputs_response = await invocation.pop_function_call_outputs(
         timeout=None, clear_on_success=True
     )
+    execution_time_seconds = (time.now() - invocation_time) * (1000**2)
     log.debug("received modal RPC response", outputs_response=outputs_response)
+    log.info(f"execution_time: {execution_time_seconds}")
+
+    usage = estimate_usage(function, execution_time_seconds)
+    log.info(f"Estimated usage: {usage}")
 
     if not outputs_response.outputs:
         log.warning("No outputs received from function call")
