@@ -80,7 +80,6 @@ async def get_modal_app(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
-    modal_vip: bool = Depends(modal_vip),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
