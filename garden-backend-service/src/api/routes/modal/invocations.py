@@ -59,7 +59,6 @@ async def invoke_modal_fn(
         tag=modal_fn.function_name,
         environment_name=settings.MODAL_ENV,
         client=modal_client,
-        environment_name=settings.MODAL_ENV,
     )
 
     # create the _Invocation object
