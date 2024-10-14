@@ -30,7 +30,9 @@ class DeployModalAppProvider:
             self.f = deploy_modal_app
         else:
             remote_function = modal.Function.lookup(
-                "garden-publishing-helpers", "remote_deploy_modal_app"
+                "garden-publishing-helpers",
+                "remote_deploy_modal_app",
+                environment_name=settings.MODAL_ENV,
             )
             self.f = remote_function.remote
 
