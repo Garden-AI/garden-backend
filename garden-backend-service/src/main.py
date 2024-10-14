@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -44,6 +45,10 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     db_session = get_db_session_maker(settings=settings)
     auth_client = get_auth_client()
+
+    # Set Modal env variables
+    os.environ["MODAL_TOKEN_ID"] = settings.MODAL_TOKEN_ID
+    os.environ["MODAL_TOKEN_SECRET"] = settings.MODAL_TOKEN_SECRET
 
     # load text-search sql
     await async_init(db_session, Path(settings.GARDEN_SEARCH_SQL_DIR))
