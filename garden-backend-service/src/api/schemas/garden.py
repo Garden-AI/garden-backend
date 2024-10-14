@@ -43,7 +43,7 @@ class GardenMetadataResponse(GardenMetadata):
 
     @computed_field
     @property
-    def modal_function_ids(self) -> list[str]:
+    def modal_function_ids(self) -> list[int]:
         return [mf.id for mf in self.modal_functions]
 
 

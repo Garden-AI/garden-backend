@@ -14,8 +14,7 @@ class _ModalGenericResult(BaseSchema):
 
 
 class ModalInvocationRequest(BaseSchema):
-    app_name: str
-    function_name: str
+    function_id: int
     args_kwargs_serialized: B64Bytes
 
 

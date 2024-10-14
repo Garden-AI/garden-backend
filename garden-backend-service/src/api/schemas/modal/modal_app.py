@@ -28,4 +28,4 @@ class ModalAppMetadataResponse(ModalAppMetadata):
     @computed_field
     @property
     def modal_function_ids(self) -> list[str]:
-        return [mf.doi for mf in self.modal_functions]
+        return [mf.id for mf in self.modal_functions]

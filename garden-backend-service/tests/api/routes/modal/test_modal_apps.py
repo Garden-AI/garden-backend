@@ -10,6 +10,7 @@ async def test_add_modal_app(
     client,
     mock_db_session,
     override_authenticated_dependency,
+    mock_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):
@@ -20,7 +21,8 @@ async def test_add_modal_app(
     response_data = response.json()
     assert (
         response_data["app_name"]
-        == mock_modal_app_create_request_one_function["app_name"]
+        == f"{mock_auth_state.identity_id}-"
+        + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
         response_data["modal_functions"][0]["title"]
@@ -35,6 +37,7 @@ async def test_get_modal_app(
     client,
     mock_db_session,
     override_authenticated_dependency,
+    mock_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):
@@ -47,7 +50,8 @@ async def test_get_modal_app(
     get_response_data = get_response.json()
     assert (
         get_response_data["app_name"]
-        == mock_modal_app_create_request_one_function["app_name"]
+        == f"{mock_auth_state.identity_id}-"
+        + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
         get_response_data["modal_functions"][0]["title"]

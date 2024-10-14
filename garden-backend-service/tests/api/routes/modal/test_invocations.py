@@ -18,7 +18,17 @@ async def test_invoke_modal_fn(
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
 ):
+    # first, "deploy" a modal function to invoke
+    response = await client.post(
+        "/modal-apps", json=mock_modal_app_create_request_one_function
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    test_function_id = response_data["modal_function_ids"][0]
+
     # Mock the modal Function and _Invocation
     mock_function = MagicMock()
     mock_function._invocation_function_id.return_value = "mock_function_id"
@@ -45,8 +55,7 @@ async def test_invoke_modal_fn(
 
     # Prepare the request payload
     mock_request_body = ModalInvocationRequest(
-        app_name="test_app",
-        function_name="test_app",
+        function_id=test_function_id,  # from above
         args_kwargs_serialized=b"mock_input_data",
     ).model_dump()
 

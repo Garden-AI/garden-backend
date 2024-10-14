@@ -266,6 +266,11 @@ async def create_or_replace_garden(
     new_entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
     existing_garden.entrypoints = new_entrypoints
 
+    new_modal_functions = await _collect_modal_functions(
+        garden_data.modal_function_ids, db
+    )
+    existing_garden.modal_functions = new_modal_functions
+
     # naive update with remaining values from payload
     for key, value in garden_data.model_dump(
         exclude={"owner_identity_id", "entrypoint_ids", "modal_function_ids"}

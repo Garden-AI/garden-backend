@@ -63,6 +63,7 @@ async def add_modal_app(
         exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
     )
     model_dict["user_id"] = user.id
+    model_dict["app_name"] = prefixed_app_name
     modal_app_db_model = ModalApp.from_dict(model_dict)
 
     db.add(modal_app_db_model)
