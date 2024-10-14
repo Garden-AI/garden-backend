@@ -22,7 +22,7 @@ class ModalAppCreateRequest(ModalAppMetadata):
 
 class ModalAppMetadataResponse(ModalAppMetadata):
     owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
-    id: int
+    id: int = Field(..., description="The unique identifier for the modal app")
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
 
     @computed_field

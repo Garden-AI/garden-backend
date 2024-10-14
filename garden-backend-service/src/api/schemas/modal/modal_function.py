@@ -1,3 +1,5 @@
+from pydantic import Field
+
 from ..shared_function_schemas import CommonFunctionMetadata, CommonFunctionPatchRequest
 
 
@@ -10,7 +12,7 @@ class ModalFunctionMetadata(CommonFunctionMetadata):
 
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
-    id: int
+    id: int = Field(..., description="The unique identifier for the modal function")
     modal_app_id: int
 
 
