@@ -80,7 +80,7 @@ async def modal_vip(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
 ) -> bool:
-    email = user.email.lower()
+    email = (user.email or user.username).lower()
     if email in settings.MODAL_VIP_LIST:
         return True
     else:
