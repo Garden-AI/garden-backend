@@ -1,4 +1,3 @@
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,18 +12,14 @@ from src.api.routes import (
     docker_push_token,
     doi,
     entrypoints,
-    garden_search_record,
     gardens,
     greet,
     hello_database,
     modal,
     notebook,
-    status,
     users,
 )
 from src.api.routes.mdf import search as mdf_search
-from src.api.tasks import retry_failed_updates
-from src.auth.globus_auth import get_auth_client
 from src.config import Settings, get_settings
 from src.middleware.logging import (
     ErrorHandlingMiddleware,
@@ -41,10 +36,8 @@ def get_db_session_maker(settings: Settings) -> async_sessionmaker[AsyncSession]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Kick of the search index synchronization loop
     settings = get_settings()
     db_session = get_db_session_maker(settings=settings)
-    auth_client = get_auth_client()
 
     # Set Modal env variables
     os.environ["MODAL_TOKEN_ID"] = settings.MODAL_TOKEN_ID
@@ -53,14 +46,7 @@ async def lifespan(app: FastAPI):
     # load text-search sql
     await async_init(db_session, Path(settings.GARDEN_SEARCH_SQL_DIR))
 
-    if settings.SYNC_SEARCH_INDEX:
-        task = asyncio.create_task(
-            retry_failed_updates(settings, db_session, auth_client)
-        )
-        yield
-        task.cancel()
-    else:
-        yield
+    yield
 
 
 app = FastAPI(lifespan=lifespan)
@@ -79,12 +65,10 @@ app.include_router(greet.router)
 app.include_router(doi.router)
 app.include_router(docker_push_token.router)
 app.include_router(notebook.router)
-app.include_router(garden_search_record.router)
 app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
-app.include_router(status.router)
 
 app.include_router(modal.invocations.router)
 app.include_router(modal.modal_apps.router)

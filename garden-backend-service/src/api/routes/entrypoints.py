@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
@@ -13,16 +13,14 @@ from src.api.routes._utils import (
     archive_on_datacite,
     assert_deletable_by_user,
     assert_editable_by_user,
-    get_gardens_for_entrypoint,
 )
 from src.api.schemas.entrypoint import (
     EntrypointCreateRequest,
     EntrypointMetadataResponse,
     EntrypointPatchRequest,
 )
-from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
-from src.models import Entrypoint, Garden, User
+from src.models import Entrypoint, User
 
 logger = get_logger(__name__)
 
@@ -93,7 +91,6 @@ async def get_entrypoints(
 @router.delete("/{doi:path}", status_code=status.HTTP_200_OK)
 async def delete_entrypoint(
     doi: str,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
@@ -104,28 +101,9 @@ async def delete_entrypoint(
 
     if entrypoint is not None:
         assert_deletable_by_user(entrypoint, user)
-        gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
         await db.delete(entrypoint)
         try:
             await db.commit()
-            if gardens:
-                for garden in gardens:
-                    db.refresh(garden)
-                    if settings.SYNC_SEARCH_INDEX:
-                        # just update the gardens, we don't want to delete a garden just because we deleted an entrypoint
-                        log.info(
-                            "Scheduled background task",
-                            operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-                            garden_doi=garden.doi,
-                        )
-                        background_tasks.add_task(
-                            schedule_search_index_update,
-                            SearchIndexOperation.CREATE_OR_UPDATE,
-                            garden,
-                            settings,
-                            db,
-                            app_auth_client,
-                        )
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -143,7 +121,6 @@ async def delete_entrypoint(
 @router.put("/{doi:path}", response_model=EntrypointMetadataResponse)
 async def create_or_replace_entrypoint(
     doi: str,
-    background_tasks: BackgroundTasks,
     entrypoint_data: EntrypointCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
@@ -177,24 +154,6 @@ async def create_or_replace_entrypoint(
             setattr(existing_entrypoint, key, value)
 
         await db.commit()
-        gardens: list[Garden] | None = await get_gardens_for_entrypoint(
-            existing_entrypoint, db
-        )
-        if gardens and settings.SYNC_SEARCH_INDEX:
-            for garden in gardens:
-                background_tasks.add_task(
-                    schedule_search_index_update,
-                    SearchIndexOperation.CREATE_OR_UPDATE,
-                    garden,
-                    settings,
-                    db,
-                    app_auth_client,
-                )
-                log.info(
-                    "Scheduled background task",
-                    garden_doi=garden.doi,
-                    operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-                )
         log.info("Updated entrypoint in DB")
     except IntegrityError as e:
         log.exception("Failed to update entrypoint", exc_info=True)
@@ -210,7 +169,6 @@ async def create_or_replace_entrypoint(
 async def update_entrypoint(
     doi: str,
     entrypoint_data: EntrypointPatchRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
@@ -262,23 +220,6 @@ async def update_entrypoint(
     log.info("Updated entrypoint")
     if entrypoint.is_archived:
         await archive_on_datacite(doi, settings)
-
-    if settings.SYNC_SEARCH_INDEX:
-        gardens: list[Garden] | None = await get_gardens_for_entrypoint(entrypoint, db)
-        for garden in gardens:
-            background_tasks.add_task(
-                schedule_search_index_update,
-                SearchIndexOperation.CREATE_OR_UPDATE,
-                garden,
-                settings,
-                db,
-                app_auth_client,
-            )
-            log.info(
-                "Scheduled background task",
-                garden_doi=garden.doi,
-                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-            )
 
     return entrypoint
 

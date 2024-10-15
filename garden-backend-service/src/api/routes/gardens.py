@@ -1,15 +1,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from globus_sdk import ConfidentialAppAuthClient
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user, get_auth_client
+from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
     archive_on_datacite,
@@ -25,7 +24,6 @@ from src.api.schemas.garden import (
     GardenSearchResponse,
 )
 from src.api.search.utils import apply_filters, calculate_facets, sort_results
-from src.api.tasks import SearchIndexOperation, schedule_search_index_update
 from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, ModalFunction, User
 
@@ -36,27 +34,10 @@ router = APIRouter(prefix="/gardens")
 @router.post("", response_model=GardenMetadataResponse)
 async def add_garden(
     garden: GardenCreateRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
-    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
-    log = logger.bind(doi=garden.doi)
     new_garden = await _create_new_garden(garden, db, user)
-    if settings.SYNC_SEARCH_INDEX:
-        log.info(
-            "Scheduled background task",
-            operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-        )
-        background_tasks.add_task(
-            schedule_search_index_update,
-            SearchIndexOperation.CREATE_OR_UPDATE,
-            new_garden,
-            settings,
-            db,
-            app_auth_client,
-        )
     return new_garden
 
 
@@ -175,11 +156,8 @@ async def get_garden_by_doi(
 @router.delete("/{doi:path}", status_code=status.HTTP_200_OK)
 async def delete_garden(
     doi: str,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
-    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
     log = logger.bind(doi=doi)
     garden: Garden | None = await Garden.get(db, doi=doi)
@@ -188,19 +166,6 @@ async def delete_garden(
         await db.delete(garden)
         try:
             await db.commit()
-            if settings.SYNC_SEARCH_INDEX:
-                log.info(
-                    "Scheduled background task",
-                    operation_type=SearchIndexOperation.DELETE.value,
-                )
-                background_tasks.add_task(
-                    schedule_search_index_update,
-                    SearchIndexOperation.DELETE,
-                    garden,
-                    settings,
-                    db,
-                    app_auth_client,
-                )
         except IntegrityError as e:
             await db.rollback()
             raise HTTPException(
@@ -217,31 +182,15 @@ async def delete_garden(
 @router.put("/{doi:path}", response_model=GardenMetadataResponse)
 async def create_or_replace_garden(
     doi: str,
-    background_tasks: BackgroundTasks,
     garden_data: GardenCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
-    app_auth_client: ConfidentialAppAuthClient = Depends(get_auth_client),
 ):
     log = logger.bind(doi=doi)
 
     existing_garden: Garden | None = await Garden.get(db, doi=doi)
     if existing_garden is None:
         new_garden = await _create_new_garden(garden_data, db, user)
-        if settings.SYNC_SEARCH_INDEX:
-            log.info(
-                "Scheduled background task",
-                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-            )
-            background_tasks.add_task(
-                schedule_search_index_update,
-                SearchIndexOperation.CREATE_OR_UPDATE,
-                new_garden,
-                settings,
-                db,
-                app_auth_client,
-            )
         return new_garden
 
     # check draft status with the real world (doi.org)
@@ -278,16 +227,6 @@ async def create_or_replace_garden(
         setattr(existing_garden, key, value)
     try:
         await db.commit()
-        if settings.SYNC_SEARCH_INDEX:
-            log.info("Updating garden on search index")
-            background_tasks.add_task(
-                schedule_search_index_update,
-                SearchIndexOperation.CREATE_OR_UPDATE,
-                existing_garden,
-                settings,
-                db,
-                app_auth_client,
-            )
     except IntegrityError as e:
         log.exception("Failed to update garden", exc_info=True)
         await db.rollback()
@@ -303,11 +242,9 @@ async def create_or_replace_garden(
 async def update_garden(
     doi: str,
     garden_data: GardenPatchRequest,
-    background_tasks: BackgroundTasks,
     user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
-    app_auth_client=Depends(get_auth_client),
 ) -> GardenMetadataResponse:
     log = logger.bind(doi=doi)
     garden: Garden | None = await Garden.get(db, doi=doi)
@@ -346,19 +283,6 @@ async def update_garden(
             await archive_on_datacite(doi, settings)
             log.info("Archived garden on datacite")
 
-        if settings.SYNC_SEARCH_INDEX:
-            log.info(
-                "Scheduled background task",
-                operation_type=SearchIndexOperation.CREATE_OR_UPDATE.value,
-            )
-            background_tasks.add_task(
-                schedule_search_index_update,
-                SearchIndexOperation.CREATE_OR_UPDATE,
-                garden,
-                settings,
-                db,
-                app_auth_client,
-            )
     except Exception as e:
         log.exception("Failed to update garden")
         await db.rollback()

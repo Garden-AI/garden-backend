@@ -114,7 +114,6 @@ def mock_db_session(
         db.execute(text("DROP TABLE entrypoints CASCADE;"))
         db.execute(text("DROP TABLE gardens CASCADE;"))
         db.execute(text("DROP TABLE users CASCADE;"))
-        db.execute(text("DROP TABLE failed_search_index_updates CASCADE;"))
         db.commit()
 
 
