@@ -5,7 +5,6 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from modal._utils.grpc_utils import retry_transient_errors
 from modal_proto import api_pb2
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_limit
@@ -24,15 +23,6 @@ from src.usage import estimate_usage
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/modal-invocations")
-
-
-# TODO: Remove me, just using for testing
-@router.get("")
-async def get_invocations(
-    db: AsyncSession = Depends(get_db_session),
-):
-    invocations = await db.scalars(select(ModalInvocation))
-    return invocations.all()
 
 
 @router.post("", response_model=ModalInvocationResponse)
@@ -92,6 +82,7 @@ async def invoke_modal_fn(
     usage = estimate_usage(function, execution_time_seconds)
     log = logger.bind(estimated_usage=usage)
 
+    # Log the invocation in the DB
     db.add(
         ModalInvocation(
             user_id=user.id,
