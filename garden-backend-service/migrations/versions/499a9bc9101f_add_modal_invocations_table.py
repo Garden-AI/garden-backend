@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("function_id", sa.Integer(), nullable=False),
         sa.Column(
-            "time_invoked",
+            "date_invoked",
             sa.DateTime(),
             server_default=sa.text("now()"),
             nullable=False,
