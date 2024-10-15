@@ -26,6 +26,7 @@ def estimate_usage(
     func: modal.Function,
     exec_time_seconds: float,
 ) -> float:
+    """Estimate billable usage for a Modal function invocation."""
     spec = func.spec
     cpus = spec.cpu
     gpus = [modal.gpu._parse_gpu_config(gpu) for gpu in spec.gpus] if spec.gpus else []

@@ -1,7 +1,10 @@
+from datetime import datetime
+
 import globus_sdk
 import structlog
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -9,6 +12,7 @@ from src.api.dependencies.database import get_db_session
 from src.auth.auth_state import AuthenticationState
 from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
+from src.models.modal.invocations import ModalInvocation
 from src.models.user import User
 
 log = get_logger(__name__)
@@ -86,6 +90,33 @@ async def modal_vip(
     else:
         raise HTTPException(
             status_code=403, detail="Modal endpoints are in limited preview"
+        )
+
+
+async def under_modal_usage_limit(
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db_session),
+) -> bool:
+    now = datetime.now()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Calculate total estimated usage during the current month
+    monthly_usage = await db.scalar(
+        select(func.sum(ModalInvocation.estimated_usage)).where(
+            ModalInvocation.user_id == user.id,
+            ModalInvocation.date_invoked >= start_of_month,
+        )
+    )
+
+    log.info(f"Calculated monthly usage: {monthly_usage}")
+
+    if monthly_usage is None or monthly_usage < settings.MODAL_USAGE_LIMIT:
+        return True
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is over Modal usage limit for the month.",
         )
 
 
