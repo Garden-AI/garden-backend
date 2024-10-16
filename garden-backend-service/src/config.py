@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     MODAL_ENV: str = "dev"
     MODAL_USE_LOCAL: bool = False
     MODAL_VIP_LIST: list[str]
+    MODAL_USAGE_LIMIT: float = 5.0
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 

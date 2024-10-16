@@ -110,11 +110,10 @@ def mock_db_session(
 
     # Clean up after the test
     with Session(_sync_engine) as db:
-        db.execute(text("DROP TABLE gardens_entrypoints;"))
-        db.execute(text("DROP TABLE entrypoints CASCADE;"))
-        db.execute(text("DROP TABLE gardens CASCADE;"))
-        db.execute(text("DROP TABLE users CASCADE;"))
+        db.execute(text("DROP MATERIALIZED VIEW garden_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW entrypoint_documents;"))
         db.commit()
+    Base.metadata.drop_all(_sync_engine)
 
 
 @pytest.fixture
@@ -255,6 +254,7 @@ def mock_settings(db_url):
     mock_settings.MODAL_ENABLED = True
     mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
     mock_settings.MODAL_VIP_LIST = []
+    mock_settings.MODAL_USAGE_LIMIT = 5.0
     return mock_settings
 
 
