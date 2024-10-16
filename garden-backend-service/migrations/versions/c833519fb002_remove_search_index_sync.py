@@ -1,7 +1,7 @@
 """remove search index sync
 
 Revision ID: c833519fb002
-Revises: 84833e6b7062
+Revises: 499a9bc9101f
 Create Date: 2024-10-15 20:13:28.975222
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "c833519fb002"
-down_revision: Union[str, None] = "84833e6b7062"
+down_revision: Union[str, None] = "499a9bc9101f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
