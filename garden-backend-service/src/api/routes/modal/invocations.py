@@ -1,3 +1,5 @@
+import time
+
 import modal
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -5,7 +7,7 @@ from modal._utils.grpc_utils import retry_transient_errors
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies.auth import authed_user, modal_vip
+from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_limit
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
@@ -13,8 +15,10 @@ from src.api.schemas.modal.invocations import (
     ModalInvocationResponse,
 )
 from src.config import Settings, get_settings
+from src.models.modal.invocations import ModalInvocation
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
+from src.usage import estimate_usage
 
 logger = structlog.get_logger(__name__)
 
@@ -28,6 +32,7 @@ async def invoke_modal_fn(
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
     modal_vip: bool = Depends(modal_vip),
+    under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
     db: AsyncSession = Depends(get_db_session),
 ):
     if not settings.MODAL_ENABLED:
@@ -63,6 +68,7 @@ async def invoke_modal_fn(
 
     # create the _Invocation object
     log.info("Requesting invocation with modal")
+    invocation_time = time.time()
     invocation = await _create_invocation(
         function, body.args_kwargs_serialized, modal_client
     )
@@ -70,7 +76,22 @@ async def invoke_modal_fn(
     outputs_response = await invocation.pop_function_call_outputs(
         timeout=None, clear_on_success=True
     )
+    execution_time_seconds = time.time() - invocation_time
     log.debug("received modal RPC response", outputs_response=outputs_response)
+
+    usage = estimate_usage(function, execution_time_seconds)
+    log = logger.bind(estimated_usage=usage)
+
+    # Log the invocation in the DB
+    db.add(
+        ModalInvocation(
+            user_id=user.id,
+            function_id=modal_fn.id,
+            execution_time_seconds=execution_time_seconds,
+            estimated_usage=usage,
+        )
+    )
+    await db.commit()
 
     if not outputs_response.outputs:
         log.warning("No outputs received from function call")
