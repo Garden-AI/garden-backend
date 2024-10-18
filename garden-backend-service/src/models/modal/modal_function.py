@@ -33,6 +33,7 @@ class ModalFunction(Base):
 
     function_name: Mapped[str]
     function_text: Mapped[str]
+    hardware_spec: Mapped[dict] = mapped_column(JSON)
 
     test_functions: Mapped[list[str]] = mapped_column(ARRAY(String))
 

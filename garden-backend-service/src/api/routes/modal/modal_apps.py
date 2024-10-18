@@ -42,7 +42,7 @@ async def add_modal_app(
     if metadata["app_name"] != modal_app.app_name:
         raise ValueError("App name in metadata does not match the provided app name")
 
-    if set(metadata["function_names"]) != set(modal_app.modal_function_names):
+    if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
         raise ValueError(
             "Function names in metadata do not match the provided function names"
         )
@@ -64,6 +64,8 @@ async def add_modal_app(
     )
     model_dict["user_id"] = user.id
     model_dict["app_name"] = prefixed_app_name
+    for modal_fn in model_dict["modal_functions"]:
+        modal_fn["hardware_spec"] = metadata["functions"][modal_fn["function_name"]]
     modal_app_db_model = ModalApp.from_dict(model_dict)
 
     db.add(modal_app_db_model)

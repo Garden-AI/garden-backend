@@ -1,3 +1,5 @@
+import dataclasses
+
 import modal
 
 app = modal.App("garden-publishing-helpers")
@@ -41,11 +43,20 @@ def get_app_from_file_contents(file_contents: str):
 
 def validate_modal_file(file_contents: str):
     user_app = get_app_from_file_contents(file_contents)
-    function_names = [f for f in user_app.registered_functions if "*" not in f]
     app_name = user_app.name
-    return {"function_names": function_names, "app_name": app_name}
+    functions = get_function_specs(user_app.registered_functions)
+    return {"app_name": app_name, "functions": functions}
 
     # TODO: confirm nothing dastardly on the app/functions
+
+
+def get_function_specs(functions: dict[str, modal.Function]):
+    funcs = {name: dataclasses.asdict(func.spec) for name, func in functions.items()}
+    for _, spec in funcs.items():
+        # these fields aren't easily serializable, I don't think we need them
+        del spec["image"]
+        del spec["mounts"]
+    return funcs
 
 
 @app.function(image=modal_helper_image)
