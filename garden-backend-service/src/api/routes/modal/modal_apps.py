@@ -51,13 +51,13 @@ async def add_modal_app(
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
 
     # TODO: set a timeout for this and/or make it async
-    deploy_modal_app(
-        modal_app.file_contents,
-        prefixed_app_name,
-        settings.MODAL_TOKEN_ID,
-        settings.MODAL_TOKEN_SECRET,
-        settings.MODAL_ENV,
-    )
+    #  deploy_modal_app(
+    #  modal_app.file_contents,
+    #  prefixed_app_name,
+    #  settings.MODAL_TOKEN_ID,
+    #  settings.MODAL_TOKEN_SECRET,
+    #  settings.MODAL_ENV,
+    #  )
 
     model_dict = modal_app.model_dump(
         exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True

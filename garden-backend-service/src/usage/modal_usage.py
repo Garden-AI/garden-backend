@@ -28,7 +28,8 @@ def estimate_usage(
 ) -> float:
     """Estimate billable usage for a Modal function invocation."""
 
-    cpus = spec["cpu"]
+    print(spec)
+    cpus = spec["cpus"]
     cpu_usage = cpus * MODAL_PRICES["cpu"] * exec_time_seconds
 
     # gpus are either a list, a sinlge gpu, or None
