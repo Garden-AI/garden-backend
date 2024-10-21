@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+from collections.abc import Sequence
 
 import modal
 from modal.gpu import (
@@ -28,12 +27,11 @@ def estimate_usage(
 ) -> float:
     """Estimate billable usage for a Modal function invocation."""
 
-    print(spec)
-    cpus = spec["cpus"]
+    cpus = spec["cpu"] if spec["cpu"] else 0.125
     cpu_usage = cpus * MODAL_PRICES["cpu"] * exec_time_seconds
 
     # gpus are either a list, a sinlge gpu, or None
-    if isinstance(spec["gpus"], list):
+    if isinstance(spec["gpus"], Sequence):
         gpus = (
             [modal.gpu._parse_gpu_config(gpu) for gpu in spec["gpus"]]
             if spec["gpus"]
@@ -46,12 +44,14 @@ def estimate_usage(
             ]
         )
     else:
-        gpus = modal.gpu._parse_gpu_config(spec["gpus"]) if spec["gpus"] else ""
-        gpu_usage = MODAL_PRICES[gpus.__class__] * exec_time_seconds * gpus.count
+        gpus = modal.gpu._parse_gpu_config(spec["gpus"]) if spec["gpus"] else None
+        gpu_usage = (
+            MODAL_PRICES[gpus.__class__] * exec_time_seconds * gpus.count if gpus else 0
+        )
 
     # use the memory limit if provided, see: https://modal.com/docs/guide/resources#memory
-    # memory can be a single value, a list of two values, or None
-    mem = spec["memory"][1] if isinstance(spec["memory"], list) else spec["memory"]
+    # memory can be a single value, a sequence of two values, or None
+    mem = spec["memory"][1] if isinstance(spec["memory"], Sequence) else spec["memory"]
     # memory is specified in MB, but billed in GB
     # do the conversion before calculating usage
     mem = mem / 1024 if mem else 1
