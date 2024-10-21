@@ -27,14 +27,14 @@ def estimate_usage(
 ) -> float:
     """Estimate billable usage for a Modal function invocation."""
 
-    cpus = spec["cpu"] if spec["cpu"] else 0.125
+    cpus = spec["cpu"] if "cpu" in spec else 0.125
     cpu_usage = cpus * MODAL_PRICES["cpu"] * exec_time_seconds
 
     # gpus are either a list, a sinlge gpu, or None
     if isinstance(spec["gpus"], Sequence):
         gpus = (
             [modal.gpu._parse_gpu_config(gpu) for gpu in spec["gpus"]]
-            if spec["gpus"]
+            if "gpus" in spec
             else []
         )
         gpu_usage = sum(
@@ -44,7 +44,7 @@ def estimate_usage(
             ]
         )
     else:
-        gpus = modal.gpu._parse_gpu_config(spec["gpus"]) if spec["gpus"] else None
+        gpus = modal.gpu._parse_gpu_config(spec["gpus"]) if "gpus" in spec else None
         gpu_usage = (
             MODAL_PRICES[gpus.__class__] * exec_time_seconds * gpus.count if gpus else 0
         )
