@@ -13,6 +13,7 @@ class ModalInvocation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     function_id: Mapped[int] = mapped_column(ForeignKey("modal_functions.id"))
+    function_call_id: Mapped[str]
     date_invoked: Mapped[datetime.datetime] = mapped_column(
         DateTime(), server_default=func.now()
     )

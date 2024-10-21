@@ -87,6 +87,7 @@ async def invoke_modal_fn(
         ModalInvocation(
             user_id=user.id,
             function_id=modal_fn.id,
+            function_call_id=invocation.function_call_id,
             execution_time_seconds=execution_time_seconds,
             estimated_usage=usage,
         )

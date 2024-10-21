@@ -35,6 +35,7 @@ async def test_invoke_modal_fn(
     mock_function._invocation_function_id.return_value = "mock_function_id"
     mock_function.spec.return_value = {"cpu": 0.125, "gpus": "A100", "memory": None}
     mock_invocation = AsyncMock()
+    mock_invocation.function_call_id = "mock_call_id"
     mock_invocation.pop_function_call_outputs.return_value = MagicMock(
         outputs=[
             api_pb2.FunctionGetOutputsItem(
@@ -113,6 +114,7 @@ async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
     mock_function = MagicMock()
     mock_function._invocation_function_id.return_value = "mock_function_id"
     mock_invocation = AsyncMock()
+    mock_invocation.function_call_id = "mock_call_id"
     mock_invocation.pop_function_call_outputs.return_value = MagicMock(
         outputs=[
             api_pb2.FunctionGetOutputsItem(
