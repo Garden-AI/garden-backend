@@ -9,8 +9,13 @@ from modal.gpu import (
     T4,
 )
 
+from src.models.modal.modal_function import ModalFunction
+
+DEFAULT_CPUS = 0.125
+DEFAULT_MEMORY_MB = 256
+
+# see: https://modal.com/pricing
 MODAL_PRICES = {
-    # see: https://modal.com/pricing
     H100: 0.001267,  # per GPU per second
     A100: 0.000944,  # TODO figure out how to include the cheaper A100 variant
     A10G: 0.000306,
@@ -22,39 +27,41 @@ MODAL_PRICES = {
 
 
 def estimate_usage(
-    spec: dict,
+    modal_func: ModalFunction,
     exec_time_seconds: float,
 ) -> float:
-    """Estimate billable usage for a Modal function invocation."""
+    """Estimate billable usage for a Modal function invocation.
 
-    cpus = spec["cpu"] if "cpu" in spec else 0.125
-    cpu_usage = cpus * MODAL_PRICES["cpu"] * exec_time_seconds
+    Calculates a rough estimate of usage based on the funcion's hardware spec and execution time.
+    see: https://modal.com/pricing
+    """
+    spec = modal_func.hardware_spec or {}
+    cpus = spec.get("cpu") or DEFAULT_CPUS
+    cpu_usage = cpus * MODAL_PRICES.get("cpu", 0) * exec_time_seconds
 
     # gpus are either a list, a sinlge gpu, or None
-    if isinstance(spec["gpus"], Sequence):
-        gpus = (
-            [modal.gpu._parse_gpu_config(gpu) for gpu in spec["gpus"]]
-            if "gpus" in spec
-            else []
-        )
+    gpu_spec = spec.get("gpus") or []
+    if isinstance(gpu_spec, list):
+        gpus = [modal.gpu._parse_gpu_config(gpu) for gpu in gpu_spec]
         gpu_usage = sum(
-            [
-                (MODAL_PRICES[gpu.__class__] * exec_time_seconds) * gpu.count
-                for gpu in gpus
-            ]
+            (MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds) * gpu.count
+            for gpu in gpus
         )
     else:
-        gpus = modal.gpu._parse_gpu_config(spec["gpus"]) if "gpus" in spec else None
+        gpu = modal.gpu._parse_gpu_config(gpu_spec)
         gpu_usage = (
-            MODAL_PRICES[gpus.__class__] * exec_time_seconds * gpus.count if gpus else 0
+            MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds * gpu.count
+            if gpu
+            else 0
         )
 
-    # use the memory limit if provided, see: https://modal.com/docs/guide/resources#memory
-    # memory can be a single value, a sequence of two values, or None
-    mem = spec["memory"][1] if isinstance(spec["memory"], Sequence) else spec["memory"]
+    mem_spec = spec.get("memory") or DEFAULT_MEMORY_MB
+    # use the memory limit if provided
+    # see: https://modal.com/docs/guide/resources#memory
+    mem = mem_spec[-1] if isinstance(mem_spec, Sequence) else mem_spec
     # memory is specified in MB, but billed in GB
     # do the conversion before calculating usage
-    mem = mem / 1024 if mem else 1
-    mem_usage = mem * MODAL_PRICES["memory"] * exec_time_seconds
+    mem = mem / 1024
+    mem_usage = mem * MODAL_PRICES.get("memory", 0) * exec_time_seconds
 
     return gpu_usage + cpu_usage + mem_usage

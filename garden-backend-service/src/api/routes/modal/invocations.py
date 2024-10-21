@@ -79,7 +79,7 @@ async def invoke_modal_fn(
     execution_time_seconds = time.time() - invocation_time
     log.debug("received modal RPC response", outputs_response=outputs_response)
 
-    usage = estimate_usage(modal_fn.hardware_spec, execution_time_seconds)
+    usage = estimate_usage(modal_fn, execution_time_seconds)
     log = logger.bind(estimated_usage=usage)
 
     # Log the invocation in the DB
