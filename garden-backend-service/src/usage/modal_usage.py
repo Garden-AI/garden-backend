@@ -12,8 +12,8 @@ from modal.gpu import (
 
 MODAL_PRICES = {
     # see: https://modal.com/pricing
-    H100: 0.001644,  # per GPU per second
-    A100: 0.001319,  # TODO figure out how to include the cheaper A100 variant
+    H100: 0.001267,  # per GPU per second
+    A100: 0.000944,  # TODO figure out how to include the cheaper A100 variant
     A10G: 0.000306,
     L4: 0.000222,
     T4: 0.000164,
