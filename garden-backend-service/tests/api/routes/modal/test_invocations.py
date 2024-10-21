@@ -33,6 +33,7 @@ async def test_invoke_modal_fn(
     # Mock the modal Function and _Invocation
     mock_function = MagicMock()
     mock_function._invocation_function_id.return_value = "mock_function_id"
+    mock_function.spec.return_value = {"cpu": 0.125, "gpus": "A100", "memory": None}
     mock_invocation = AsyncMock()
     mock_invocation.pop_function_call_outputs.return_value = MagicMock(
         outputs=[
@@ -45,6 +46,10 @@ async def test_invoke_modal_fn(
 
     mocker.patch("modal.functions._Function.lookup", return_value=mock_function)
     mocker.patch("modal.functions._Invocation", return_value=mock_invocation)
+    mocker.patch(
+        "src.api.routes.modal.invocations.estimate_usage",
+        return_value=1.0,
+    )
 
     # Mock retry_transient_errors to avoid outbound network calls
     mock_retry = mocker.patch("src.api.routes.modal.invocations.retry_transient_errors")
