@@ -36,24 +36,23 @@ def estimate_usage(
     see: https://modal.com/pricing
     """
     spec = modal_func.hardware_spec or {}
+
     cpus = spec.get("cpu") or DEFAULT_CPUS
     cpu_usage = cpus * MODAL_PRICES.get("cpu", 0) * exec_time_seconds
 
     # gpus are either a list, a sinlge gpu, or None
     gpu_spec = spec.get("gpus") or []
     if isinstance(gpu_spec, list):
+        # assume the most expensive gpu in the list
         gpus = [modal.gpu._parse_gpu_config(gpu) for gpu in gpu_spec]
-        gpu_usage = sum(
-            (MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds) * gpu.count
-            for gpu in gpus
+        gpu = max(
+            gpus, key=lambda gpu: MODAL_PRICES.get(gpu.__class__, 0), default=None
         )
     else:
         gpu = modal.gpu._parse_gpu_config(gpu_spec)
-        gpu_usage = (
-            MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds * gpu.count
-            if gpu
-            else 0
-        )
+    gpu_usage = (
+        MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds * gpu.count if gpu else 0
+    )
 
     mem_spec = spec.get("memory") or DEFAULT_MEMORY_MB
     # use the memory limit if provided
