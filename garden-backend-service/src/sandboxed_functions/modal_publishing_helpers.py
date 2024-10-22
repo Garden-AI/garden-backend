@@ -1,3 +1,6 @@
+import dataclasses
+from typing import Any
+
 import modal
 
 app = modal.App("garden-publishing-helpers")
@@ -41,11 +44,37 @@ def get_app_from_file_contents(file_contents: str):
 
 def validate_modal_file(file_contents: str):
     user_app = get_app_from_file_contents(file_contents)
-    function_names = [f for f in user_app.registered_functions if "*" not in f]
     app_name = user_app.name
-    return {"function_names": function_names, "app_name": app_name}
+    functions = get_function_specs(
+        user_app.registered_functions,
+        ["gpus", "cpu", "memory"],
+    )
+    return {"app_name": app_name, "functions": functions}
 
     # TODO: confirm nothing dastardly on the app/functions
+
+
+def get_function_specs(
+    functions: dict[str, modal.Function],
+    specs: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Return function names mapped to their respective specs.
+
+    Raises `KeyError` when a requested spec is not found,
+    This behavior alerts us if/when Modal changes their `_FunctionSpec` schema
+    """
+    return {
+        name: extract_from_dict(dataclasses.asdict(func.spec), specs)
+        for name, func in functions.items()
+    }
+
+
+def extract_from_dict(d: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+    """Return a new dict with only the keys matching the given list.
+
+    Raises `KeyError` when a given key is not present in `d`
+    """
+    return {key: d[key] for key in keys}
 
 
 @app.function(image=modal_helper_image)
