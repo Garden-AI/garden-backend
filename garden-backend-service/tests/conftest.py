@@ -112,6 +112,7 @@ def mock_db_session(
     with Session(_sync_engine) as db:
         db.execute(text("DROP MATERIALIZED VIEW garden_documents;"))
         db.execute(text("DROP MATERIALIZED VIEW entrypoint_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW modal_function_documents;"))
         db.commit()
     Base.metadata.drop_all(_sync_engine)
 
