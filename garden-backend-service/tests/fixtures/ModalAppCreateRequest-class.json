@@ -3,7 +3,7 @@
     "modal_function_names": ["Model.say_hi"],
     "version": "0.0.1",
     "requirements": [],
-    "file_contents": "import modal \napp = modal.App('class-app')\n@app.cls()\nclass Model:\n    @modal.method()\n    def say_hi(self):\n        return 'Hello, World!'",
+    "file_contents": "import modal \napp = modal.App('class-app', image=modal.Image.from_registry('python:3.11-slim'))\n@app.cls()\nclass Model:\n    @modal.method()\n    def say_hi(self):\n        return 'Hello, World!'",
     "base_image_name": "python:3.11-slim",
     "modal_functions": [
         {

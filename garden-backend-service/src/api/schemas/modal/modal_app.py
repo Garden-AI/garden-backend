@@ -10,16 +10,22 @@ from .modal_function import ModalFunctionMetadata, ModalFunctionMetadataResponse
 
 class ModalAppMetadata(BaseSchema):
     app_name: str
-    modal_function_names: list[str] = Field(default_factory=list)
+    modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
     file_contents: str
 
     requirements: list[str] = Field(default_factory=list)
+    conda_requirements: list[str] = Field(default_factory=list)
+
     base_image_name: str
+
+    @computed_field
+    @property
+    def modal_function_names(self) -> list[str]:
+        return [mf.function_name for mf in self.modal_functions]
 
 
 class ModalAppCreateRequest(ModalAppMetadata):
     owner_identity_id: str | None = None
-    modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
     overwrite_existing: bool = Field(
         default=True, description="Overwrite an existing Modal App with the same same."
     )
@@ -39,3 +45,12 @@ class ModalAppMetadataResponse(ModalAppMetadata):
 class AsyncModalAppMetadataResponse(ModalAppMetadataResponse):
     deploy_status: AsyncModalJobStatus | None = None
     deploy_error: str | None = None
+
+
+class ModalFileMetadataRequest(BaseSchema):
+    file_contents: str
+
+
+class ModalFileMetadataResponse(ModalAppMetadata):
+    # successful POST /modal-file-metadata response should have everything needed for the subsequent CreateRequest
+    pass

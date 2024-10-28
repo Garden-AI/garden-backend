@@ -4,11 +4,13 @@ from ..shared_function_schemas import CommonFunctionMetadata, CommonFunctionPatc
 
 
 class ModalFunctionMetadata(CommonFunctionMetadata):
-    # Modal functions get a DOI when they are published
-    # If they don't have a DOI, they are in draft state
-    doi: str | None
     # Equivalent to "short_name" on entrypoints
     function_name: str
+    # Modal functions get a DOI when they are published
+    # If they don't have a DOI, they are in draft state
+    doi: str | None = None
+    # modal supports conda requirements but entrypoints don't
+    conda_requirements: list[str] = Field(default_factory=list)
 
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
