@@ -3,6 +3,8 @@ from typing import Any
 
 import modal
 
+from src.api.dependencies.modal import ModalException
+
 app = modal.App("garden-publishing-helpers")
 
 modal_helper_image = modal.Image.debian_slim(python_version="3.11").pip_install(
@@ -30,11 +32,42 @@ def get_app_from_file_contents(file_contents: str):
 
     try:
         user_app = import_app(tmp_file_path)
-    except Exception as e:
-        # TODO: identify failure modes and propagate those back
-        raise e
-
+    except Exception:
+        raise ModalException(
+            detail="Failed to import app from Modal File",
+            suggested_fix="Make sure provided Modal file has a `modal.App` object called `app` in the global scope. e.g `app = modal.App('my-app')`",
+        )
     return user_app
+
+
+def get_function_specs(
+    functions: dict[str, modal.Function],
+    specs: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Return function names mapped to their respective specs.
+
+    Raises `ModalException` when a requested spec is not found,
+    This behavior alerts us if/when Modal changes their `_FunctionSpec` schema
+    """
+    return {
+        name: extract_from_dict(dataclasses.asdict(func.spec), specs)
+        for name, func in functions.items()
+    }
+
+
+def extract_from_dict(d: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+    """Return a new dict with only the keys matching the given list.
+
+    Raises `ModalException` when a given key is not present in `d`
+    """
+    try:
+        return {key: d[key] for key in keys}
+    except Exception:
+        raise ModalException(
+            detail="Failed to parse function hardware spec.",
+            status_code=500,
+            suggested_fix="Please contact the Garden-AI dev team.",
+        )
 
 
 #
@@ -52,29 +85,6 @@ def validate_modal_file(file_contents: str):
     return {"app_name": app_name, "functions": functions}
 
     # TODO: confirm nothing dastardly on the app/functions
-
-
-def get_function_specs(
-    functions: dict[str, modal.Function],
-    specs: list[str],
-) -> dict[str, dict[str, Any]]:
-    """Return function names mapped to their respective specs.
-
-    Raises `KeyError` when a requested spec is not found,
-    This behavior alerts us if/when Modal changes their `_FunctionSpec` schema
-    """
-    return {
-        name: extract_from_dict(dataclasses.asdict(func.spec), specs)
-        for name, func in functions.items()
-    }
-
-
-def extract_from_dict(d: dict[str, Any], keys: list[str]) -> dict[str, Any]:
-    """Return a new dict with only the keys matching the given list.
-
-    Raises `KeyError` when a given key is not present in `d`
-    """
-    return {key: d[key] for key in keys}
 
 
 @app.function(image=modal_helper_image)

@@ -19,7 +19,7 @@ def hello_with_specs():
 def test_get_function_specs_raises_on_invalid_key():
     """Confirms that we will get errors when Modal changes their `_FunctionSpec` schema"""
     invalid_specs = ["some", "specs", "that" "dont", "exist"]
-    with pytest.raises(KeyError):
+    with pytest.raises(Exception):
         get_function_specs(app.registered_functions, invalid_specs)
 
 

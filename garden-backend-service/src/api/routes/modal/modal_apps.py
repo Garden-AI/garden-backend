@@ -4,6 +4,7 @@ from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user, modal_vip
 from src.api.dependencies.database import get_db_session
+from src.api.dependencies.modal import ModalException
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
@@ -40,24 +41,36 @@ async def add_modal_app(
     metadata = validate_modal_file(modal_app.file_contents)
 
     if metadata["app_name"] != modal_app.app_name:
-        raise ValueError("App name in metadata does not match the provided app name")
+        raise ModalException(
+            detail="App name in the modal file does not match the provided app name",
+            suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
+        )
 
     if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
-        raise ValueError(
-            "Function names in metadata do not match the provided function names"
+        raise ModalException(
+            detail="Function names in the modal file do not match the provided function names",
+            suggested_fix="Make sure function names in the Modal file match the provided function names.",
         )
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
 
     # TODO: set a timeout for this and/or make it async
-    deploy_modal_app(
-        modal_app.file_contents,
-        prefixed_app_name,
-        settings.MODAL_TOKEN_ID,
-        settings.MODAL_TOKEN_SECRET,
-        settings.MODAL_ENV,
-    )
+    try:
+        deploy_modal_app(
+            modal_app.file_contents,
+            prefixed_app_name,
+            settings.MODAL_TOKEN_ID,
+            settings.MODAL_TOKEN_SECRET,
+            settings.MODAL_ENV,
+        )
+    except Exception as e:
+        # TODO figure out what types of errors get thorws, write better suggested fixes
+        raise ModalException(
+            detail=f"Failed to deploy App on Modal: {e}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            suggested_fix="Make sure provided modal file is valid.",
+        )
 
     model_dict = modal_app.model_dump(
         exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
