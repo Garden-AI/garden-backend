@@ -4,30 +4,30 @@ import traceback
 import uuid
 
 import structlog
-from fastapi import HTTPException, Request, Response
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.api.dependencies.modal import ModalException, handle_modal_exception
 
 
-def filter_stacktrace(exc: Exception):
+def filter_stacktrace(exc: Exception, func_to_stop_at: str = "run_endpoint_function"):
     """Filter the stack trace to include only the relevant part from the endpoint call to the error."""
     tb = traceback.extract_tb(exc.__traceback__)  # Extract the stack frames
 
-    # Find the frame for the most recent dispatch call
+    # Find the frame for the most recent endpoint call
     relevant_frames = []
 
     for frame in reversed(tb):  # Walk the stack from the bottom (most recent call)
         filename, lineno, funcname, text = frame
 
         # stop when we hit the inital call to the endpoint
-        if funcname == "run_endpoint_function":
+        if funcname == func_to_stop_at:
             break
 
         relevant_frames.append(frame)
 
-    # If we found relevant frames, format them
+    # If we found relevant frames, remove the noisy stuff
     if relevant_frames:
         filtered_tb = traceback.format_list(
             reversed(relevant_frames)
@@ -104,8 +104,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 suggested_fix=e.suggested_fix,
             )
             return handle_modal_exception(request, e)
-        except HTTPException:
-            raise
         except Exception as e:
             filtered_stacktrace = filter_stacktrace(e)
             logger = structlog.get_logger()
