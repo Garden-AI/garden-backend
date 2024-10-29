@@ -3,7 +3,7 @@ from typing import Any
 
 import modal
 
-from src.api.dependencies.modal import ModalException
+from src.exceptions.modal import ModalException
 
 app = modal.App("garden-publishing-helpers")
 

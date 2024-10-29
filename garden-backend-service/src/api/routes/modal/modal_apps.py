@@ -4,7 +4,6 @@ from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user, modal_vip
 from src.api.dependencies.database import get_db_session
-from src.api.dependencies.modal import ModalException
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
@@ -14,6 +13,7 @@ from src.api.schemas.modal.modal_app import (
     ModalAppMetadataResponse,
 )
 from src.config import Settings, get_settings
+from src.exceptions.modal import ModalException
 from src.models import ModalApp, User
 
 logger = get_logger(__name__)
