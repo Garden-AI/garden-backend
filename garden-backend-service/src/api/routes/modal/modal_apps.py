@@ -65,7 +65,7 @@ async def add_modal_app(
             settings.MODAL_ENV,
         )
     except Exception as e:
-        # TODO figure out what types of errors get thorws, write better suggested fixes
+        # TODO figure out what types of errors get thorwn due to user error, write better suggested fixes
         raise ModalException(
             detail=f"Failed to deploy App on Modal: {e}",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
