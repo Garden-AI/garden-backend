@@ -2,9 +2,12 @@ import time
 import uuid
 
 import structlog
-from fastapi import HTTPException, Request, Response
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from src.exceptions.modal import ModalException, handle_modal_exception
+from src.exceptions.utils import format_traceback
 
 
 class LogRequestIdMiddleware(BaseHTTPMiddleware):
@@ -59,13 +62,25 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
             return await call_next(request)
-        except HTTPException:
-            raise
-        except Exception:
+        except ModalException as e:
+            logger = structlog.get_logger()
+            filtered_stacktrace = format_traceback(e)
+            logger.error(
+                "Modal Exception",
+                method=request.method,
+                path=request.url.path,
+                status_code=e.status_code,
+                stack_trace=filtered_stacktrace,
+                detail=e.detail,
+                suggested_fix=e.suggested_fix,
+            )
+            return handle_modal_exception(request, e)
+        except Exception as e:
+            filtered_stacktrace = format_traceback(e)
             logger = structlog.get_logger()
             logger.error(
                 "Unhandled exception",
-                exc_info=True,
+                stack_trace=filtered_stacktrace,
                 method=request.method,
                 path=request.url.path,
             )
