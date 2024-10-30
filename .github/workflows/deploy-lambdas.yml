@@ -17,10 +17,9 @@ jobs:
 
     steps:
     - name: configure aws credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: arn:aws:iam::557062710055:role/GH_Actions_Garden_Deployer
-        role-session-name: garden-backend-deployer
         aws-region: us-east-1
 
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
