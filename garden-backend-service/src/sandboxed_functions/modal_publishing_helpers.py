@@ -3,7 +3,7 @@ import modal
 app = modal.App("garden-publishing-helpers")
 
 modal_helper_image = modal.Image.debian_slim(python_version="3.11").pip_install(
-    "modal==0.64.126"
+    "modal==0.64.178"
 )
 
 #
@@ -56,9 +56,13 @@ def remote_validate_modal_file(file_contents: str):
 def deploy_modal_app(
     file_contents: str, app_name: str, token_id: str, token_secret: str, env: str
 ):
+    import os
+
     from modal import enable_output
     from modal.cli.run import deploy_app, ensure_env
     from modal.client import Client
+
+    os.environ["MODAL_AUTOMOUNT"] = "False"
 
     with enable_output():
         ensure_env(env)
