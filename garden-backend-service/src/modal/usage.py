@@ -8,7 +8,6 @@ from modal.gpu import (
     L4,
     T4,
 )
-
 from src.models.modal.modal_function import ModalFunction
 
 DEFAULT_CPUS = 0.125

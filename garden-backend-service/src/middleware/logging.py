@@ -79,7 +79,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             filtered_stacktrace = format_traceback(e)
             logger = structlog.get_logger()
             logger.error(
-                "Unhandled exception",
+                f"Unhandled exception: {str(e)}",
                 stack_trace=filtered_stacktrace,
                 method=request.method,
                 path=request.url.path,

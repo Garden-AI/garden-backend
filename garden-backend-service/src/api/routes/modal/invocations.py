@@ -1,12 +1,11 @@
-import time
-
-import modal
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
-from modal._utils.grpc_utils import retry_transient_errors
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import modal
+from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_limit
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
@@ -15,10 +14,11 @@ from src.api.schemas.modal.invocations import (
     ModalInvocationResponse,
 )
 from src.config import Settings, get_settings
+from src.exceptions.modal import ModalException
+from src.modal.utils import monitor_modal_invocation
 from src.models.modal.invocations import ModalInvocation
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
-from src.usage import estimate_usage
 
 logger = structlog.get_logger(__name__)
 
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/modal-invocations")
 @router.post("", response_model=ModalInvocationResponse)
 async def invoke_modal_fn(
     body: ModalInvocationRequest,
+    background_tasks: BackgroundTasks,
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
@@ -68,43 +69,56 @@ async def invoke_modal_fn(
 
     # create the _Invocation object
     log.info("Requesting invocation with modal")
-    invocation_time = time.time()
     invocation = await _create_invocation(
-        function, body.args_kwargs_serialized, modal_client
+        function,
+        body.args_kwargs_serialized,
+        modal_client,
     )
-
-    outputs_response = await invocation.pop_function_call_outputs(
-        timeout=None, clear_on_success=True
-    )
-    execution_time_seconds = time.time() - invocation_time
-    log.debug("received modal RPC response", outputs_response=outputs_response)
-
-    usage = estimate_usage(modal_fn, execution_time_seconds)
-    log = logger.bind(estimated_usage=usage)
 
     # Log the invocation in the DB
-    db.add(
-        ModalInvocation(
-            user_id=user.id,
-            function_id=modal_fn.id,
-            function_call_id=invocation.function_call_id,
-            execution_time_seconds=execution_time_seconds,
-            estimated_usage=usage,
-        )
+    modal_invocation = ModalInvocation(
+        user_id=user.id,
+        function_id=modal_fn.id,
+        function_call_id=invocation.function_call_id,
     )
+    db.add(modal_invocation)
     await db.commit()
 
-    if not outputs_response.outputs:
-        log.warning("No outputs received from function call")
-        raise Exception("No outputs received from function call")
+    # Until we have a route for polling a background task, just await the result directly
+    await monitor_modal_invocation(invocation, modal_invocation, modal_client, settings)
 
-    output: api_pb2.FunctionGetOutputsItem = outputs_response.outputs[0]
+    # # TODO Send the invocation to the background and return an ID
+    # log.info("Sending invocation to background task")
+    # background_tasks.add_task(
+    #     monitor_modal_invocation,
+    #     invocation=invocation,
+    #     db_invocation=modal_invocation,
+    #     client=modal_client,
+    #     settings=settings,
+    # )
 
-    log.info("Invoked modal function")
-    # we duplicate enough of the modal response schema that modal can process the
-    # results "naturally" itself on the client side. (including e.g. formatting
-    # the traceback for the user if things went wrong)
-    return output
+    await db.refresh(modal_invocation)
+    if modal_invocation.output is not None:
+        return api_pb2.FunctionGetOutputsItem.FromString(modal_invocation.output)
+    else:
+        raise ModalException(
+            f"Error invoking modal function with id: {modal_invocation.id}. Error: {modal_invocation.error}",
+            status_code=500,
+        )
+
+
+@router.get("/{id}")
+async def get_modal_invocation_output(
+    id: int,
+    db: AsyncSession = Depends(get_db_session),
+):
+    inv = await ModalInvocation.get(db, id=id)
+    if inv is not None:
+        return api_pb2.FunctionGetOutputsItem.FromString(inv.output)
+    else:
+        return JSONResponse(
+            status_code=404, detail=f"Invocation with id: {id} not found."
+        )
 
 
 async def _create_invocation(
