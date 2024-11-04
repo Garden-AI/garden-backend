@@ -21,12 +21,6 @@ def get_app_from_file_contents(file_contents: str):
     return user_app
 
 
-# def lambda_handler(event, context):
-#     import modal
-#     print(modal)
-#     return "hello"
-
-
 def validate_modal_file(file_contents: str):
     user_app = get_app_from_file_contents(file_contents)
     function_names = [f for f in user_app.registered_functions if "*" not in f]
@@ -34,11 +28,6 @@ def validate_modal_file(file_contents: str):
     return {"function_names": function_names, "app_name": app_name}
 
     # TODO: confirm nothing dastardly on the app/functions
-
-
-# @app.function(image=modal_helper_image)
-# def remote_validate_modal_file(file_contents: str):
-#     return validate_modal_file(file_contents)
 
 
 def deploy_modal_app(
@@ -79,10 +68,3 @@ def lambda_handler(event, context):
     elif fn_name == "validate_modal_file":
         file_contents = payload["file_contents"]
         return validate_modal_file(file_contents)
-
-
-# @app.function(image=modal_helper_image)
-# def remote_deploy_modal_app(
-#     file_contents: str, app_name: str, token_id: str, token_secret: str, env: str
-# ):
-#     return deploy_modal_app(file_contents, app_name, token_id, token_secret, env)
