@@ -52,6 +52,3 @@ jobs:
          zip -r ../app.zip lambda_function.py
          # Deploy to Lambda.
          aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://../app.zip
-         # Delete temporary packages directory
-         cd ..
-         rm -rf packages
