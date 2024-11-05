@@ -51,6 +51,15 @@ module "lightsail" {
   lightsail_certificate_domain_name = data.aws_acm_certificate.api_cert.domain
 }
 
+module "lambda" {
+  source = "../modules/lambda"
+
+  env                  = var.env
+  aws_account_id       = var.aws_account_id
+  server_name          = module.lightsail.container_service_name
+}
+
+
 module "rds" {
   source = "../modules/rds"
 
