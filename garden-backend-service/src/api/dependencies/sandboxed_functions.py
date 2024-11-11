@@ -1,6 +1,6 @@
-import modal
 from fastapi import Depends
 
+import modal
 from src.config import Settings, get_settings
 from src.sandboxed_functions.modal_publishing_helpers import (
     deploy_modal_app,
