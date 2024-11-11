@@ -1,7 +1,7 @@
 import modal
 import pytest
 
-from src.sandboxed_functions.modal_publishing_helpers import get_function_specs
+from src.sandboxed_functions.lambda_function import get_function_specs
 
 app = modal.App()
 
