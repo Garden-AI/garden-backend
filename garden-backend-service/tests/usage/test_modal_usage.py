@@ -1,5 +1,5 @@
+from src.modal.usage import estimate_usage
 from src.models.modal.modal_function import ModalFunction
-from src.usage.modal_usage import estimate_usage
 
 
 def test_estimate_usage():
