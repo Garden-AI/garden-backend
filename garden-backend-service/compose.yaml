@@ -12,7 +12,7 @@ services:
       - ./.env:/app/.env
       - ./alembic.ini:/app/alembic.ini
       - ./migrations:/app/migrations
-    entrypoint: bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 80 --reload --log-level debug"
+    entrypoint: bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 80 --reload"
     depends_on:
       dev-db:
         condition: service_healthy
@@ -20,8 +20,6 @@ services:
   dev-db:
     hostname: dev-db
     image: postgres:16
-    ports:
-      - "5432:5432"
     env_file:
       - .postgres.env
     volumes:
