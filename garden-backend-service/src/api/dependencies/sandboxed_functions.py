@@ -2,7 +2,6 @@ import json
 from typing import Literal
 
 import boto3
-from botocore.exceptions import ClientError
 from fastapi import Depends
 
 from src.config import Settings, get_settings
@@ -14,6 +13,34 @@ from src.sandboxed_functions.lambda_function import (
     validate_modal_file,
 )
 
+# This module handles boilerplate for turning our sandboxed code execution functions into FastAPI dependencies.
+# We want to inject the functions into our route handlers as dependencies,
+# so that we can swap out whether we run them locally or remotely.
+# (In practice, you will only use the local version when developing locally.)
+# Making functions into FastAPI dependencies is awkward,
+# and we need to use this pattern of callable classes to make it work.
+#
+# The exposed callables take a dictionary (shaped like ValidateModalFileArgs or DeployModalAppArgs)
+# and return a dictionary with the response payload.
+# Because the functions are designed to run remotely, they will swallow exceptions and return them as strings in a dict.
+# The wrappers in this file handle dectect the error messages and raise them as exceptions.
+# So a caller invoking the functions does not need to inspect the dict for error messages.
+
+
+def _raise_exception_if_error_in_lambda_response(response_payload: dict):
+    if "ModalException" in response_payload:
+        details = response_payload["ModalException"]
+        raise ModalException(
+            detail=details["detail"],
+            suggested_fix=details["suggested_fix"],
+            status_code=details["status_code"],
+        )
+    elif "Exception" in response_payload:
+        details = response_payload["Exception"]
+        raise Exception(
+            detail=details["detail"],
+        )
+
 
 def make_lambda_invoker(
     function_name: str,
@@ -23,18 +50,12 @@ def make_lambda_invoker(
 
     def invoke_lambda_fn(fn_args: dict):
         payload = {"fn_name": sub_function_name, "fn_args": fn_args}
-        try:
-            response = lambda_client.invoke(
-                FunctionName=function_name,
-                InvocationType="RequestResponse",  # Synchronous invocation
-                Payload=json.dumps(payload),
-            )
 
-        except ClientError as e:
-            # TODO: when do we hit this error?
-            # Replace this with logging
-            print(f"Failed to invoke Lambda function: {str(e)}")
-            raise
+        response = lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType="RequestResponse",  # Synchronous invocation
+            Payload=json.dumps(payload),
+        )
 
         if response["StatusCode"] not in (200, 201, 202):
             raise Exception(
@@ -42,20 +63,7 @@ def make_lambda_invoker(
             )
 
         response_payload = json.loads(response["Payload"].read().decode("utf-8"))
-
-        if "ModalException" in response_payload:
-            details = response_payload["ModalException"]
-            raise ModalException(
-                detail=details["detail"],
-                suggested_fix=details["suggested_fix"],
-                status_code=details["status_code"],
-            )
-        elif "Exception" in response_payload:
-            details = response_payload["Exception"]
-            raise Exception(
-                detail=details["detail"],
-            )
-
+        _raise_exception_if_error_in_lambda_response(response_payload)
         return response_payload
 
     return invoke_lambda_fn
@@ -64,19 +72,7 @@ def make_lambda_invoker(
 def make_local_invoker(sub_function: callable) -> callable:
     def invoke_local_fn(fn_args: dict):
         response_payload = sub_function(fn_args)
-
-        if "ModalException" in response_payload:
-            details = response_payload["ModalException"]
-            raise ModalException(
-                detail=details["detail"],
-                suggested_fix=details["suggested_fix"],
-                status_code=details["status_code"],
-            )
-        elif "Exception" in response_payload:
-            details = response_payload["Exception"]
-            raise Exception(
-                detail=details["detail"],
-            )
+        _raise_exception_if_error_in_lambda_response(response_payload)
         return response_payload
 
     return invoke_local_fn

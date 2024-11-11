@@ -40,15 +40,12 @@ async def add_modal_app(
     # This will include checking the function metadata provided against the functions present in the App.
     metadata = validate_modal_file({"file_contents": modal_app.file_contents})
 
-    print(metadata)
     if metadata["app_name"] != modal_app.app_name:
         raise ModalException(
             detail="App name in the modal file does not match the provided app name",
             suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
         )
 
-    # print(set(metadata["functions"].keys()))
-    # print(set(modal_app.modal_function_names))
     if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
         raise ModalException(
             detail="Function names in the modal file do not match the provided function names",
