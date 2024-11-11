@@ -54,4 +54,4 @@ jobs:
          zip -r app.zip garden-backend-service/src/sandboxed_functions/lambda_function.py
          #  zip -r ../../../app.zip lambda_function.py
          # Deploy to Lambda.
-         aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://../app.zip
+         aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://app.zip
