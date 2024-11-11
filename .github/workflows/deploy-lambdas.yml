@@ -48,7 +48,7 @@ jobs:
          # Put the requirements into the top level of our deployable zip archive.
          cd packages
          zip -r ../app.zip *
-         cd ../src/sandboxed_functions
-         zip -r ../../app.zip lambda_function.py
+         cd ../garden-backend-service/src/sandboxed_functions
+         zip -r ../../../app.zip lambda_function.py
          # Deploy to Lambda.
          aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://../app.zip
