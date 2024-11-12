@@ -1,6 +1,5 @@
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,16 +86,6 @@ async def invoke_modal_fn(
     # Until we have a route for polling a background task, just await the result directly
     await monitor_modal_invocation(invocation, modal_invocation, modal_client, settings)
 
-    # # TODO Send the invocation to the background and return an ID
-    # log.info("Sending invocation to background task")
-    # background_tasks.add_task(
-    #     monitor_modal_invocation,
-    #     invocation=invocation,
-    #     db_invocation=modal_invocation,
-    #     client=modal_client,
-    #     settings=settings,
-    # )
-
     await db.refresh(modal_invocation)
     if modal_invocation.output is not None:
         return api_pb2.FunctionGetOutputsItem.FromString(modal_invocation.output)
@@ -104,20 +93,6 @@ async def invoke_modal_fn(
         raise ModalException(
             f"Error invoking modal function with id: {modal_invocation.id}. Error: {modal_invocation.error}",
             status_code=500,
-        )
-
-
-@router.get("/{id}")
-async def get_modal_invocation_output(
-    id: int,
-    db: AsyncSession = Depends(get_db_session),
-):
-    inv = await ModalInvocation.get(db, id=id)
-    if inv is not None:
-        return api_pb2.FunctionGetOutputsItem.FromString(inv.output)
-    else:
-        return JSONResponse(
-            status_code=404, detail=f"Invocation with id: {id} not found."
         )
 
 
