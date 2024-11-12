@@ -10,13 +10,14 @@ from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
+    ModalInvocationOutputsResponse,
     ModalInvocationRequest,
     ModalInvocationResponse,
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal.utils import monitor_modal_invocation
-from src.models.modal.invocations import ModalInvocation
+from src.models.modal.invocations import InvocationStatus, ModalInvocation
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
 
@@ -84,18 +85,7 @@ async def invoke_modal_fn(
     db.add(modal_invocation)
     await db.commit()
 
-    # Until we have a route for polling a background task, just await the result directly
     await monitor_modal_invocation(invocation, modal_invocation, modal_client, settings)
-
-    # # TODO Send the invocation to the background and return an ID
-    # log.info("Sending invocation to background task")
-    # background_tasks.add_task(
-    #     monitor_modal_invocation,
-    #     invocation=invocation,
-    #     db_invocation=modal_invocation,
-    #     client=modal_client,
-    #     settings=settings,
-    # )
 
     await db.refresh(modal_invocation)
     if modal_invocation.output is not None:
@@ -107,18 +97,93 @@ async def invoke_modal_fn(
         )
 
 
-@router.get("/{id}")
+@router.post("/async", response_model=ModalInvocationOutputsResponse)
+async def invoke_modal_fn_async(
+    body: ModalInvocationRequest,
+    background_tasks: BackgroundTasks,
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+    modal_client: modal.Client = Depends(get_modal_client),
+    modal_vip: bool = Depends(modal_vip),
+    under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
+
+    # Fetch function from the database
+    modal_fn: ModalFunction | None = await ModalFunction.get(db, id=body.function_id)
+    if modal_fn is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No Modal Function with id {body.function_id} found.",
+        )
+
+    app_name = modal_fn.modal_app.app_name
+    function_name = modal_fn.function_name
+    log = logger.bind(app_name=app_name, function_name=function_name)
+
+    # Fetch the function from modal
+    log.info("Fetching function object from modal")
+    function = await modal.functions._Function.lookup(
+        app_name=modal_fn.modal_app.app_name,
+        tag=modal_fn.function_name,
+        environment_name=settings.MODAL_ENV,
+        client=modal_client,
+    )
+
+    # Create the _Invocation object
+    log.info("Requesting invocation with modal")
+    invocation = await _create_invocation(
+        function,
+        body.args_kwargs_serialized,
+        modal_client,
+    )
+
+    # Log the invocation in the database
+    modal_invocation = ModalInvocation(
+        user_id=user.id,
+        function_id=modal_fn.id,
+        function_call_id=invocation.function_call_id,
+        status="in-progress",
+    )
+    db.add(modal_invocation)
+    await db.commit()
+
+    # Add monitoring to background tasks
+    background_tasks.add_task(
+        monitor_modal_invocation, invocation, modal_invocation, modal_client, settings
+    )
+
+    # Return the invocation ID immediately
+    return ModalInvocationResponse(
+        id=modal_invocation.id,
+        status="in-progress",
+    )
+
+
+@router.get("/{id}", response_model=ModalInvocationOutputsResponse)
 async def get_modal_invocation_output(
     id: int,
     db: AsyncSession = Depends(get_db_session),
 ):
     inv = await ModalInvocation.get(db, id=id)
-    if inv is not None:
-        return api_pb2.FunctionGetOutputsItem.FromString(inv.output)
-    else:
+    if inv is None:
         return JSONResponse(
-            status_code=404, detail=f"Invocation with id: {id} not found."
+            status_code=404, content=f"Invocation with id: {id} not found."
         )
+
+    response_data = {
+        "id": id,
+        "status": inv.status,
+    }
+
+    if inv.status == InvocationStatus.COMPLETED and inv.output:
+        response_data["output"] = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
+    elif inv.status in {InvocationStatus.ERROR, InvocationStatus.TIMED_OUT}:
+        response_data["error"] = inv.error
+
+    return response_data
 
 
 async def _create_invocation(
