@@ -38,7 +38,7 @@ async def add_modal_app(
 
     # First, validate the request.
     # This will include checking the function metadata provided against the functions present in the App.
-    metadata = validate_modal_file(modal_app.file_contents)
+    metadata = validate_modal_file({"file_contents": modal_app.file_contents})
 
     if metadata["app_name"] != modal_app.app_name:
         raise ModalException(
@@ -56,21 +56,15 @@ async def add_modal_app(
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
 
     # TODO: set a timeout for this and/or make it async
-    try:
-        deploy_modal_app(
-            modal_app.file_contents,
-            prefixed_app_name,
-            settings.MODAL_TOKEN_ID,
-            settings.MODAL_TOKEN_SECRET,
-            settings.MODAL_ENV,
-        )
-    except Exception as e:
-        # TODO figure out what types of errors get thorwn due to user error, write better suggested fixes
-        raise ModalException(
-            detail=f"Failed to deploy App on Modal: {e}",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            suggested_fix="Make sure provided modal file is valid.",
-        )
+    deploy_modal_app(
+        {
+            "app_name": prefixed_app_name,
+            "env": settings.MODAL_ENV,
+            "file_contents": modal_app.file_contents,
+            "token_id": settings.MODAL_TOKEN_ID,
+            "token_secret": settings.MODAL_TOKEN_SECRET,
+        }
+    )
 
     model_dict = modal_app.model_dump(
         exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True

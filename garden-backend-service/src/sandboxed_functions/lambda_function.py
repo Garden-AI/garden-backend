@@ -1,19 +1,33 @@
 import dataclasses
-from typing import Any
+from typing import Any, TypedDict
 
 import modal
 
-from src.exceptions.modal import ModalException
 
-app = modal.App("garden-publishing-helpers")
+# Copied for now
+class ModalException(Exception):
+    def __init__(
+        self,
+        detail: str,
+        status_code=400,
+        suggested_fix: str | None = None,
+    ) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = status_code
+        self.suggested_fix = suggested_fix
 
-modal_helper_image = modal.Image.debian_slim(python_version="3.11").pip_install(
-    "modal==0.64.178"
-)
 
-#
-# Helper functions
-#
+class ValidateModalFileArgs(TypedDict):
+    file_contents: str
+
+
+class DeployModalAppArgs(TypedDict):
+    file_contents: str
+    app_name: str
+    token_id: str
+    token_secret: str
+    env: str
 
 
 def write_to_tmp_file(file_contents: str):
@@ -70,13 +84,8 @@ def extract_from_dict(d: dict[str, Any], keys: list[str]) -> dict[str, Any]:
         )
 
 
-#
-# Functions that we want to run remotely to safely execute user-provided code
-#
-
-
-def validate_modal_file(file_contents: str):
-    user_app = get_app_from_file_contents(file_contents)
+def validate_modal_file(args: ValidateModalFileArgs):
+    user_app = get_app_from_file_contents(args["file_contents"])
     app_name = user_app.name
     functions = get_function_specs(
         user_app.registered_functions,
@@ -87,14 +96,7 @@ def validate_modal_file(file_contents: str):
     # TODO: confirm nothing dastardly on the app/functions
 
 
-@app.function(image=modal_helper_image)
-def remote_validate_modal_file(file_contents: str):
-    return validate_modal_file(file_contents)
-
-
-def deploy_modal_app(
-    file_contents: str, app_name: str, token_id: str, token_secret: str, env: str
-):
+def deploy_modal_app(args: DeployModalAppArgs):
     import os
 
     from modal import enable_output
@@ -103,17 +105,38 @@ def deploy_modal_app(
 
     os.environ["MODAL_AUTOMOUNT"] = "False"
 
+    env, file_contents, app_name, token_id, token_secret = (
+        args["env"],
+        args["file_contents"],
+        args["app_name"],
+        args["token_id"],
+        args["token_secret"],
+    )
+
     with enable_output():
         ensure_env(env)
         app = get_app_from_file_contents(file_contents)
         client = Client.from_credentials(token_id, token_secret)
         res = deploy_app(app, name=app_name, client=client, environment_name=env)
 
-    return res.app_id
+    return {"app_id": res.app_id}
 
 
-@app.function(image=modal_helper_image)
-def remote_deploy_modal_app(
-    file_contents: str, app_name: str, token_id: str, token_secret: str, env: str
-):
-    return deploy_modal_app(file_contents, app_name, token_id, token_secret, env)
+def lambda_handler(event, context):
+    fn_name = event["fn_name"]
+    fn_args = event["fn_args"]
+    try:
+        if fn_name == "deploy_modal_app":
+            return deploy_modal_app(fn_args)
+        elif fn_name == "validate_modal_file":
+            return validate_modal_file(fn_args)
+    except ModalException as e:
+        return {
+            "ModalException": {
+                "detail": e.detail,
+                "suggested_fix": e.suggested_fix,
+                "status_code": e.status_code,
+            }
+        }
+    except Exception as e:
+        return {"Exception": {"detail": str(e)}}
