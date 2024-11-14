@@ -22,24 +22,6 @@ async def cancel_modal_invocation(invocation: ModalInvocation, client: modal.Cli
     await retry_transient_errors(client.stub.FunctionCallCancel, request)
 
 
-async def get_invocation_outputs(
-    invocation: modal.functions._Invocation,
-) -> api_pb2.FunctionGetOutputsItem:
-    outputs_response = await invocation.pop_function_call_outputs(
-        timeout=None, clear_on_success=True
-    )
-
-    if not outputs_response.outputs:
-        raise Exception("No outputs received from function call")
-
-    output: api_pb2.FunctionGetOutputsItem = outputs_response.outputs[0]
-
-    # we duplicate enough of the modal response schema that modal can process the
-    # results "naturally" itself on the client side. (including e.g. formatting
-    # the traceback for the user if things went wrong)
-    return output
-
-
 async def resolve_modal_invocation(
     invocation: ModalInvocation,
     status: InvocationStatus,

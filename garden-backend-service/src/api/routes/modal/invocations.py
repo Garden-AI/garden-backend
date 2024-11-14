@@ -77,22 +77,22 @@ async def invoke_modal_fn(
     )
 
     # Log the invocation in the DB
-    modal_invocation = ModalInvocation(
+    db_invocation = ModalInvocation(
         user_id=user.id,
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
     )
-    db.add(modal_invocation)
+    db.add(db_invocation)
     await db.commit()
 
-    await monitor_modal_invocation(invocation, modal_invocation, modal_client, settings)
+    await monitor_modal_invocation(invocation, db_invocation, modal_client, settings)
 
-    await db.refresh(modal_invocation)
-    if modal_invocation.output is not None:
-        return api_pb2.FunctionGetOutputsItem.FromString(modal_invocation.output)
+    await db.refresh(db_invocation)
+    if db_invocation.output is not None:
+        return api_pb2.FunctionGetOutputsItem.FromString(db_invocation.output)
     else:
         raise ModalException(
-            f"Error invoking modal function with id: {modal_invocation.id}. Error: {modal_invocation.error}",
+            f"Error invoking modal function with id: {db_invocation.id}. Error: {db_invocation.error}",
             status_code=500,
         )
 
@@ -141,23 +141,23 @@ async def invoke_modal_fn_async(
     )
 
     # Log the invocation in the database
-    modal_invocation = ModalInvocation(
+    db_invocation = ModalInvocation(
         user_id=user.id,
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
         status="in-progress",
     )
-    db.add(modal_invocation)
+    db.add(db_invocation)
     await db.commit()
 
     # Add monitoring to background tasks
     background_tasks.add_task(
-        monitor_modal_invocation, invocation, modal_invocation, modal_client, settings
+        monitor_modal_invocation, invocation, db_invocation, modal_client, settings
     )
 
     # Return the invocation ID immediately
     return ModalInvocationResponse(
-        id=modal_invocation.id,
+        id=db_invocation.id,
         status="in-progress",
     )
 

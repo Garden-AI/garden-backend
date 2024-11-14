@@ -5,7 +5,6 @@ on:
     branches:
       - prod
       - dev
-      - will/lambda-deployments
   workflow_dispatch:
 permissions:
   id-token: write   # This is required for requesting the JWT!
@@ -48,7 +47,8 @@ jobs:
          # Put the requirements into the top level of our deployable zip archive.
          cd packages
          zip -r ../app.zip *
-         cd ../sandboxed_functions
-         zip -r ../app.zip lambda_function.py
+         cd ../garden-backend-service/src/sandboxed_functions
+         zip -r ../../../app.zip lambda_function.py
+         cd ../../..
          # Deploy to Lambda.
-         aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://../app.zip
+         aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://app.zip
