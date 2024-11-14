@@ -25,6 +25,11 @@ class ModalInvocationResponse(BaseSchema):
     result: _ModalGenericResult
 
 
+class AsyncModalInvocationResponse(BaseSchema):
+    id: int
+    status: str
+
+
 class ModalInvocationOutputsResponse(BaseSchema):
     id: int
     status: InvocationStatus

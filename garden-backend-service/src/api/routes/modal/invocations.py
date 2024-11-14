@@ -10,6 +10,7 @@ from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
+    AsyncModalInvocationResponse,
     ModalInvocationOutputsResponse,
     ModalInvocationRequest,
     ModalInvocationResponse,
@@ -98,7 +99,7 @@ async def invoke_modal_fn(
         )
 
 
-@router.post("/async", response_model=ModalInvocationOutputsResponse)
+@router.post("/async")
 async def invoke_modal_fn_async(
     body: ModalInvocationRequest,
     background_tasks: BackgroundTasks,
@@ -146,7 +147,7 @@ async def invoke_modal_fn_async(
         user_id=user.id,
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
-        status="in-progress",
+        status=InvocationStatus.PENDING,
     )
     db.add(db_invocation)
     await db.commit()
@@ -157,9 +158,9 @@ async def invoke_modal_fn_async(
     )
 
     # Return the invocation ID immediately
-    return ModalInvocationResponse(
+    return AsyncModalInvocationResponse(
         id=db_invocation.id,
-        status="in-progress",
+        status=InvocationStatus.PENDING.value,
     )
 
 
