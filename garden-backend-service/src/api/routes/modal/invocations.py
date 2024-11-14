@@ -13,6 +13,7 @@ from src.api.schemas.modal.invocations import (
     ModalInvocationOutputsResponse,
     ModalInvocationRequest,
     ModalInvocationResponse,
+    _ModalGenericResult,
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
@@ -177,9 +178,14 @@ async def get_modal_invocation_output(
         "id": id,
         "status": inv.status,
     }
+    if inv.status == InvocationStatus.DONE and inv.output:
+        parsed_output = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
+        response_data["result"] = _ModalGenericResult(
+            status=parsed_output.result.status,
+            data=parsed_output.result.data,
+            exception=inv.error,
+        )
 
-    if inv.status == InvocationStatus.COMPLETED and inv.output:
-        response_data["output"] = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
     elif inv.status in {InvocationStatus.ERROR, InvocationStatus.TIMED_OUT}:
         response_data["error"] = inv.error
 
