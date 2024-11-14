@@ -48,7 +48,7 @@ async def test_invoke_modal_fn(
     mocker.patch("modal.functions._Function.lookup", return_value=mock_function)
     mocker.patch("modal.functions._Invocation", return_value=mock_invocation)
     mocker.patch(
-        "src.api.routes.modal.invocations.estimate_usage",
+        "src.modal.utils.estimate_usage",
         return_value=1.0,
     )
 
@@ -85,7 +85,7 @@ async def test_invoke_modal_fn(
     # Verify that the mocks were called as expected
     mock_function._invocation_function_id.assert_called_once()
     mock_invocation.pop_function_call_outputs.assert_called_once_with(
-        timeout=None, clear_on_success=True
+        timeout=10.0, clear_on_success=True
     )
     assert mock_retry.call_count == 1
 
@@ -146,7 +146,7 @@ async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
 
     # Simulate a lot of usage
     mocker.patch(
-        "src.api.routes.modal.invocations.estimate_usage",
+        "src.modal.utils.estimate_usage",
         return_value=10.0,
     )
 

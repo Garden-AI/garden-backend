@@ -1,6 +1,6 @@
-import modal
 import pytest
 
+import modal
 from src.sandboxed_functions.lambda_function import get_function_specs
 
 app = modal.App()
