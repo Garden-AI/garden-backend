@@ -10,7 +10,7 @@ packages = [{include = "src"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^2.7.1"
-fastapi = "^0.110.0"
+fastapi = "^0.115.3"
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 gunicorn = "^23.0.0"
 globus-sdk = "^3.39.0"
