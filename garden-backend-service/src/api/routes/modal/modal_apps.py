@@ -46,11 +46,27 @@ async def add_modal_app(
             suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
         )
 
-    if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
+    detected_function_names = set(metadata["functions"].keys())
+    provided_function_names = set(modal_app.modal_function_names)
+
+    if len(provided_function_names) == 0:
         raise ModalException(
-            detail="Function names in the modal file do not match the provided function names",
-            suggested_fix="Make sure function names in the Modal file match the provided function names.",
+            detail="No function names provided",
+            suggested_fix="Provide function names in the Modal App creation request",
         )
+
+    if not provided_function_names.issubset(detected_function_names):
+        diff = provided_function_names - detected_function_names
+        raise ModalException(
+            detail=f"Provided function names {diff} are not present in the Modal file",
+            suggested_fix="Make sure function names in the Modal App creation request match the function names in the Modal file",
+        )
+
+    # if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
+    #     raise ModalException(
+    #         detail=f"Function names in the modal file {a} do not match the provided function names {b}",
+    #         suggested_fix="Make sure function names in the Modal file match the provided function names.",
+    #     )
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"

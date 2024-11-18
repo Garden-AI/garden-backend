@@ -139,9 +139,9 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 
 @pytest.fixture
-def mock_validate_modal_file_provider():
+def mock_validate_modal_file_provider(request):
     mock_provider = MagicMock(spec=ValidateModalFileProvider)
-    mock_provider.return_value = {
+    mock_provider.return_value = request.param or {
         "app_name": "test-app",
         "functions": {"predict_iris_type": {"cpus": 1, "gpus": "A100", "memory": 256}},
     }
@@ -370,6 +370,14 @@ def mock_modal_app_create_request_one_function() -> dict:
     path = (
         Path(__file__).parent / "fixtures" / "ModalAppCreateRequest-one-function.json"
     )
+    assert path.exists()
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
+@pytest.fixture
+def mock_modal_app_create_request_with_class() -> dict:
+    path = Path(__file__).parent / "fixtures" / "ModalAppCreateRequest-class.json"
     assert path.exists()
     with open(path, "r") as f_in:
         return json.load(f_in)

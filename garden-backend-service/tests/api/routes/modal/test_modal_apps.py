@@ -30,6 +30,46 @@ async def test_add_modal_app(
     )
 
 
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "class-app",
+            "functions": {
+                "Model.say_hi": {"cpus": 1, "gpus": "A100", "memory": 256},
+                "Model.*": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_add_modal_app_with_class(
+    override_modal_vip,
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_auth_state,
+    mock_modal_app_create_request_with_class,
+    override_sandboxed_functions,
+):
+    response = await client.post(
+        "/modal-apps", json=mock_modal_app_create_request_with_class
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert (
+        response_data["app_name"]
+        == f"{mock_auth_state.identity_id}-"
+        + mock_modal_app_create_request_with_class["app_name"]
+    )
+    assert (
+        response_data["modal_functions"][0]["title"]
+        == mock_modal_app_create_request_with_class["modal_functions"][0]["title"]
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_modal_app(

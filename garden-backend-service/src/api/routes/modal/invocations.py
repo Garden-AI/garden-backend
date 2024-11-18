@@ -72,10 +72,15 @@ async def invoke_modal_fn(
 
     # create the _Invocation object
     log.info("Requesting invocation with modal")
+    # If this is a class method, we need to specify the method name
+    method_name = ""
+    if "." in modal_fn.function_name:
+        _, method_name = modal_fn.function_name.split(".")
     invocation = await _create_invocation(
         function,
         body.args_kwargs_serialized,
         modal_client,
+        method_name=method_name,
     )
 
     # Log the invocation in the DB
@@ -198,6 +203,7 @@ async def _create_invocation(
     args_kwargs_serialized: bytes,
     client: modal.Client,
     invocation_type=api_pb2.FUNCTION_CALL_INVOCATION_TYPE_SYNC_LEGACY,
+    method_name="",
 ) -> modal.functions._Invocation:
     function_id = function._invocation_function_id()
     # build the input payload with pre-serialized args
@@ -205,7 +211,7 @@ async def _create_invocation(
         input=api_pb2.FunctionInput(
             args=args_kwargs_serialized,
             data_format=api_pb2.DATA_FORMAT_PICKLE,
-            method_name="",
+            method_name=method_name,
         ),
         idx=0,
     )
