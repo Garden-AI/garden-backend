@@ -141,10 +141,15 @@ async def invoke_modal_fn_async(
 
     # Create the _Invocation object
     log.info("Requesting invocation with modal")
+    # If this is a class method, we need to specify the method name
+    method_name = ""
+    if "." in modal_fn.function_name:
+        _, method_name = modal_fn.function_name.split(".")
     invocation = await _create_invocation(
         function,
         body.args_kwargs_serialized,
         modal_client,
+        method_name=method_name,
     )
 
     # Log the invocation in the database
