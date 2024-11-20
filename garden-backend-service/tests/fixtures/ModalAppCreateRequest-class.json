@@ -1,0 +1,23 @@
+{
+    "app_name": "class-app",
+    "modal_function_names": ["Model.say_hi"],
+    "version": "0.0.1",
+    "requirements": [],
+    "file_contents": "import modal \napp = modal.App('class-app')\n@app.cls()\nclass Model:\n    @modal.method()\n    def say_hi(self):\n        return 'Hello, World!'",
+    "base_image_name": "python:3.11-slim",
+    "modal_functions": [
+        {
+            "year": "2024",
+            "authors": ["John Doe"],
+            "tags": [],
+            "test_functions": [],
+            "description": "Uses advanced AI methods to say hi",
+            "title": "World Greeter",
+            "is_archived": false,
+            "function_name": "Model.say_hi",
+            "function_text": "def say_hi(self):\n        return 'Hello, World!'",
+            "doi": null
+        }
+    ],
+    "is_archived": false
+}
