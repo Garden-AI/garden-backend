@@ -32,6 +32,59 @@ async def test_add_modal_app(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_add_modal_app_async(
+    override_modal_vip,
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    response = await client.post(
+        "/modal-apps/async", json=mock_modal_app_create_request_one_function
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert (
+        response_data["app_name"]
+        == f"{mock_auth_state.identity_id}-"
+        + mock_modal_app_create_request_one_function["app_name"]
+    )
+    assert (
+        response_data["modal_functions"][0]["title"]
+        == mock_modal_app_create_request_one_function["modal_functions"][0]["title"]
+    )
+
+    assert response_data["deploy_status"] == "pending"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_add_modal_app_async_resolves_on_success(
+    override_modal_vip,
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    response = await client.post(
+        "/modal-apps/async", json=mock_modal_app_create_request_one_function
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["deploy_status"] == "pending"
+
+    get_response = await client.get(f"/modal-apps/{response_data['id']}")
+    assert get_response.status_code == 200
+    get_response_data = get_response.json()
+    assert get_response_data["deploy_status"] == "done"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_get_modal_app(
     override_modal_vip,
     client,
