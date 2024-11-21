@@ -155,3 +155,4 @@ def in_modal_publishers_group(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not a member of the required group to publish Modal functions.",
         )
+    return True
