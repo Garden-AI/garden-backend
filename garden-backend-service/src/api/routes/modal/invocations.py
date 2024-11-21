@@ -6,7 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
 from modal._utils.grpc_utils import retry_transient_errors
-from src.api.dependencies.auth import authed_user, modal_vip, under_modal_usage_limit
+from src.api.dependencies.auth import (
+    authed_user,
+    under_modal_usage_limit,
+)
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
@@ -35,7 +38,6 @@ async def invoke_modal_fn(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
-    modal_vip: bool = Depends(modal_vip),
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -111,7 +113,6 @@ async def invoke_modal_fn_async(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
     modal_client: modal.Client = Depends(get_modal_client),
-    modal_vip: bool = Depends(modal_vip),
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
     db: AsyncSession = Depends(get_db_session),
 ):

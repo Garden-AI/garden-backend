@@ -6,7 +6,6 @@ from tests.utils import post_modal_app
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_modal_function(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,
@@ -30,7 +29,6 @@ async def test_get_modal_function(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_patch_modal_function_partial_update(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,

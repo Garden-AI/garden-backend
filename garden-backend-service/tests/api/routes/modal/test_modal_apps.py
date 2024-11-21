@@ -6,7 +6,7 @@ from tests.utils import post_modal_app
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app(
-    override_modal_vip,
+    override_publisher_group_membership,
     client,
     mock_db_session,
     override_authenticated_dependency,
@@ -46,7 +46,7 @@ async def test_add_modal_app(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app_with_class(
-    override_modal_vip,
+    override_publisher_group_membership,
     client,
     mock_db_session,
     override_authenticated_dependency,
@@ -73,7 +73,6 @@ async def test_add_modal_app_with_class(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_get_modal_app(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,
@@ -102,7 +101,6 @@ async def test_get_modal_app(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_delete_modal_app(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,

@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     MODAL_VIP_LIST: list[str]
     MODAL_USAGE_LIMIT: float = 5.0
     MODAL_TIMEOUT_SECONDS: float = 25.0
+    MODAL_PUBLISHERS_GROUP_ID: str = "84d1669a-9d51-11ef-8d7c-1769556b58bd"
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 
