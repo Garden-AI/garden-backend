@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Callable
 
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from src.api.dependencies.database import get_db_session_maker
 from src.config import Settings
 from src.exceptions.modal import ModalException
 from src.models.modal.invocations import ModalInvocation
+from src.models.modal.modal_app import ModalApp
 from src.models.modal.modal_function import ModalFunction
 
 from .status import AsyncModalJobStatus
@@ -81,4 +83,26 @@ async def monitor_modal_invocation(
                 inv.error = str(e)
                 status = AsyncModalJobStatus.ERROR
                 await resolve_modal_invocation(inv, status, session)
+                await session.commit()
+
+
+async def monitor_modal_deployment(
+    deploy_func: Callable,
+    deploy_config: dict,
+    db_modal_app: ModalApp,
+    settings: Settings,
+):
+    session_maker = await get_db_session_maker(settings=settings)
+
+    try:
+        deploy_func(deploy_config)
+        async with session_maker() as session:
+            if modal_app := await ModalApp.get(session, id=db_modal_app.id):
+                modal_app.deploy_status = AsyncModalJobStatus.DONE
+                await session.commit()
+    except Exception as e:
+        async with session_maker() as session:
+            if modal_app := await ModalApp.get(session, id=db_modal_app.id):
+                modal_app.deploy_error = str(e)
+                modal_app.deploy_status = AsyncModalJobStatus.ERROR
                 await session.commit()
