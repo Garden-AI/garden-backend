@@ -8,7 +8,7 @@ from tests.utils import post_modal_app
 async def test_get_modal_function(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):
@@ -31,7 +31,7 @@ async def test_get_modal_function(
 async def test_patch_modal_function_partial_update(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_sandboxed_functions,
     mock_modal_app_create_request_one_function,
 ):

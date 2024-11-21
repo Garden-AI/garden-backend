@@ -125,6 +125,23 @@ def override_authenticated_dependency(mock_auth_state):
 
 
 @pytest.fixture
+def override_publisher_group_membership():
+    app.dependency_overrides[in_modal_publishers_group] = lambda: True
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def mock_modal_publisher_auth_state(
+    override_authenticated_dependency,
+    override_publisher_group_membership,
+    mock_auth_state,
+):
+    """Gives mock auth state and overrides the relevant auth checks"""
+    return mock_auth_state
+
+
+@pytest.fixture
 def override_get_settings_dependency(mock_settings):
     app.dependency_overrides[get_settings] = lambda: mock_settings
     yield
@@ -176,13 +193,6 @@ def override_sandboxed_functions(
     override_deploy_modal_app_dependency, override_validate_modal_file_dependency
 ):
     return
-
-
-@pytest.fixture
-def override_publisher_group_membership():
-    app.dependency_overrides[in_modal_publishers_group] = lambda: True
-    yield
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture

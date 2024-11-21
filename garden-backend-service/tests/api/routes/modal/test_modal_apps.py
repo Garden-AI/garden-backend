@@ -6,11 +6,9 @@ from tests.utils import post_modal_app
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app(
-    override_publisher_group_membership,
     client,
     mock_db_session,
-    override_authenticated_dependency,
-    mock_auth_state,
+    mock_modal_publisher_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):
@@ -21,7 +19,7 @@ async def test_add_modal_app(
     response_data = response.json()
     assert (
         response_data["app_name"]
-        == f"{mock_auth_state.identity_id}-"
+        == f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
@@ -46,11 +44,9 @@ async def test_add_modal_app(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app_with_class(
-    override_publisher_group_membership,
     client,
     mock_db_session,
-    override_authenticated_dependency,
-    mock_auth_state,
+    mock_modal_publisher_auth_state,
     mock_modal_app_create_request_with_class,
     override_sandboxed_functions,
 ):
@@ -61,7 +57,7 @@ async def test_add_modal_app_with_class(
     response_data = response.json()
     assert (
         response_data["app_name"]
-        == f"{mock_auth_state.identity_id}-"
+        == f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_with_class["app_name"]
     )
     assert (
@@ -75,8 +71,7 @@ async def test_add_modal_app_with_class(
 async def test_get_modal_app(
     client,
     mock_db_session,
-    override_authenticated_dependency,
-    mock_auth_state,
+    mock_modal_publisher_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):
@@ -89,7 +84,7 @@ async def test_get_modal_app(
     get_response_data = get_response.json()
     assert (
         get_response_data["app_name"]
-        == f"{mock_auth_state.identity_id}-"
+        == f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
@@ -103,7 +98,7 @@ async def test_get_modal_app(
 async def test_delete_modal_app(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
 ):

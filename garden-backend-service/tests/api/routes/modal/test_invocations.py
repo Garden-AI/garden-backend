@@ -14,7 +14,7 @@ from src.api.schemas.modal.invocations import (
 async def test_invoke_modal_fn(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
@@ -94,7 +94,7 @@ async def test_invoke_modal_fn(
 async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
@@ -163,7 +163,7 @@ async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
 async def test_invoke_modal_fn_async(
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
