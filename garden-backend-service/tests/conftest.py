@@ -18,7 +18,7 @@ from src.api.dependencies.auth import (
     AuthenticationState,
     _get_auth_token,
     authenticated,
-    modal_vip,
+    in_modal_publishers_group,
 )
 from src.api.dependencies.database import init
 from src.api.dependencies.modal import get_modal_client
@@ -125,6 +125,23 @@ def override_authenticated_dependency(mock_auth_state):
 
 
 @pytest.fixture
+def override_publisher_group_membership():
+    app.dependency_overrides[in_modal_publishers_group] = lambda: True
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def mock_modal_publisher_auth_state(
+    override_authenticated_dependency,
+    override_publisher_group_membership,
+    mock_auth_state,
+):
+    """Gives mock auth state and overrides the relevant auth checks"""
+    return mock_auth_state
+
+
+@pytest.fixture
 def override_get_settings_dependency(mock_settings):
     app.dependency_overrides[get_settings] = lambda: mock_settings
     yield
@@ -176,13 +193,6 @@ def override_sandboxed_functions(
     override_deploy_modal_app_dependency, override_validate_modal_file_dependency
 ):
     return
-
-
-@pytest.fixture
-def override_modal_vip():
-    app.dependency_overrides[modal_vip] = lambda: True
-    yield
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -254,7 +264,6 @@ def mock_settings(db_url):
     mock_settings.MODAL_USE_LOCAL = True
     mock_settings.MODAL_ENABLED = True
     mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
-    mock_settings.MODAL_VIP_LIST = []
     mock_settings.MODAL_USAGE_LIMIT = 5.0
     mock_settings.MODAL_TIMEOUT_SECONDS = 10.0
     return mock_settings

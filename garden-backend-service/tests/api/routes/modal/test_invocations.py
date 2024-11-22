@@ -12,10 +12,9 @@ from src.api.schemas.modal.invocations import (
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_invoke_modal_fn(
-    override_modal_vip,
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
@@ -93,10 +92,9 @@ async def test_invoke_modal_fn(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
-    override_modal_vip,
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,
@@ -163,10 +161,9 @@ async def test_invoke_modal_fn_rejects_request_if_user_is_over_usage_limit(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_invoke_modal_fn_async(
-    override_modal_vip,
     client,
     mock_db_session,
-    override_authenticated_dependency,
+    mock_modal_publisher_auth_state,
     override_get_settings_dependency,
     override_get_modal_client_dependency,
     mocker,

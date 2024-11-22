@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user, modal_vip
+from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
     assert_editable_by_user,
@@ -48,7 +48,6 @@ async def update_modal_function(
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
-    modal_vip: bool = Depends(modal_vip),
 ):
     log = logger.bind(id=id)
     modal_function: ModalFunction | None = await ModalFunction.get(db, id=id)

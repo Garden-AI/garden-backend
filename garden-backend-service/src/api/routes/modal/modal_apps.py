@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user, modal_vip
+from src.api.dependencies.auth import authed_user, in_modal_publishers_group
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
@@ -31,7 +31,7 @@ async def add_modal_app(
     settings: Settings = Depends(get_settings),
     validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
-    modal_vip: bool = Depends(modal_vip),
+    in_modal_publishers_group: bool = Depends(in_modal_publishers_group),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
@@ -122,7 +122,6 @@ async def delete_modal_app(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
-    modal_vip: bool = Depends(modal_vip),
 ):
     # Get the modal app
     # see if it's deletable by the user

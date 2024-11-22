@@ -80,19 +80,6 @@ async def authed_user(
         yield user
 
 
-async def modal_vip(
-    user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
-) -> bool:
-    email = (user.email or user.username).lower()
-    if email in settings.MODAL_VIP_LIST:
-        return True
-    else:
-        raise HTTPException(
-            status_code=403, detail="Modal endpoints are in limited preview"
-        )
-
-
 async def under_modal_usage_limit(
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
@@ -127,3 +114,45 @@ def get_auth_client(
     return globus_sdk.ConfidentialAppAuthClient(
         settings.API_CLIENT_ID, settings.API_CLIENT_SECRET
     )
+
+
+def in_modal_publishers_group(
+    auth: AuthenticationState = Depends(authenticated),
+    auth_client: globus_sdk.ConfidentialAppAuthClient = Depends(get_auth_client),
+    settings: Settings = Depends(get_settings),
+) -> bool:
+    try:
+        dependent_tokens = auth_client.oauth2_get_dependent_tokens(auth.token)
+        access_token = dependent_tokens.by_resource_server["groups.api.globus.org"][
+            "access_token"
+        ]
+    except Exception as e:
+        log.info("Could not recover dependent access token for groups.api.globus.org.")
+        log.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not determine group membership. Did you consent to share groups.api.globus.org when you logged in?",
+        )
+
+    # Create a Globus Group Client using the access token sent by the user
+    authorizer = globus_sdk.AccessTokenAuthorizer(access_token)
+    groups_client = globus_sdk.GroupsClient(authorizer=authorizer)
+
+    # Collect the list of Globus Groups that the user is a member of
+    try:
+        user_groups = [group["id"] for group in groups_client.get_my_groups()]
+    except Exception as e:
+        log.info("Could not recover group memberships.")
+        log.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not determine group memberships.",
+        )
+
+    group_id = settings.MODAL_PUBLISHERS_GROUP_ID
+    if group_id not in user_groups:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of the required group to publish Modal functions.",
+        )
+    return True
