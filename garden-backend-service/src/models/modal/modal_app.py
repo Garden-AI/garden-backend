@@ -4,6 +4,7 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
+from src.modal.status import AsyncModalJobStatus
 from src.models.base import Base
 
 if TYPE_CHECKING:
@@ -21,6 +22,10 @@ class ModalApp(Base):
     app_name: Mapped[str]
     base_image_name: Mapped[str]
     requirements: Mapped[list[str]] = mapped_column(ARRAY(String))
+    deploy_status: Mapped[AsyncModalJobStatus] = mapped_column(
+        default=AsyncModalJobStatus.PENDING
+    )
+    deploy_error: Mapped[str] = mapped_column(nullable=True, default=None)
 
     # The whole Python file the user submitted with the Modal App definition
     file_contents: Mapped[str]

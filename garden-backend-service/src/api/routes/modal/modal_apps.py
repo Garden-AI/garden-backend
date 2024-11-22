@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -9,11 +9,13 @@ from src.api.dependencies.sandboxed_functions import (
     ValidateModalFileProvider,
 )
 from src.api.schemas.modal.modal_app import (
+    AsyncModalAppMetadataResponse,
     ModalAppCreateRequest,
     ModalAppMetadataResponse,
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
+from src.modal.utils import monitor_modal_deployment
 from src.models import ModalApp, User
 
 logger = get_logger(__name__)
@@ -65,7 +67,6 @@ async def add_modal_app(
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
 
-    # TODO: set a timeout for this and/or make it async
     deploy_modal_app(
         {
             "app_name": prefixed_app_name,
@@ -90,10 +91,74 @@ async def add_modal_app(
     return modal_app_db_model
 
 
+@router.post("/async", response_model=AsyncModalAppMetadataResponse)
+async def add_modal_app_async(
+    modal_app: ModalAppCreateRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+    validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
+    deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
+    modal_vip: bool = Depends(modal_vip),
+):
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
+
+    # First, validate the request.
+    # This will include checking the function metadata provided against the functions present in the App.
+    metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+
+    if metadata["app_name"] != modal_app.app_name:
+        raise ModalException(
+            detail="App name in the modal file does not match the provided app name",
+            suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
+        )
+
+    if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
+        raise ModalException(
+            detail="Function names in the modal file do not match the provided function names",
+            suggested_fix="Make sure function names in the Modal file match the provided function names.",
+        )
+
+    # If everything looks good, we will go on to deploy the App.
+    prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
+
+    model_dict = modal_app.model_dump(
+        exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
+    )
+    model_dict["user_id"] = user.id
+    model_dict["app_name"] = prefixed_app_name
+    for modal_fn in model_dict["modal_functions"]:
+        modal_fn["hardware_spec"] = metadata["functions"][modal_fn["function_name"]]
+    modal_app_db_model = ModalApp.from_dict(model_dict)
+
+    db.add(modal_app_db_model)
+    await db.commit()
+
+    deploy_config = {
+        "app_name": prefixed_app_name,
+        "env": settings.MODAL_ENV,
+        "file_contents": modal_app.file_contents,
+        "token_id": settings.MODAL_TOKEN_ID,
+        "token_secret": settings.MODAL_TOKEN_SECRET,
+    }
+
+    background_tasks.add_task(
+        monitor_modal_deployment,
+        deploy_modal_app,
+        deploy_config,
+        modal_app_db_model,
+        settings,
+    )
+
+    return modal_app_db_model
+
+
 @router.get(
     "/{id}",
     status_code=status.HTTP_200_OK,
-    response_model=ModalAppMetadataResponse,
+    response_model=AsyncModalAppMetadataResponse,
 )
 async def get_modal_app(
     id: int,

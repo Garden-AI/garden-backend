@@ -21,8 +21,9 @@ from src.api.schemas.modal.invocations import (
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
+from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_invocation
-from src.models.modal.invocations import InvocationStatus, ModalInvocation
+from src.models.modal.invocations import ModalInvocation
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
 
@@ -158,7 +159,7 @@ async def invoke_modal_fn_async(
         user_id=user.id,
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
-        status=InvocationStatus.PENDING,
+        status=AsyncModalJobStatus.PENDING,
     )
     db.add(db_invocation)
     await db.commit()
@@ -171,7 +172,7 @@ async def invoke_modal_fn_async(
     # Return the invocation ID immediately
     return AsyncModalInvocationResponse(
         id=db_invocation.id,
-        status=InvocationStatus.PENDING.value,
+        status=AsyncModalJobStatus.PENDING.value,
     )
 
 
@@ -190,7 +191,7 @@ async def get_modal_invocation_output(
         "id": id,
         "status": inv.status,
     }
-    if inv.status == InvocationStatus.DONE and inv.output:
+    if inv.status == AsyncModalJobStatus.DONE and inv.output:
         parsed_output = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
         response_data["result"] = _ModalGenericResult(
             status=parsed_output.result.status,
@@ -198,7 +199,7 @@ async def get_modal_invocation_output(
             exception=inv.error,
         )
 
-    elif inv.status in {InvocationStatus.ERROR, InvocationStatus.TIMED_OUT}:
+    elif inv.status in {AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT}:
         response_data["error"] = inv.error
 
     return response_data

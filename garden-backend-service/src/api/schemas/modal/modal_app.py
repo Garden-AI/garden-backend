@@ -2,6 +2,8 @@ from uuid import UUID
 
 from pydantic import AliasPath, Field, computed_field
 
+from src.modal.utils import AsyncModalJobStatus
+
 from ..base import BaseSchema
 from .modal_function import ModalFunctionMetadata, ModalFunctionMetadataResponse
 
@@ -29,3 +31,8 @@ class ModalAppMetadataResponse(ModalAppMetadata):
     @property
     def modal_function_ids(self) -> list[str]:
         return [mf.id for mf in self.modal_functions]
+
+
+class AsyncModalAppMetadataResponse(ModalAppMetadataResponse):
+    deploy_status: AsyncModalJobStatus | None = None
+    deploy_error: str | None = None

@@ -1,4 +1,4 @@
-from src.models.modal.invocations import InvocationStatus
+from src.modal.status import AsyncModalJobStatus
 
 from ..base import B64Bytes, BaseSchema
 
@@ -32,6 +32,6 @@ class AsyncModalInvocationResponse(BaseSchema):
 
 class ModalInvocationOutputsResponse(BaseSchema):
     id: int
-    status: InvocationStatus
+    status: AsyncModalJobStatus
     result: _ModalGenericResult | None = None
     error: str | None = None

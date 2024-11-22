@@ -1,19 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import datetime
-import enum
 
 from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.modal.status import AsyncModalJobStatus
 from src.models.base import Base
-
-
-class InvocationStatus(enum.Enum):
-    PENDING = "pending"
-    ERROR = "error"
-    DONE = "done"
-    TIMED_OUT = "timed_out"
 
 
 class ModalInvocation(Base):
@@ -27,6 +20,8 @@ class ModalInvocation(Base):
     )
     date_resolved: Mapped[datetime.datetime] = mapped_column(nullable=True)
     estimated_usage: Mapped[float] = mapped_column(default=0.0)
-    status: Mapped[InvocationStatus] = mapped_column(default=InvocationStatus.PENDING)
+    status: Mapped[AsyncModalJobStatus] = mapped_column(
+        default=AsyncModalJobStatus.PENDING
+    )
     error: Mapped[str] = mapped_column(nullable=True)
     output: Mapped[bytes] = mapped_column(nullable=True)
