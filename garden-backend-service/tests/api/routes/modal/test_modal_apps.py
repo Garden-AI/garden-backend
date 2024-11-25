@@ -69,12 +69,12 @@ async def test_add_modal_app_with_class(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app_async(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,
     mock_auth_state,
     mock_modal_app_create_request_one_function,
+    mock_modal_publisher_auth_state,
     override_sandboxed_functions,
 ):
     response = await client.post(
@@ -98,12 +98,12 @@ async def test_add_modal_app_async(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_add_modal_app_async_resolves_on_success(
-    override_modal_vip,
     client,
     mock_db_session,
     override_authenticated_dependency,
     mock_auth_state,
     mock_modal_app_create_request_one_function,
+    mock_modal_publisher_auth_state,
     override_sandboxed_functions,
 ):
     response = await client.post(
