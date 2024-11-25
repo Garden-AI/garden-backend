@@ -100,7 +100,7 @@ async def add_modal_app_async(
     settings: Settings = Depends(get_settings),
     validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
-    modal_vip: bool = Depends(modal_vip),
+    in_modal_publishers_group: bool = Depends(in_modal_publishers_group),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")

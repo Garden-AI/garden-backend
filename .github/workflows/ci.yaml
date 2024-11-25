@@ -3,6 +3,10 @@ on:
   pull_request:
     branches:
       - "*"
+  push:
+    branches:
+      - "dev"
+      - "main"
   workflow_dispatch:
 permissions:
   id-token: write # This is required for requesting the JWT
