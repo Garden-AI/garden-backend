@@ -16,7 +16,7 @@ from src.api.schemas.modal.modal_app import (
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, User
+from src.models import ModalApp, ModalFunction, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -66,6 +66,35 @@ async def add_modal_app(
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
+    model_dict = modal_app.model_dump(
+        exclude={
+            "modal_function_names",
+            "owner_identity_id",
+            "id",
+            "overwrite_existing",
+        },
+        exclude_unset=True,
+    )
+
+    if existing_modal_app := await ModalApp.get(
+        db, app_name=prefixed_app_name, user_id=user.id
+    ):
+        if modal_app.overwrite_existing:
+            for modal_fn in model_dict["modal_functions"]:
+                modal_fn["hardware_spec"] = metadata["functions"][
+                    modal_fn["function_name"]
+                ]
+            existing_modal_app.modal_functions = [
+                ModalFunction.from_dict(modal_fn)
+                for modal_fn in model_dict["modal_functions"]
+            ]
+            await db.commit()
+            return existing_modal_app
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
+            )
 
     deploy_modal_app(
         {
@@ -77,9 +106,6 @@ async def add_modal_app(
         }
     )
 
-    model_dict = modal_app.model_dump(
-        exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
-    )
     model_dict["user_id"] = user.id
     model_dict["app_name"] = prefixed_app_name
     for modal_fn in model_dict["modal_functions"]:
@@ -123,10 +149,37 @@ async def add_modal_app_async(
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
-
     model_dict = modal_app.model_dump(
-        exclude={"modal_function_names", "owner_identity_id", "id"}, exclude_unset=True
+        exclude={
+            "modal_function_names",
+            "owner_identity_id",
+            "id",
+            "overwrite_existing",
+        },
+        exclude_unset=True,
     )
+
+    if existing_modal_app := await ModalApp.get(
+        db, app_name=prefixed_app_name, user_id=user.id
+    ):
+        if modal_app.overwrite_existing:
+            for modal_fn in model_dict["modal_functions"]:
+                modal_fn["hardware_spec"] = metadata["functions"][
+                    modal_fn["function_name"]
+                ]
+            existing_modal_app.modal_functions = [
+                ModalFunction.from_dict(modal_fn)
+                for modal_fn in model_dict["modal_functions"]
+            ]
+            await db.commit()
+            return existing_modal_app
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
+            )
+
+    # Deploy the new modal app
     model_dict["user_id"] = user.id
     model_dict["app_name"] = prefixed_app_name
     for modal_fn in model_dict["modal_functions"]:
