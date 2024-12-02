@@ -22,6 +22,7 @@ class ModalApp(Base):
     app_name: Mapped[str]
     base_image_name: Mapped[str]
     requirements: Mapped[list[str]] = mapped_column(ARRAY(String))
+    conda_requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     deploy_status: Mapped[AsyncModalJobStatus] = mapped_column(
         default=AsyncModalJobStatus.PENDING
     )

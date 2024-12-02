@@ -93,8 +93,6 @@ def validate_modal_file(args: ValidateModalFileArgs):
     )
     return {"app_name": app_name, "functions": functions}
 
-    # TODO: confirm nothing dastardly on the app/functions
-
 
 def deploy_modal_app(args: DeployModalAppArgs):
     import os

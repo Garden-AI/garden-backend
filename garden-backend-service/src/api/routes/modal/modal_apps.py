@@ -15,6 +15,7 @@ from src.api.schemas.modal.modal_app import (
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
+from src.modal import parse_modal_file
 from src.modal.utils import monitor_modal_deployment
 from src.models import ModalApp, ModalFunction, User
 
@@ -38,33 +39,17 @@ async def add_modal_app(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    # First, validate the request.
-    # This will include checking the function metadata provided against the functions present in the App.
-    metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    # Parse and validate the modal file content -
+    # i.e. the metadata in the request body is faithful to its file_contents
+    _validate_modal_app_metadata(modal_app)
+    logger.info("Validated modal file metadata consistency")
 
-    if metadata["app_name"] != modal_app.app_name:
-        raise ModalException(
-            detail="App name in the modal file does not match the provided app name",
-            suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
-        )
+    # we also need to persist hardware_specs for each function in order to
+    # estimate usage. So we extract them by importing the app object in a sandboxed environment
+    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    hardware_specs: dict[str, dict] = sandbox_metadata["functions"]
 
-    detected_function_names = set(metadata["functions"].keys())
-    provided_function_names = set(modal_app.modal_function_names)
-
-    if len(provided_function_names) == 0:
-        raise ModalException(
-            detail="No function names provided",
-            suggested_fix="Provide function names in the Modal App creation request",
-        )
-
-    if not provided_function_names.issubset(detected_function_names):
-        diff = provided_function_names - detected_function_names
-        raise ModalException(
-            detail=f"Provided function names {diff} are not present in the Modal file",
-            suggested_fix="Make sure function names in the Modal App creation request match the function names in the Modal file",
-        )
-
-    # If everything looks good, we will go on to deploy the App.
+    # Finally, we deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
     model_dict = modal_app.model_dump(
         exclude={
@@ -81,9 +66,7 @@ async def add_modal_app(
     ):
         if modal_app.overwrite_existing:
             for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = metadata["functions"][
-                    modal_fn["function_name"]
-                ]
+                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
             existing_modal_app.modal_functions = [
                 ModalFunction.from_dict(modal_fn)
                 for modal_fn in model_dict["modal_functions"]
@@ -109,7 +92,9 @@ async def add_modal_app(
     model_dict["user_id"] = user.id
     model_dict["app_name"] = prefixed_app_name
     for modal_fn in model_dict["modal_functions"]:
-        modal_fn["hardware_spec"] = metadata["functions"][modal_fn["function_name"]]
+        name = modal_fn["function_name"]
+        modal_fn["hardware_spec"] = hardware_specs[name]
+
     modal_app_db_model = ModalApp.from_dict(model_dict)
 
     db.add(modal_app_db_model)
@@ -131,21 +116,13 @@ async def add_modal_app_async(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    # First, validate the request.
-    # This will include checking the function metadata provided against the functions present in the App.
-    metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    _validate_modal_app_metadata(modal_app)
+    logger.info("Validated modal file metadata consistency")
 
-    if metadata["app_name"] != modal_app.app_name:
-        raise ModalException(
-            detail="App name in the modal file does not match the provided app name",
-            suggested_fix="Make sure Modal App name in the Modal file (e.g. `modal.App('my-app-name')`) matches provided App Name",
-        )
-
-    if set(metadata["functions"].keys()) != set(modal_app.modal_function_names):
-        raise ModalException(
-            detail="Function names in the modal file do not match the provided function names",
-            suggested_fix="Make sure function names in the Modal file match the provided function names.",
-        )
+    # we also need to persist hardware_specs for each function in order to
+    # estimate usage. So we extract them by importing the app object in a sandboxed environment
+    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    hardware_specs: dict[str, dict] = sandbox_metadata["functions"]
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
@@ -164,9 +141,7 @@ async def add_modal_app_async(
     ):
         if modal_app.overwrite_existing:
             for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = metadata["functions"][
-                    modal_fn["function_name"]
-                ]
+                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
             existing_modal_app.modal_functions = [
                 ModalFunction.from_dict(modal_fn)
                 for modal_fn in model_dict["modal_functions"]
@@ -183,7 +158,7 @@ async def add_modal_app_async(
     model_dict["user_id"] = user.id
     model_dict["app_name"] = prefixed_app_name
     for modal_fn in model_dict["modal_functions"]:
-        modal_fn["hardware_spec"] = metadata["functions"][modal_fn["function_name"]]
+        modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
     modal_app_db_model = ModalApp.from_dict(model_dict)
 
     db.add(modal_app_db_model)
@@ -206,6 +181,57 @@ async def add_modal_app_async(
     )
 
     return modal_app_db_model
+
+
+def _validate_modal_app_metadata(app_metadata: ModalAppCreateRequest):
+    """Validate that the metadata in the request matches what we parse from the modal file.
+
+    Args:
+        app_metadata: The app metadata from the request body
+
+    Raises:
+        ModalException: If there are inconsistencies between the metadata and parsed file
+    """
+    parse_results = parse_modal_file(app_metadata.file_contents)
+
+    if len(parse_results.apps) != 1:
+        raise ModalException(
+            detail=f"Invalid modal file: Found {len(parse_results.apps)} App objects. Expected exactly one.",
+            suggested_fix="Submit a file with a single modal App object.",
+        )
+
+    app_info = parse_results.apps[0]
+
+    # Validate app name matches
+    if app_info.app_name != app_metadata.app_name:
+        raise ModalException(
+            detail=f"App name mismatch: Got '{app_info.app_name}' from file but '{app_metadata.app_name}' in request.",
+            suggested_fix="Ensure the App name in your modal file matches the metadata.",
+        )
+
+    # Validate base image name
+    if app_info.image.base_image != app_metadata.base_image_name:
+        raise ModalException(
+            detail=f"Base image mismatch: Got '{app_info.image.base_image}' from file but '{app_metadata.base_image_name}' in request.",
+            suggested_fix="Ensure the base image in your modal file matches the metadata.",
+        )
+
+    # confirm function names match
+    request_function_names = {fn.function_name for fn in app_metadata.modal_functions}
+    file_function_names = {fn.function_name for fn in parse_results.functions}
+
+    if not request_function_names:
+        raise ModalException(
+            detail="No function names provided",
+            suggested_fix="Must provide names of functions to expose in request to create Modal App",
+        )
+    if not request_function_names <= file_function_names:
+        diff = request_function_names - file_function_names
+        raise ModalException(
+            detail=f"Function names ({', '.join(diff)}) are not present in the Modal file",
+            suggested_fix="Make sure function names in the Modal App creation request match the function names in the Modal file",
+        )
+    return
 
 
 @router.get(

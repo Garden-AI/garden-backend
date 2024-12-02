@@ -39,7 +39,7 @@ def estimate_usage(
     cpus = spec.get("cpu") or DEFAULT_CPUS
     cpu_usage = cpus * MODAL_PRICES.get("cpu", 0) * exec_time_seconds
 
-    # gpus are either a list, a sinlge gpu, or None
+    # gpus are either a list, a single gpu, or None
     gpu_spec = spec.get("gpus") or []
     if isinstance(gpu_spec, list):
         # assume the most expensive gpu in the list

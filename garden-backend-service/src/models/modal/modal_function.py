@@ -44,6 +44,9 @@ class ModalFunction(Base):
     papers: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     datasets: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
 
+    requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
+    conda_requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
+
     modal_app_id: Mapped[int] = mapped_column(ForeignKey("modal_apps.id"))
     modal_app: Mapped[ModalApp] = relationship(
         ModalApp, back_populates="modal_functions", lazy="selectin"

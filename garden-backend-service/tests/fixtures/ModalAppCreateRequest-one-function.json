@@ -1,23 +1,28 @@
 {
   "app_name": "test-app",
-  "modal_function_names": ["predict_iris_type"],
-  "version": "0.0.1",
-  "requirements": ["sklearn==0.24.2"],
-  "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
-  "base_image_name": "python:3.11-slim",
   "modal_functions": [
     {
+      "is_archived": false,
+      "function_text": "@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
+      "description": "tells you what flower you are looking at",
+      "title": "Iris Predictor",
       "year": "2024",
       "authors": ["John Doe"],
       "tags": [],
       "test_functions": [],
-      "description": "tells you what flower you are looking at",
-      "title": "Iris Predictor",
-      "is_archived": false,
+      "requirements": [],
+      "models": [],
+      "repositories": [],
+      "papers": [],
+      "datasets": [],
       "function_name": "predict_iris_type",
-      "function_text": "def predict_iris_type():\n    return 'Iris-setosa'",
-      "doi": null
+      "doi": null,
+      "conda_requirements": []
     }
   ],
-  "is_archived": false
+  "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
+  "requirements": [],
+  "conda_requirements": [],
+  "base_image_name": "python:3.12.6-slim-bookworm",
+  "modal_function_names": ["predict_iris_type"]
 }
