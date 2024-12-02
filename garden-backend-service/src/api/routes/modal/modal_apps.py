@@ -66,9 +66,7 @@ async def add_modal_app(
     ):
         if modal_app.overwrite_existing:
             for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = metadata["functions"][
-                    modal_fn["function_name"]
-                ]
+                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
             existing_modal_app.modal_functions = [
                 ModalFunction.from_dict(modal_fn)
                 for modal_fn in model_dict["modal_functions"]

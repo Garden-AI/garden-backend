@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, status
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user, modal_vip
+from src.api.dependencies.auth import authed_user, in_modal_publishers_group
 from src.api.schemas.modal.modal_app import (
     ModalFileMetadataRequest,
     ModalFileMetadataResponse,
@@ -23,7 +23,7 @@ async def parse_modal_file_metadata(
     request: ModalFileMetadataRequest,
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
-    _modal_vip: bool = Depends(modal_vip),
+    _modal_vip: bool = Depends(in_modal_publishers_group),
 ):
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")

@@ -17,7 +17,7 @@ from tests.fixtures.modal_file_constants import (
 
 @pytest.fixture()
 def _metadata_validation_fixtures(
-    override_modal_vip,
+    mock_modal_publisher_auth_state,
     mock_db_session,
     override_authenticated_dependency,
     mock_auth_state,
