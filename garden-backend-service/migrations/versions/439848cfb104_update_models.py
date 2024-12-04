@@ -24,6 +24,13 @@ def upgrade() -> None:
     op.execute(
         "UPDATE modal_apps SET deploy_status = 'DONE' WHERE deploy_status IS NULL"
     )
+    op.execute(
+        "UPDATE modal_functions SET hardware_spec = '{}' WHERE hardware_spec IS NULL"
+    )
+    op.execute(
+        "UPDATE modal_invocations SET function_call_id = 'legacy' WHERE function_call_id IS NULL"
+    )
+    op.execute("UPDATE modal_invocations SET status = 'DONE' WHERE status IS NULL")
 
     op.add_column(
         "modal_apps",
