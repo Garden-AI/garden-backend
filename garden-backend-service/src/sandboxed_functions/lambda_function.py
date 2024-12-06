@@ -1,4 +1,3 @@
-import dataclasses
 from typing import Any, TypedDict
 
 import modal
@@ -64,18 +63,19 @@ def get_function_specs(
     This behavior alerts us if/when Modal changes their `_FunctionSpec` schema
     """
     return {
-        name: extract_from_dict(dataclasses.asdict(func.spec), specs)
-        for name, func in functions.items()
+        name: extract_from_spec(func.spec, specs) for name, func in functions.items()
     }
 
 
-def extract_from_dict(d: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+def extract_from_spec(
+    spec: modal.functions._FunctionSpec, keys: list[str]
+) -> dict[str, Any]:
     """Return a new dict with only the keys matching the given list.
 
-    Raises `ModalException` when a given key is not present in `d`
+    Raises `ModalException` when a given key is not present in `spec`
     """
     try:
-        return {key: d[key] for key in keys}
+        return {key: getattr(spec, key) for key in keys}
     except Exception:
         raise ModalException(
             detail="Failed to parse function hardware spec.",
