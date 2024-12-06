@@ -72,7 +72,7 @@ def extract_from_spec(
 ) -> dict[str, Any]:
     """Return a new dict with only the keys matching the given list.
 
-    Raises `ModalException` when a given key is not present in `d`
+    Raises `ModalException` when a given key is not present in `spec`
     """
     try:
         return {key: getattr(spec, key) for key in keys}
