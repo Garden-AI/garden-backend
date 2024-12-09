@@ -176,3 +176,4 @@ response.json
 .idea/
 *.zip
 /garden-backend-service/repopack-output.txt
+/garden-backend-service/.basedpyright

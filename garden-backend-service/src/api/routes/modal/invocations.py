@@ -14,10 +14,14 @@ from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
 from src.api.schemas.modal.invocations import (
     AsyncModalInvocationResponse,
+    ModalBlobUploadURLRequest,
+    ModalBlobUploadURLResponse,
     ModalInvocationOutputsResponse,
     ModalInvocationRequest,
     ModalInvocationResponse,
     _ModalGenericResult,
+    _MultiPartUpload,
+    _UploadType,
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
@@ -30,6 +34,50 @@ from src.models.user import User
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/modal-invocations")
+
+
+@router.post(
+    "/blob-uploads",
+)
+async def make_blob_upload_url(
+    body: ModalBlobUploadURLRequest,
+    modal_client: modal.Client = Depends(get_modal_client),
+    settings: Settings = Depends(get_settings),
+    _under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
+):
+    """Get pre-signed URLs for uploading blobs to Modal's blob storage.
+
+    This proxies the Modal BlobCreate RPC to get upload URLs that the Garden SDK
+    can use directly to upload large arguments to Modal's blob storage.
+    """
+    if not settings.MODAL_ENABLED:
+        raise NotImplementedError("Garden's Modal integration has not been enabled")
+
+    # Forward the request to Modal
+    request = api_pb2.BlobCreateRequest(
+        content_md5=body.content_md5,
+        content_sha256_base64=body.content_sha256_base64,
+        content_length=body.content_length,
+    )
+
+    response = await retry_transient_errors(modal_client.stub.BlobCreate, request)
+
+    if response.WhichOneof("upload_type_oneof") == "multipart":
+        return ModalBlobUploadURLResponse(
+            blob_id=response.blob_id,
+            upload_type=_UploadType.MULTIPART,
+            multipart=_MultiPartUpload(
+                part_length=response.multipart.part_length,
+                upload_urls=list(response.multipart.upload_urls),
+                completion_url=response.multipart.completion_url,
+            ),
+        )
+    else:
+        return ModalBlobUploadURLResponse(
+            blob_id=response.blob_id,
+            upload_type=_UploadType.SINGLE,
+            upload_url=response.upload_url,
+        )
 
 
 @router.post("", response_model=ModalInvocationResponse)
@@ -147,12 +195,22 @@ async def invoke_modal_fn_async(
     method_name = ""
     if "." in modal_fn.function_name:
         _, method_name = modal_fn.function_name.split(".")
-    invocation = await _create_invocation(
-        function,
-        body.args_kwargs_serialized,
-        modal_client,
-        method_name=method_name,
-    )
+
+    if body.args_blob_id is not None:
+        invocation = await _create_invocation(
+            function,
+            modal_client,
+            method_name=method_name,
+            args_blob_id=body.args_blob_id,
+        )
+    else:
+        assert body.args_kwargs_serialized
+        invocation = await _create_invocation(
+            function,
+            modal_client,
+            method_name=method_name,
+            args_kwargs_serialized=body.args_kwargs_serialized,
+        )
 
     # Log the invocation in the database
     db_invocation = ModalInvocation(
@@ -179,6 +237,7 @@ async def invoke_modal_fn_async(
 @router.get("/{id}", response_model=ModalInvocationOutputsResponse)
 async def get_modal_invocation_output(
     id: int,
+    modal_client: modal.Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
     inv = await ModalInvocation.get(db, id=id)
@@ -193,11 +252,19 @@ async def get_modal_invocation_output(
     }
     if inv.status == AsyncModalJobStatus.DONE and inv.output:
         parsed_output = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
-        response_data["result"] = _ModalGenericResult(
-            status=parsed_output.result.status,
-            data=parsed_output.result.data,
-            exception=inv.error,
-        )
+        modal_result_data = {
+            "status": parsed_output.result.status,
+            "exception": parsed_output.result.exception,
+        }
+        # handle either inline data or blob references
+        if parsed_output.result.HasField("data"):
+            modal_result_data["data"] = parsed_output.result.data
+        elif parsed_output.result.HasField("data_blob_id"):
+            modal_result_data["data_blob_url"] = await _get_blob_download_url(
+                modal_client, parsed_output.result.data_blob_id
+            )
+
+        response_data["result"] = _ModalGenericResult(**modal_result_data)
 
     elif inv.status in {AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT}:
         response_data["error"] = inv.error
@@ -205,23 +272,41 @@ async def get_modal_invocation_output(
     return response_data
 
 
+async def _get_blob_download_url(client: modal.Client, blob_id: str) -> str:
+    response: api_pb2.BlobGetResponse = await retry_transient_errors(
+        client.stub.BlobGet, api_pb2.BlobGetRequest(blob_id=blob_id)
+    )
+    return response.download_url
+
+
 async def _create_invocation(
     function: modal.Function,
-    args_kwargs_serialized: bytes,
     client: modal.Client,
     invocation_type=api_pb2.FUNCTION_CALL_INVOCATION_TYPE_SYNC_LEGACY,
+    args_kwargs_serialized: bytes = b"",
+    args_blob_id: str | None = None,
     method_name="",
 ) -> modal.functions._Invocation:
     function_id = function._invocation_function_id()
-    # build the input payload with pre-serialized args
-    inputs_item = api_pb2.FunctionPutInputsItem(
-        input=api_pb2.FunctionInput(
-            args=args_kwargs_serialized,
-            data_format=api_pb2.DATA_FORMAT_PICKLE,
-            method_name=method_name,
-        ),
-        idx=0,
-    )
+    # build the input payload with pre-serialized args (or blob ID)
+    if args_blob_id is not None:
+        inputs_item = api_pb2.FunctionPutInputsItem(
+            input=api_pb2.FunctionInput(
+                args_blob_id=args_blob_id,
+                data_format=api_pb2.DATA_FORMAT_PICKLE,
+                method_name=method_name,
+            ),
+            idx=0,
+        )
+    else:
+        inputs_item = api_pb2.FunctionPutInputsItem(
+            input=api_pb2.FunctionInput(
+                args=args_kwargs_serialized,
+                data_format=api_pb2.DATA_FORMAT_PICKLE,
+                method_name=method_name,
+            ),
+            idx=0,
+        )
 
     map_request = api_pb2.FunctionMapRequest(
         function_id=function_id,
