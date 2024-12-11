@@ -24,6 +24,7 @@ class Garden(Base):
     title: Mapped[str]
     doi: Mapped[str] = mapped_column(unique=True)
     doi_is_draft: Mapped[bool] = mapped_column(default=True)
+    is_test: Mapped[bool] = mapped_column(default=False)
     authors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     contributors: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))
     tags: Mapped[list[str]] = mapped_column(postgresql.ARRAY(String))

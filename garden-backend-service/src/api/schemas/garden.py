@@ -14,6 +14,7 @@ class GardenMetadata(BaseSchema):
     contributors: UniqueList[str] = Field(default_factory=list)
     doi: str
     doi_is_draft: bool | None = None
+    is_test: bool = False
     description: str | None
     publisher: str = "Garden-AI"
     year: str = Field(default_factory=lambda: str(datetime.now().year))
@@ -60,6 +61,7 @@ class GardenPatchRequest(BaseSchema):
     version: str | None = None
     entrypoint_aliases: dict[str, str] = None
     is_archived: bool | None = None
+    is_test: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
 
 
