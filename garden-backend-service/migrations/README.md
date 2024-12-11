@@ -6,7 +6,7 @@ You should invoke the `alembic` cli from within a local docker container started
 
 ``` sh
 docker compose up
-docker compose exec dev-api bash
+docker compose exec api bash
 
 root@17126a5147f9:/app# alembic do-something
 ```
