@@ -12,5 +12,6 @@
   "entrypoint_aliases": {},
   "entrypoint_ids": [],
   "is_archived": false,
-  "doi_is_draft": false
+  "doi_is_draft": false,
+  "is_test": false
 }
