@@ -13,12 +13,17 @@ class Base(AsyncAttrs, DeclarativeBase):
     __abstract__ = True
 
     @classmethod
-    async def get(cls: Type[T], db: AsyncSession, **kwargs: Any) -> Optional[T]:
+    async def get(
+        cls: Type[T], db: AsyncSession, order_by: str | None = None, **kwargs: Any
+    ) -> Optional[T]:
         q = select(cls)
         for field, value in kwargs.items():
             q = q.where(getattr(cls, field) == value)
 
-        return (await db.execute(q)).scalar_one_or_none()
+        if order_by is not None:
+            q = q.order_by(getattr(cls, order_by).desc())
+
+        return (await db.execute(q.limit(1))).scalar_one_or_none()
 
     @classmethod
     async def get_or_create(

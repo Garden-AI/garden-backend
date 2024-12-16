@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Sequence, String, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
@@ -36,6 +36,11 @@ class ModalApp(Base):
         back_populates="modal_app",
         lazy="selectin",
         cascade="delete, delete-orphan, save-update, merge",
+    )
+
+    version: Mapped[int] = mapped_column(
+        Sequence("version_sequence", start=1),
+        server_default=text("nextval('version_sequence')"),
     )
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

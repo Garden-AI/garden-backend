@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -17,7 +18,8 @@ from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, ModalFunction, User
+from src.models import Garden, ModalApp, ModalFunction, User
+from src.models._associations import gardens_modal_functions
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -137,21 +139,28 @@ async def add_modal_app_async(
     )
 
     if existing_modal_app := await ModalApp.get(
-        db, app_name=prefixed_app_name, user_id=user.id
+        db, app_name=prefixed_app_name, user_id=user.id, order_by="version"
     ):
         if modal_app.overwrite_existing:
-            for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
-            existing_modal_app.modal_functions = [
-                ModalFunction.from_dict(modal_fn)
-                for modal_fn in model_dict["modal_functions"]
-            ]
-            await db.commit()
-            return existing_modal_app
+            _raise_if_undeletable(existing_modal_app, user, logger)
+            logger.info(
+                "Overwriting existing modal app.", modal_app_name=prefixed_app_name
+            )
+            # find the associated garden and mark it as archived
+            gmfs = await db.scalars(
+                select(gardens_modal_functions.c.garden_id).where(
+                    gardens_modal_functions.c.modal_function_id
+                    == existing_modal_app.modal_functions[0].id
+                )
+            )
+            if garden_id := gmfs.first():
+                if garden := await Garden.get(db, id=garden_id):
+                    garden.is_archived = True
         else:
-            raise HTTPException(
+            raise ModalException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
+                detail="Unable to overwrite modal app.",
+                suggested_fix="Set 'overwrite_existing' to 'true' to enable overwriting.",
             )
 
     # Deploy the new modal app
@@ -248,7 +257,7 @@ async def get_modal_app(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    modal_app = await ModalApp.get(db, id=id)
+    modal_app = await ModalApp.get(db, id=id, order_by="version")
     if modal_app is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -278,6 +287,15 @@ async def delete_modal_app(
             detail=f"No Modal App found with id {id}.",
         )
 
+    _raise_if_undeletable(modal_app, user, log)
+
+    await db.delete(modal_app)
+    await db.commit()
+    log.info("Deleted Modal App from database")
+    return {"detail": f"Successfully deleted garden with id {id}."}
+
+
+def _raise_if_undeletable(modal_app, user, log):
     if modal_app.owner.identity_id != user.identity_id:
         log.info("Failed to delete Modal App (not owned by user)")
         raise HTTPException(
@@ -296,8 +314,3 @@ async def delete_modal_app(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete or replace Modal App {id}. It has published children with DOIs {published_child_dois}",
         )
-
-    await db.delete(modal_app)
-    await db.commit()
-    log.info("Deleted Modal App from database")
-    return {"detail": f"Successfully deleted garden with id {id}."}
