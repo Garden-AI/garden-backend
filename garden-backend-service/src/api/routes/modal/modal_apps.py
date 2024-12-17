@@ -20,7 +20,7 @@ from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, ModalFunction, User
+from src.models import ModalApp, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -54,6 +54,7 @@ async def add_modal_app(
 
     # Finally, we deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
+    full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
     model_dict = modal_app.model_dump(
         exclude={
             "modal_function_names",
@@ -64,27 +65,33 @@ async def add_modal_app(
         exclude_unset=True,
     )
 
-    if existing_modal_app := await ModalApp.get(
-        db, app_name=prefixed_app_name, user_id=user.id
-    ):
+    existing_modal_app = await db.scalar(
+        select(ModalApp)
+        .where(ModalApp.user_id == user.id)
+        .filter(ModalApp.app_name.ilike(f"{prefixed_app_name}%"))
+        .order_by(ModalApp.version.desc())
+    )
+
+    logger.info("Existing Modal App", existing_modal_app=existing_modal_app)
+
+    if existing_modal_app is not None:
         if modal_app.overwrite_existing:
-            for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
-            existing_modal_app.modal_functions = [
-                ModalFunction.from_dict(modal_fn)
-                for modal_fn in model_dict["modal_functions"]
-            ]
-            await db.commit()
-            return existing_modal_app
+            _raise_if_undeletable(existing_modal_app, user, logger)
+            logger.info(
+                "Overwriting existing modal app.",
+                modal_app_name=prefixed_app_name,
+            )
+            # If we want to do anything with the old garden/modal-app, here is the place
         else:
-            raise HTTPException(
+            raise ModalException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
+                detail="Unable to overwrite modal app.",
+                suggested_fix="Set 'overwrite_existing' to 'true' to enable overwriting.",
             )
 
     deploy_modal_app(
         {
-            "app_name": prefixed_app_name,
+            "app_name": full_app_name,
             "env": settings.MODAL_ENV,
             "file_contents": modal_app.file_contents,
             "token_id": settings.MODAL_TOKEN_ID,
@@ -93,7 +100,7 @@ async def add_modal_app(
     )
 
     model_dict["user_id"] = user.id
-    model_dict["app_name"] = prefixed_app_name
+    model_dict["app_name"] = full_app_name
     for modal_fn in model_dict["modal_functions"]:
         name = modal_fn["function_name"]
         modal_fn["hardware_spec"] = hardware_specs[name]
