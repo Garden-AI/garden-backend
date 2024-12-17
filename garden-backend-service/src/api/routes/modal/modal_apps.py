@@ -20,8 +20,7 @@ from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.utils import monitor_modal_deployment
-from src.models import Garden, ModalApp, ModalFunction, User
-from src.models._associations import gardens_modal_functions
+from src.models import ModalApp, ModalFunction, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -131,7 +130,7 @@ async def add_modal_app_async(
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
     # add a unique suffix so we can deploy to modal without clobbering the old app
-    full_app_name = f"{prefixed_app_name}-{uuid4()}"
+    full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
     model_dict = modal_app.model_dump(
         exclude={
             "modal_function_names",
@@ -155,19 +154,10 @@ async def add_modal_app_async(
         if modal_app.overwrite_existing:
             _raise_if_undeletable(existing_modal_app, user, logger)
             logger.info(
-                "Overwriting existing modal app.", modal_app_name=prefixed_app_name
+                "Overwriting existing modal app.",
+                modal_app_name=prefixed_app_name,
             )
-            # TODO Rethink this behavior
-            # find the associated garden and mark it as archived
-            gmfs = await db.scalars(
-                select(gardens_modal_functions.c.garden_id).where(
-                    gardens_modal_functions.c.modal_function_id
-                    == existing_modal_app.modal_functions[0].id
-                )
-            )
-            if garden_id := gmfs.first():
-                if garden := await Garden.get(db, id=garden_id):
-                    garden.is_archived = True
+            # If we want to do anything with the old garden/modal-app, here is the place
         else:
             raise ModalException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -186,7 +176,7 @@ async def add_modal_app_async(
     await db.commit()
 
     deploy_config = {
-        "app_name": prefixed_app_name,
+        "app_name": full_app_name,
         "env": settings.MODAL_ENV,
         "file_contents": modal_app.file_contents,
         "token_id": settings.MODAL_TOKEN_ID,
