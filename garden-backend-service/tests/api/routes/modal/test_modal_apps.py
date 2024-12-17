@@ -117,9 +117,8 @@ async def test_add_modal_app_async(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (

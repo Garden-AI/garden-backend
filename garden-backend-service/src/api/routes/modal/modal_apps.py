@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,6 +130,8 @@ async def add_modal_app_async(
 
     # If everything looks good, we will go on to deploy the App.
     prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
+    # add a unique suffix so we can deploy to modal without clobbering the old app
+    full_app_name = f"{prefixed_app_name}-{uuid4()}"
     model_dict = modal_app.model_dump(
         exclude={
             "modal_function_names",
@@ -138,14 +142,22 @@ async def add_modal_app_async(
         exclude_unset=True,
     )
 
-    if existing_modal_app := await ModalApp.get(
-        db, app_name=prefixed_app_name, user_id=user.id, order_by="version"
-    ):
+    existing_modal_app = await db.scalar(
+        select(ModalApp)
+        .where(ModalApp.user_id == user.id)
+        .filter(ModalApp.app_name.ilike(f"{prefixed_app_name}%"))
+        .order_by(ModalApp.version.desc())
+    )
+
+    logger.info("Existing Modal App", existing_modal_app=existing_modal_app)
+
+    if existing_modal_app is not None:
         if modal_app.overwrite_existing:
             _raise_if_undeletable(existing_modal_app, user, logger)
             logger.info(
                 "Overwriting existing modal app.", modal_app_name=prefixed_app_name
             )
+            # TODO Rethink this behavior
             # find the associated garden and mark it as archived
             gmfs = await db.scalars(
                 select(gardens_modal_functions.c.garden_id).where(
@@ -165,7 +177,7 @@ async def add_modal_app_async(
 
     # Deploy the new modal app
     model_dict["user_id"] = user.id
-    model_dict["app_name"] = prefixed_app_name
+    model_dict["app_name"] = full_app_name
     for modal_fn in model_dict["modal_functions"]:
         modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
     modal_app_db_model = ModalApp.from_dict(model_dict)
