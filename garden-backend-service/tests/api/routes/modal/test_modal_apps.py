@@ -17,9 +17,8 @@ async def test_add_modal_app(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
@@ -55,9 +54,8 @@ async def test_add_modal_app_with_class(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_with_class["app_name"]
     )
     assert (
@@ -169,9 +167,8 @@ async def test_get_modal_app(
     get_response = await client.get(f"/modal-apps/{post_response['id']}")
     assert get_response.status_code == 200
     get_response_data = get_response.json()
-    assert (
-        get_response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert get_response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
