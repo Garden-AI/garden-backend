@@ -26,9 +26,6 @@ class ModalAppMetadata(BaseSchema):
 
 class ModalAppCreateRequest(ModalAppMetadata):
     owner_identity_id: str | None = None
-    overwrite_existing: bool = Field(
-        default=True, description="Overwrite an existing Modal App with the same same."
-    )
 
 
 class ModalAppMetadataResponse(ModalAppMetadata):

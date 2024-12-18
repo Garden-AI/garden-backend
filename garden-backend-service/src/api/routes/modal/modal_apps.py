@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -43,11 +42,7 @@ async def add_modal_app(
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
     hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
-    prefixed_app_name, full_app_name = _generate_app_names(user, modal_app.app_name)
-
-    await _handle_existing_modal_app(
-        db, user, prefixed_app_name, modal_app.overwrite_existing, logger
-    )
+    full_app_name = _generate_app_name(user, modal_app.app_name)
 
     modal_app_db_model = await _save_modal_app_to_db(
         db, modal_app, user, full_app_name, hardware_specs
@@ -73,11 +68,7 @@ async def add_modal_app_async(
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
     hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
-    prefixed_app_name, full_app_name = _generate_app_names(user, modal_app.app_name)
-
-    await _handle_existing_modal_app(
-        db, user, prefixed_app_name, modal_app.overwrite_existing, logger
-    )
+    full_app_name = _generate_app_name(user, modal_app.app_name)
 
     modal_app_db_model = await _save_modal_app_to_db(
         db, modal_app, user, full_app_name, hardware_specs
@@ -235,40 +226,10 @@ def _validate_modal_app_metadata_helper(
     return hardware_specs
 
 
-def _generate_app_names(user: User, app_name: str) -> tuple[str, str]:
+def _generate_app_name(user: User, app_name: str) -> tuple[str, str]:
     prefixed_app_name = f"{user.identity_id}-{app_name}"
     full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
-    return prefixed_app_name, full_app_name
-
-
-async def _handle_existing_modal_app(
-    db: AsyncSession,
-    user: User,
-    prefixed_app_name: str,
-    overwrite_existing: bool,
-    logger,
-):
-    existing_modal_app = await db.scalar(
-        select(ModalApp)
-        .where(ModalApp.user_id == user.id)
-        .filter(ModalApp.app_name.ilike(f"{prefixed_app_name}%"))
-        .order_by(ModalApp.version.desc())
-    )
-
-    logger.info("Existing Modal App", existing_modal_app=existing_modal_app)
-
-    if existing_modal_app is not None:
-        if overwrite_existing:
-            _raise_if_undeletable(existing_modal_app, user, logger)
-            logger.info(
-                "Overwriting existing modal app.", modal_app_name=prefixed_app_name
-            )
-        else:
-            raise ModalException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Unable to overwrite modal app.",
-                suggested_fix="Set 'overwrite_existing' to 'true' to enable overwriting.",
-            )
+    return full_app_name
 
 
 async def _save_modal_app_to_db(
@@ -283,7 +244,6 @@ async def _save_modal_app_to_db(
             "modal_function_names",
             "owner_identity_id",
             "id",
-            "overwrite_existing",
         },
         exclude_unset=True,
     )
