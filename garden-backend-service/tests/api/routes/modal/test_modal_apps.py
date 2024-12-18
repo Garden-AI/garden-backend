@@ -17,9 +17,8 @@ async def test_add_modal_app(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
@@ -55,50 +54,14 @@ async def test_add_modal_app_with_class(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_with_class["app_name"]
     )
     assert (
         response_data["modal_functions"][0]["title"]
         == mock_modal_app_create_request_with_class["modal_functions"][0]["title"]
     )
-
-
-@pytest.mark.parametrize("post_url", ["/modal-apps", "/modal-apps/async"])
-@pytest.mark.asyncio
-@pytest.mark.integration
-async def test_add_modal_app_overwrite_behavior(
-    client,
-    mock_db_session,
-    mock_modal_publisher_auth_state,
-    mock_modal_app_create_request_one_function,
-    override_sandboxed_functions,
-    post_url,
-):
-    # Post a modal app
-    response = await client.post(
-        post_url,
-        json=mock_modal_app_create_request_one_function,
-    )
-    assert response.status_code == 200
-
-    # Default behavior is to overwrite, a second post should succeed
-    response = await client.post(
-        post_url,
-        json=mock_modal_app_create_request_one_function,
-    )
-    assert response.status_code == 200
-
-    # Forbid overwriting, another post should error
-    create_request_no_overwrite = mock_modal_app_create_request_one_function
-    create_request_no_overwrite["overwrite_existing"] = False
-    error_response = await client.post(
-        post_url,
-        json=create_request_no_overwrite,
-    )
-    assert error_response.status_code == 409
 
 
 @pytest.mark.asyncio
@@ -117,9 +80,8 @@ async def test_add_modal_app_async(
     )
     assert response.status_code == 200
     response_data = response.json()
-    assert (
-        response_data["app_name"]
-        == f"{mock_auth_state.identity_id}-"
+    assert response_data["app_name"].startswith(
+        f"{mock_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (
@@ -170,9 +132,8 @@ async def test_get_modal_app(
     get_response = await client.get(f"/modal-apps/{post_response['id']}")
     assert get_response.status_code == 200
     get_response_data = get_response.json()
-    assert (
-        get_response_data["app_name"]
-        == f"{mock_modal_publisher_auth_state.identity_id}-"
+    assert get_response_data["app_name"].startswith(
+        f"{mock_modal_publisher_auth_state.identity_id}-"
         + mock_modal_app_create_request_one_function["app_name"]
     )
     assert (

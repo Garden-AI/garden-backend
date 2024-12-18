@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
@@ -17,7 +19,7 @@ from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, ModalFunction, User
+from src.models import ModalApp, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -39,66 +41,15 @@ async def add_modal_app(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    # Parse and validate the modal file content -
-    # i.e. the metadata in the request body is faithful to its file_contents
-    _validate_modal_app_metadata(modal_app)
-    logger.info("Validated modal file metadata consistency")
+    hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
+    full_app_name = _generate_app_name(user, modal_app.app_name)
 
-    # we also need to persist hardware_specs for each function in order to
-    # estimate usage. So we extract them by importing the app object in a sandboxed environment
-    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
-    hardware_specs: dict[str, dict] = sandbox_metadata["functions"]
-
-    # Finally, we deploy the App.
-    prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
-    model_dict = modal_app.model_dump(
-        exclude={
-            "modal_function_names",
-            "owner_identity_id",
-            "id",
-            "overwrite_existing",
-        },
-        exclude_unset=True,
+    modal_app_db_model = await _save_modal_app_to_db(
+        db, modal_app, user, full_app_name, hardware_specs
     )
 
-    if existing_modal_app := await ModalApp.get(
-        db, app_name=prefixed_app_name, user_id=user.id
-    ):
-        if modal_app.overwrite_existing:
-            for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
-            existing_modal_app.modal_functions = [
-                ModalFunction.from_dict(modal_fn)
-                for modal_fn in model_dict["modal_functions"]
-            ]
-            await db.commit()
-            return existing_modal_app
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
-            )
+    _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)
 
-    deploy_modal_app(
-        {
-            "app_name": prefixed_app_name,
-            "env": settings.MODAL_ENV,
-            "file_contents": modal_app.file_contents,
-            "token_id": settings.MODAL_TOKEN_ID,
-            "token_secret": settings.MODAL_TOKEN_SECRET,
-        }
-    )
-
-    model_dict["user_id"] = user.id
-    model_dict["app_name"] = prefixed_app_name
-    for modal_fn in model_dict["modal_functions"]:
-        name = modal_fn["function_name"]
-        modal_fn["hardware_spec"] = hardware_specs[name]
-
-    modal_app_db_model = ModalApp.from_dict(model_dict)
-
-    db.add(modal_app_db_model)
-    await db.commit()
     return modal_app_db_model
 
 
@@ -116,62 +67,20 @@ async def add_modal_app_async(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    _validate_modal_app_metadata(modal_app)
-    logger.info("Validated modal file metadata consistency")
+    hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
+    full_app_name = _generate_app_name(user, modal_app.app_name)
 
-    # we also need to persist hardware_specs for each function in order to
-    # estimate usage. So we extract them by importing the app object in a sandboxed environment
-    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
-    hardware_specs: dict[str, dict] = sandbox_metadata["functions"]
-
-    # If everything looks good, we will go on to deploy the App.
-    prefixed_app_name = f"{user.identity_id}-{modal_app.app_name}"
-    model_dict = modal_app.model_dump(
-        exclude={
-            "modal_function_names",
-            "owner_identity_id",
-            "id",
-            "overwrite_existing",
-        },
-        exclude_unset=True,
+    modal_app_db_model = await _save_modal_app_to_db(
+        db, modal_app, user, full_app_name, hardware_specs
     )
 
-    if existing_modal_app := await ModalApp.get(
-        db, app_name=prefixed_app_name, user_id=user.id
-    ):
-        if modal_app.overwrite_existing:
-            for modal_fn in model_dict["modal_functions"]:
-                modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
-            existing_modal_app.modal_functions = [
-                ModalFunction.from_dict(modal_fn)
-                for modal_fn in model_dict["modal_functions"]
-            ]
-            await db.commit()
-            return existing_modal_app
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Modal App with name: {modal_app.app_name} already exists. Set the 'overwrite_existing' parameter to 'true' to enable overwriting.",
-            )
-
-    # Deploy the new modal app
-    model_dict["user_id"] = user.id
-    model_dict["app_name"] = prefixed_app_name
-    for modal_fn in model_dict["modal_functions"]:
-        modal_fn["hardware_spec"] = hardware_specs[modal_fn["function_name"]]
-    modal_app_db_model = ModalApp.from_dict(model_dict)
-
-    db.add(modal_app_db_model)
-    await db.commit()
-
     deploy_config = {
-        "app_name": prefixed_app_name,
+        "app_name": full_app_name,
         "env": settings.MODAL_ENV,
         "file_contents": modal_app.file_contents,
         "token_id": settings.MODAL_TOKEN_ID,
         "token_secret": settings.MODAL_TOKEN_SECRET,
     }
-
     background_tasks.add_task(
         monitor_modal_deployment,
         deploy_modal_app,
@@ -248,7 +157,7 @@ async def get_modal_app(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    modal_app = await ModalApp.get(db, id=id)
+    modal_app = await ModalApp.get(db, id=id, order_by="version")
     if modal_app is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -278,6 +187,15 @@ async def delete_modal_app(
             detail=f"No Modal App found with id {id}.",
         )
 
+    _raise_if_undeletable(modal_app, user, log)
+
+    await db.delete(modal_app)
+    await db.commit()
+    log.info("Deleted Modal App from database")
+    return {"detail": f"Successfully deleted garden with id {id}."}
+
+
+def _raise_if_undeletable(modal_app, user, log):
     if modal_app.owner.identity_id != user.identity_id:
         log.info("Failed to delete Modal App (not owned by user)")
         raise HTTPException(
@@ -297,7 +215,62 @@ async def delete_modal_app(
             detail=f"Failed to delete or replace Modal App {id}. It has published children with DOIs {published_child_dois}",
         )
 
-    await db.delete(modal_app)
+
+def _validate_modal_app_metadata_helper(
+    modal_app: ModalAppCreateRequest, validate_modal_file
+):
+    _validate_modal_app_metadata(modal_app)
+    logger.info("Validated modal file metadata consistency")
+    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    hardware_specs = sandbox_metadata["functions"]
+    return hardware_specs
+
+
+def _generate_app_name(user: User, app_name: str) -> str:
+    prefixed_app_name = f"{user.identity_id}-{app_name}"
+    full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
+    return full_app_name
+
+
+async def _save_modal_app_to_db(
+    db: AsyncSession,
+    modal_app: ModalAppCreateRequest,
+    user: User,
+    full_app_name: str,
+    hardware_specs: dict,
+):
+    model_dict = modal_app.model_dump(
+        exclude={
+            "modal_function_names",
+            "owner_identity_id",
+            "id",
+        },
+        exclude_unset=True,
+    )
+    model_dict["user_id"] = user.id
+    model_dict["app_name"] = full_app_name
+    for modal_fn in model_dict["modal_functions"]:
+        name = modal_fn["function_name"]
+        modal_fn["hardware_spec"] = hardware_specs[name]
+
+    modal_app_db_model = ModalApp.from_dict(model_dict)
+    db.add(modal_app_db_model)
     await db.commit()
-    log.info("Deleted Modal App from database")
-    return {"detail": f"Successfully deleted garden with id {id}."}
+    return modal_app_db_model
+
+
+def _deploy_modal_app_helper(
+    deploy_modal_app,
+    full_app_name: str,
+    modal_app: ModalAppCreateRequest,
+    settings: Settings,
+):
+    deploy_modal_app(
+        {
+            "app_name": full_app_name,
+            "env": settings.MODAL_ENV,
+            "file_contents": modal_app.file_contents,
+            "token_id": settings.MODAL_TOKEN_ID,
+            "token_secret": settings.MODAL_TOKEN_SECRET,
+        }
+    )
