@@ -226,7 +226,7 @@ def _validate_modal_app_metadata_helper(
     return hardware_specs
 
 
-def _generate_app_name(user: User, app_name: str) -> tuple[str, str]:
+def _generate_app_name(user: User, app_name: str) -> str:
     prefixed_app_name = f"{user.identity_id}-{app_name}"
     full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
     return full_app_name
