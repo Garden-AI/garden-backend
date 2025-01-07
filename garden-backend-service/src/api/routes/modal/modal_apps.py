@@ -227,8 +227,31 @@ def _validate_modal_app_metadata_helper(
 
 
 def _generate_app_name(user: User, app_name: str) -> str:
+    """Generate a unique app name for deployment to Modal.
+
+    The app names look like: <user_id>-<app_name>-<unique-suffix>
+
+    Note: Modal limits app names to 64 characters. To give our users
+    the freedom to name their apps within Modal's guidelines, this function
+    will truncate the user supplied app name to fit within the size limit before
+    we deploy to our Modal environment.
+    """
+    modal_max_app_name_size = 64
+    prefix_len = len(str(user.identity_id))
+    suffix_len = 8
+    max_app_name_len = modal_max_app_name_size - (
+        prefix_len + suffix_len + 2  # 2 for separators
+    )
+
+    # truncate the app name if it is too long
+    app_name = (
+        app_name if len(app_name) < max_app_name_len else app_name[:max_app_name_len]
+    )
     prefixed_app_name = f"{user.identity_id}-{app_name}"
-    full_app_name = f"{prefixed_app_name}-{str(uuid4())}"
+
+    # generate a unique suffix
+    suffix = str(uuid4())[:suffix_len]
+    full_app_name = f"{prefixed_app_name}-{suffix}"
     return full_app_name
 
 
