@@ -1,5 +1,6 @@
 import pytest
 
+from src.api.routes.modal.modal_apps import _generate_app_name
 from tests.utils import post_modal_app
 
 
@@ -166,3 +167,20 @@ async def test_delete_modal_app(
     response = await client.delete(f"/modal-apps/{app_id}")
     assert response.status_code == 200
     assert response.json() == {"detail": f"No Modal App found with id {app_id}."}
+
+
+def test_generate_app_names(mock_auth_state):
+    user = mock_auth_state
+    size_limit = 64
+    num_to_gen = 100
+
+    # maximum app name length on modal
+    app_name = "a" * size_limit
+    # generate a bunch of names using the same user and app name
+    generated_names = [_generate_app_name(user, app_name) for _ in range(num_to_gen)]
+
+    # assert they are all within the size limit
+    assert all(map(lambda app_name: len(app_name) <= size_limit, generated_names))
+
+    # assert there are no duplicates
+    assert len(set(generated_names)) == num_to_gen
