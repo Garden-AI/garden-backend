@@ -35,7 +35,7 @@ class _ModalGenericResult(BaseSchema):
 class ModalInvocationRequest(BaseSchema):
     function_id: int
     args_kwargs_serialized: B64Bytes | None = None
-    args_blob_id: str | None
+    args_blob_id: str | None = None
 
     @model_validator(mode="after")
     def one_of_data_or_blob_url(self):

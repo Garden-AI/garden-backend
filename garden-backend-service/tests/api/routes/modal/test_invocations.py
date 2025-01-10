@@ -209,6 +209,7 @@ async def test_invoke_modal_fn_async(
 @pytest.mark.integration
 async def test_get_modal_invocation_output(
     client,
+    override_get_modal_client_dependency,
     mock_db_session,
     override_get_settings_dependency,
     mocker,

@@ -129,8 +129,8 @@ async def invoke_modal_fn(
         _, method_name = modal_fn.function_name.split(".")
     invocation = await _create_invocation(
         function,
-        body.args_kwargs_serialized,
         modal_client,
+        args_kwargs_serialized=body.args_kwargs_serialized,
         method_name=method_name,
     )
 
