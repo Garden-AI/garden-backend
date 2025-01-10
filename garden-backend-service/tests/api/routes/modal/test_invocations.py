@@ -8,6 +8,7 @@ from src.api.schemas.modal.invocations import (
     ModalInvocationRequest,
     ModalInvocationResponse,
 )
+from src.modal.status import AsyncModalJobStatus
 
 
 @pytest.mark.asyncio
@@ -384,7 +385,7 @@ async def test_get_modal_invocation_output_with_blob_result(
     # Create a mock database invocation object with blob-based result
     mock_invocation = MagicMock()
     mock_invocation.id = 1
-    mock_invocation.status = "done"
+    mock_invocation.status = AsyncModalJobStatus.DONE
 
     # Create output with blob reference instead of inline data
     test_result = api_pb2.GenericResult(status=0, data_blob_id="test-result-blob-id")
