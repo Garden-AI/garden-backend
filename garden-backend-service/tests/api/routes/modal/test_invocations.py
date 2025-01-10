@@ -4,6 +4,7 @@ import pytest
 from modal_proto import api_pb2
 
 from src.api.schemas.modal.invocations import (
+    ModalBlobUploadURLRequest,
     ModalInvocationRequest,
     ModalInvocationResponse,
 )
@@ -236,3 +237,183 @@ async def test_get_modal_invocation_output(
     assert response_data["id"] == 1
     assert response_data["status"] == "done"
     assert "result" in response_data
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_blob_upload_url_single_part(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mocker,
+):
+    # Mock Modal's BlobCreate RPC response
+    mock_blob_response = MagicMock()
+    mock_blob_response.blob_id = "test-blob-id"
+    mock_blob_response.upload_url = "https://test-upload-url"
+    mock_blob_response.WhichOneof.return_value = None  # Single-part upload
+
+    mock_retry = mocker.patch("src.api.routes.modal.invocations.retry_transient_errors")
+    mock_retry.return_value = mock_blob_response
+
+    request_body = ModalBlobUploadURLRequest(
+        content_md5="test-md5",
+        content_sha256_base64="test-sha256",
+        content_length=1000,
+    ).model_dump()
+
+    response = await client.post("/modal-invocations/blob-uploads", json=request_body)
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["blob_id"] == "test-blob-id"
+    assert response_data["upload_type"] == "single"
+    assert response_data["upload_url"] == "https://test-upload-url"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_blob_upload_url_multipart(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mocker,
+):
+    # Mock Modal's BlobCreate RPC response for multipart upload
+    mock_blob_response = MagicMock()
+    mock_blob_response.blob_id = "test-blob-id"
+    mock_blob_response.multipart.part_length = 5_000_000
+    mock_blob_response.multipart.upload_urls = [
+        "https://test-upload-url-part1",
+        "https://test-upload-url-part2",
+    ]
+    mock_blob_response.multipart.completion_url = "https://test-completion-url"
+    mock_blob_response.WhichOneof.return_value = "multipart"
+
+    mock_retry = mocker.patch("src.api.routes.modal.invocations.retry_transient_errors")
+    mock_retry.return_value = mock_blob_response
+
+    request_body = ModalBlobUploadURLRequest(
+        content_md5="test-md5",
+        content_sha256_base64="test-sha256",
+        content_length=10_000_000,
+    ).model_dump()
+
+    response = await client.post("/modal-invocations/blob-uploads", json=request_body)
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["blob_id"] == "test-blob-id"
+    assert response_data["upload_type"] == "multipart"
+    assert response_data["multipart"]["part_length"] == 5_000_000
+    assert len(response_data["multipart"]["upload_urls"]) == 2
+    assert response_data["multipart"]["completion_url"] == "https://test-completion-url"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_invoke_modal_fn_with_blob_args(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mocker,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    # First deploy a modal function to invoke
+    response = await client.post(
+        "/modal-apps", json=mock_modal_app_create_request_one_function
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    test_function_id = response_data["modal_function_ids"][0]
+
+    # Mock the modal Function and _Invocation
+    mock_function = MagicMock()
+    mock_function._invocation_function_id.return_value = "mock_function_id"
+    mock_invocation = AsyncMock()
+    mock_invocation.function_call_id = "mock_call_id"
+    mock_invocation.pop_function_call_outputs.return_value = MagicMock(
+        outputs=[
+            api_pb2.FunctionGetOutputsItem(
+                result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
+                data_format=api_pb2.DATA_FORMAT_PICKLE,
+            )
+        ]
+    )
+
+    mocker.patch("modal.functions._Function.lookup", return_value=mock_function)
+    mocker.patch("modal.functions._Invocation", return_value=mock_invocation)
+    mocker.patch("src.modal.utils.estimate_usage", return_value=1.0)
+
+    # Mock retry_transient_errors
+    mock_retry = mocker.patch("src.api.routes.modal.invocations.retry_transient_errors")
+    mock_retry.side_effect = [
+        MagicMock(function_call_id="mock_call_id", pipelined_inputs=["mock_input"]),
+    ]
+
+    # Prepare request payload using blob_id instead of serialized args
+    mock_request_body = ModalInvocationRequest(
+        function_id=test_function_id,
+        args_blob_id="test-blob-id",
+    ).model_dump()
+
+    response = await client.post("/modal-invocations", json=mock_request_body)
+
+    assert response.status_code == 200
+    response_data = response.json()
+    assert "result" in response_data
+    assert response_data["result"]["status"] == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_modal_invocation_output_with_blob_result(
+    client,
+    mock_db_session,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mocker,
+):
+    # Create a mock database invocation object with blob-based result
+    mock_invocation = MagicMock()
+    mock_invocation.id = 1
+    mock_invocation.status = "done"
+
+    # Create output with blob reference instead of inline data
+    test_result = api_pb2.GenericResult(status=0, data_blob_id="test-result-blob-id")
+    output_item = api_pb2.FunctionGetOutputsItem(
+        result=test_result,
+        data_format=api_pb2.DATA_FORMAT_PICKLE,
+    )
+    mock_invocation.output = output_item.SerializeToString()
+    mock_invocation.error = None
+
+    # Mock blob URL retrieval
+    mock_blob_response = MagicMock()
+    mock_blob_response.download_url = "https://test-download-url"
+
+    mock_retry = mocker.patch("src.api.routes.modal.invocations.retry_transient_errors")
+    mock_retry.return_value = mock_blob_response
+
+    # Mock database query
+    # mocker.patch("src.models.ModalInvocation.get", return_value=mock_invocation)
+    mocker.patch(
+        "src.api.routes.modal.invocations.ModalInvocation.get",
+        return_value=mock_invocation,
+    )
+    response = await client.get("/modal-invocations/1")
+    assert response.status_code == 200
+    response_data = response.json()
+
+    # Verify response structure with blob URL
+    assert response_data["id"] == 1
+    assert response_data["status"] == "done"
+    assert "result" in response_data
+    assert response_data["result"]["data_blob_url"] == "https://test-download-url"

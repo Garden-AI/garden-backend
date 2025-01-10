@@ -250,7 +250,8 @@ async def get_modal_invocation_output(
         "id": id,
         "status": inv.status,
     }
-    if inv.status == AsyncModalJobStatus.DONE and inv.output:
+
+    if inv.status == AsyncModalJobStatus.DONE.value and inv.output:
         parsed_output = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
         modal_result_data = {
             "status": parsed_output.result.status,
@@ -265,10 +266,15 @@ async def get_modal_invocation_output(
             )
 
         response_data["result"] = _ModalGenericResult(**modal_result_data)
+        logger.info(response_data=response_data)
 
-    elif inv.status in {AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT}:
+    elif inv.status in {
+        AsyncModalJobStatus.ERROR.value,
+        AsyncModalJobStatus.TIMED_OUT.value,
+    }:
         response_data["error"] = inv.error
 
+    logger.info(response_data=response_data)
     return response_data
 
 
