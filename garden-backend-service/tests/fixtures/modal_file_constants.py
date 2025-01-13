@@ -133,10 +133,10 @@ def make_request():
 INVALID_MULTIPLE_APPS = """
 import modal
 
-app1 = modal.App("first-app")
+app = modal.App("first-app")
 app2 = modal.App("second-app")  # This should cause validation to fail
 
-@app1.function()
+@app.function()
 def function1():
     return "Hello from app1"
 

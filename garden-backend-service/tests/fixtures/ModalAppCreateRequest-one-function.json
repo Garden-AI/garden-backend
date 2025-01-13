@@ -1,5 +1,5 @@
 {
-  "app_name": "test-app",
+  "app_name": "app",
   "modal_functions": [
     {
       "is_archived": false,
@@ -20,7 +20,7 @@
       "conda_requirements": []
     }
   ],
-  "file_contents": "import modal\napp = modal.App('test-app')\n@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
+  "file_contents": "import modal\napp = modal.App('app')\n@app.function()\ndef predict_iris_type():\n    return 'Iris-setosa'",
   "requirements": [],
   "conda_requirements": [],
   "base_image_name": "python:3.12.6-slim-bookworm",
