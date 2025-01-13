@@ -150,7 +150,7 @@ async def test_validate_no_app_fails(client, _metadata_validation_fixtures):
         "/modal-file-metadata", json={"file_contents": INVALID_NO_APP}
     )
     assert response.status_code == 400
-    assert "Found 0 App objects" in response.json()["detail"]
+    assert "No Modal App named 'app'" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
