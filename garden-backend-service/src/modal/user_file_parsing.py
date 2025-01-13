@@ -124,7 +124,7 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
                 for function_info in class_function_infos:
                     functions[function_info.function_name] = function_info
 
-    if not any(name == "app" for name in apps.keys()):
+    if "app" not in apps:
         raise ModalException(
             detail="No Modal App named 'app' found in file.",
             suggested_fix="Make sure Modal App variable is named 'app'. e.g. 'app =  modal.App(...)'",
