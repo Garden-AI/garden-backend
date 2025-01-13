@@ -75,10 +75,10 @@ async def monitor_modal_invocation(
                     raise ModalException("Modal Invocation Timed out!", status_code=408)
                 else:
                     raise ValueError(f"{outputs_response}")
-            except Exception as e:
+            except ModalException:
                 # Reraise the exception if we already wrapped it in a ModalException
-                if isinstance(e, ModalException):
-                    raise e
+                raise
+            except Exception as e:
                 # Otherwise, write the error to the DB
                 inv.error = str(e)
                 status = AsyncModalJobStatus.ERROR

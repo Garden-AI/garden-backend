@@ -12,7 +12,7 @@ from src.models.base import Base
 
 
 def apply_filters(
-    model: Base, stmt: Select, filters: list[GardenSearchFilter]
+    model: type[Base], stmt: Select, filters: list[GardenSearchFilter]
 ) -> Select:
     """
     Construct a new SQLAlchemy `Select` statement with applied filters.

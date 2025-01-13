@@ -58,7 +58,6 @@ async def parse_modal_file_metadata(
         base_image_name=app_info.image.base_image,
         file_contents=request.file_contents,
         modal_functions=function_metas,
-        owner_identity_id=user.identity_id,
         requirements=app_info.image.pip_requirements,
         conda_requirements=app_info.image.conda_requirements,
     )
