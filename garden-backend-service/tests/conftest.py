@@ -157,7 +157,7 @@ def override_get_settings_dependency_with_sync(mock_settings_with_sync):
 
 @pytest.fixture
 def mock_validate_modal_file_provider(request):
-    mock_provider = MagicMock(spec=ValidateModalFileProvider)
+    mock_provider = AsyncMock(spec=ValidateModalFileProvider)
     mock_provider.return_value = getattr(request, "param", None) or {
         "app_name": "test-app",
         "functions": {"predict_iris_type": {"cpus": 1, "gpus": "A100", "memory": 256}},
@@ -167,7 +167,7 @@ def mock_validate_modal_file_provider(request):
 
 @pytest.fixture
 def mock_deploy_modal_app_provider():
-    return MagicMock(spec=DeployModalAppProvider)
+    return AsyncMock(spec=DeployModalAppProvider)
 
 
 @pytest.fixture

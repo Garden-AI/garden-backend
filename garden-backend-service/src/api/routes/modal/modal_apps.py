@@ -41,7 +41,9 @@ async def add_modal_app(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
+    hardware_specs = await _validate_modal_app_metadata_helper(
+        modal_app, validate_modal_file
+    )
     full_app_name = _generate_app_name(user, modal_app.app_name)
 
     modal_app_db_model = await _save_modal_app_to_db(
@@ -67,7 +69,9 @@ async def add_modal_app_async(
     if not settings.MODAL_ENABLED:
         raise NotImplementedError("Garden's Modal integration has not been enabled")
 
-    hardware_specs = _validate_modal_app_metadata_helper(modal_app, validate_modal_file)
+    hardware_specs = await _validate_modal_app_metadata_helper(
+        modal_app, validate_modal_file
+    )
     full_app_name = _generate_app_name(user, modal_app.app_name)
 
     modal_app_db_model = await _save_modal_app_to_db(
@@ -216,12 +220,14 @@ def _raise_if_undeletable(modal_app, user, log):
         )
 
 
-def _validate_modal_app_metadata_helper(
+async def _validate_modal_app_metadata_helper(
     modal_app: ModalAppCreateRequest, validate_modal_file
 ):
     _validate_modal_app_metadata(modal_app)
     logger.info("Validated modal file metadata consistency")
-    sandbox_metadata = validate_modal_file({"file_contents": modal_app.file_contents})
+    sandbox_metadata = await validate_modal_file(
+        {"file_contents": modal_app.file_contents}
+    )
     hardware_specs = sandbox_metadata["functions"]
     return hardware_specs
 
@@ -282,13 +288,13 @@ async def _save_modal_app_to_db(
     return modal_app_db_model
 
 
-def _deploy_modal_app_helper(
+async def _deploy_modal_app_helper(
     deploy_modal_app,
     full_app_name: str,
     modal_app: ModalAppCreateRequest,
     settings: Settings,
 ):
-    deploy_modal_app(
+    await deploy_modal_app(
         {
             "app_name": full_app_name,
             "env": settings.MODAL_ENV,
