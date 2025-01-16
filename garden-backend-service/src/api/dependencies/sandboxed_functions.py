@@ -47,8 +47,6 @@ def make_lambda_invoker(
     function_name: str,
     sub_function_name: Literal["deploy_modal_app", "validate_modal_file"],
 ) -> Callable[..., Awaitable]:
-    # lambda_client = boto3.client("lambda", "us-east-1")
-
     async def invoke_lambda_fn(fn_args: dict):
         session = aioboto3.Session()
         payload = {"fn_name": sub_function_name, "fn_args": fn_args}
@@ -73,14 +71,9 @@ def make_lambda_invoker(
 
 
 def make_local_invoker(sub_function: callable) -> Callable[..., Awaitable]:
-    # def invoke_local_fn(fn_args: dict):
-    #     response_payload = sub_function(fn_args)
-    #     _raise_exception_if_error_in_lambda_response(response_payload)
-    #     return response_payload
-
     async def invoke_local_fn(fn_args: dict):
-        # If sub_function is sync, wrap it:
-        # ( I hope this doesn't f with Modal's event loop ...)
+        # Given a synchronous sub_function,
+        # wrap it in an async layer so that we always present the same interface to the caller.
         loop = asyncio.get_event_loop()
         response_payload = await loop.run_in_executor(None, sub_function, fn_args)
         _raise_exception_if_error_in_lambda_response(response_payload)
