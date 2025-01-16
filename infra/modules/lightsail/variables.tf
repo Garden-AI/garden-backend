@@ -3,6 +3,11 @@ variable "env" {
   description = "Either 'dev' or 'prod'"
 }
 
+variable "lightsail_size" {
+  description = "The size of the lightsail instance, e.g. 'nano'."
+  type        = string
+}
+
 variable "aws_account_id" {
   description = "The AWS account ID where the resources will be created."
   type        = string
