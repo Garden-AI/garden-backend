@@ -63,7 +63,8 @@ def make_lambda_invoker(
                     f"Lambda invocation failed with status {response['StatusCode']}"
                 )
 
-            response_payload = json.loads(response["Payload"].read().decode("utf-8"))
+            response_data = await response["Payload"].read()
+            response_payload = json.loads(response_data)
             _raise_exception_if_error_in_lambda_response(response_payload)
             return response_payload
 

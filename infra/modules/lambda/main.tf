@@ -8,8 +8,8 @@ resource "aws_lambda_function" "sandboxed_app" {
   handler  = "lambda_function.lambda_handler"
 
   role    = aws_iam_role.lambda_exec.arn
-  # Starting with 2.5 minutes. May need to bump this up.
-  timeout = 150
+  # Starting with 5 minutes.
+  timeout = 300
   # Lambda allocates vCPUs proportional to the memory size,
   # and this memory size is equivalent to one vCPU.
   memory_size = 1769
