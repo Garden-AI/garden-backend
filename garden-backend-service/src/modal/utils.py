@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable
+from typing import Awaitable, Callable
 
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,7 @@ async def monitor_modal_invocation(
 
 
 async def monitor_modal_deployment(
-    deploy_func: Callable,
+    deploy_func: Callable[..., Awaitable],
     deploy_config: dict,
     db_modal_app: ModalApp,
     settings: Settings,
@@ -95,7 +95,7 @@ async def monitor_modal_deployment(
     session_maker = await get_db_session_maker(settings=settings)
 
     try:
-        deploy_func(deploy_config)
+        await deploy_func(deploy_config)
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=db_modal_app.id):
                 modal_app.deploy_status = AsyncModalJobStatus.DONE

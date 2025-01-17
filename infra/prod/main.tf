@@ -49,6 +49,7 @@ module "lightsail" {
   s3_access_policy_arn              = module.s3.full_access_arn
   lightsail_certificate_name        = "${var.subdomain_prefix}-certificate"
   lightsail_certificate_domain_name = data.aws_acm_certificate.api_cert.domain
+  lightsail_size                    = "large"
 }
 
 module "lambda" {

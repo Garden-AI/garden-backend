@@ -1,6 +1,6 @@
 resource "aws_lightsail_container_service" "garden_service" {
   name        = "garden-service-${var.env}"
-  power       = "micro"
+  power       = "${var.lightsail_size}"
   scale       = 1
   is_disabled = false
 
@@ -106,4 +106,25 @@ resource "aws_iam_user_policy_attachment" "allow_assume_role_attachment" {
 resource "aws_iam_user_policy_attachment" "s3_access_attachment" {
   user       = aws_iam_user.lightsail_user.name
   policy_arn = var.s3_access_policy_arn
+}
+
+data "aws_iam_policy_document" "lambda_invoke_policy" {
+  statement {
+    effect = "Allow"
+    actions = ["lambda:InvokeFunction"]
+    resources = [
+      "arn:aws:lambda:us-east-1:${var.aws_account_id}:function:GardenSandbox-${var.env}"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "lambda_invoke_policy" {
+  name = "garden_lambda_invoke_policy_${var.env}"
+  policy = data.aws_iam_policy_document.lambda_invoke_policy.json
+  tags = var.tags
+}
+
+resource "aws_iam_user_policy_attachment" "lambda_invoke_attachment" {
+  user = aws_iam_user.lightsail_user.name
+  policy_arn = aws_iam_policy.lambda_invoke_policy.arn
 }
