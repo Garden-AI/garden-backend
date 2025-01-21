@@ -13,8 +13,8 @@ class _ModalGenericResult(BaseSchema):
     status: int
     exception: str = ""
     traceback: str = ""
-    serialized_tb: B64Bytes = b""
-    tb_line_cache: B64Bytes = b""
+    serialized_tb: B64Bytes | None = b""
+    tb_line_cache: B64Bytes | None = b""
     data: B64Bytes | None = b""
     # NOTE: this differs from the protobuf spec in that we send the full data_blob_url to
     # the garden client instead of data_blob_id (need active modal credentials to
@@ -26,9 +26,6 @@ class _ModalGenericResult(BaseSchema):
         assert (
             self.data or self.data_blob_url
         ), "At least one of data or data_blob_url should be set."
-        assert not (
-            self.data and self.data_blob_url
-        ), "Only one of data or data_blob_url should be set."
         return self
 
 
@@ -42,9 +39,6 @@ class ModalInvocationRequest(BaseSchema):
         assert (
             self.args_kwargs_serialized or self.args_blob_id
         ), "At least one of args_kwargs_serialized or args_blob_id should be set."
-        assert not (
-            self.args_kwargs_serialized and self.args_blob_id
-        ), "Only one of args_kwargs_serialized or args_blob_id should be set."
         return self
 
 
