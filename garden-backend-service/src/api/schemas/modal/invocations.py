@@ -26,9 +26,6 @@ class _ModalGenericResult(BaseSchema):
         assert (
             self.data or self.data_blob_url
         ), "At least one of data or data_blob_url should be set."
-        assert not (
-            self.data and self.data_blob_url
-        ), "Only one of data or data_blob_url should be set."
         return self
 
 
@@ -42,9 +39,6 @@ class ModalInvocationRequest(BaseSchema):
         assert (
             self.args_kwargs_serialized or self.args_blob_id
         ), "At least one of args_kwargs_serialized or args_blob_id should be set."
-        assert not (
-            self.args_kwargs_serialized and self.args_blob_id
-        ), "Only one of args_kwargs_serialized or args_blob_id should be set."
         return self
 
 

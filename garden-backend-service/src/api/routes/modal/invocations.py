@@ -253,16 +253,20 @@ async def get_modal_invocation_output(
 
     if inv.status is AsyncModalJobStatus.DONE and inv.output:
         parsed_output = api_pb2.FunctionGetOutputsItem.FromString(inv.output)
+        modal_result = parsed_output.result
         modal_result_data = {
-            "status": parsed_output.result.status,
-            "exception": parsed_output.result.exception,
+            "status": modal_result.status,
+            "exception": modal_result.exception,
+            "traceback": modal_result.traceback,
+            "serialized_tb": modal_result.serialized_tb,
+            "tb_line_cache": modal_result.tb_line_cache,
         }
         # handle either inline data or blob references
-        if parsed_output.result.HasField("data"):
+        if modal_result.HasField("data"):
             modal_result_data["data"] = parsed_output.result.data
-        elif parsed_output.result.HasField("data_blob_id"):
+        elif modal_result.HasField("data_blob_id"):
             modal_result_data["data_blob_url"] = await _get_blob_download_url(
-                modal_client, parsed_output.result.data_blob_id
+                modal_client, modal_result.data_blob_id
             )
 
         response_data["result"] = _ModalGenericResult(**modal_result_data)
