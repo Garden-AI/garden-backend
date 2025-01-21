@@ -13,8 +13,8 @@ class _ModalGenericResult(BaseSchema):
     status: int
     exception: str = ""
     traceback: str = ""
-    serialized_tb: B64Bytes = b""
-    tb_line_cache: B64Bytes = b""
+    serialized_tb: B64Bytes | None = b""
+    tb_line_cache: B64Bytes | None = b""
     data: B64Bytes | None = b""
     # NOTE: this differs from the protobuf spec in that we send the full data_blob_url to
     # the garden client instead of data_blob_id (need active modal credentials to
