@@ -6,6 +6,7 @@ from ..shared_function_schemas import CommonFunctionMetadata, CommonFunctionPatc
 class ModalFunctionMetadata(CommonFunctionMetadata):
     # Equivalent to "short_name" on entrypoints
     function_name: str
+    file_contents: str | None = None
     # Modal functions get a DOI when they are published
     # If they don't have a DOI, they are in draft state
     doi: str | None = None

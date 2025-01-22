@@ -50,7 +50,7 @@ async def add_modal_app(
         db, modal_app, user, full_app_name, hardware_specs
     )
 
-    _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)
+    await _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)
 
     return modal_app_db_model
 
@@ -281,6 +281,9 @@ async def _save_modal_app_to_db(
     for modal_fn in model_dict["modal_functions"]:
         name = modal_fn["function_name"]
         modal_fn["hardware_spec"] = hardware_specs[name]
+        if "file_contents" in modal_fn:
+            # redundant with app contents but part of schema
+            del modal_fn["file_contents"]
 
     modal_app_db_model = ModalApp.from_dict(model_dict)
     db.add(modal_app_db_model)
