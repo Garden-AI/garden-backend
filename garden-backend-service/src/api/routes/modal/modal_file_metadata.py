@@ -36,6 +36,7 @@ async def parse_modal_file_metadata(
         meta = ModalFunctionMetadata(
             function_name=fn.function_name,
             function_text=fn.function_text,
+            file_contents=request.file_contents,
             title=fn.function_name,
             description=None,
             year=str(datetime.now().year),

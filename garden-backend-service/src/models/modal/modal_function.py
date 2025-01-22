@@ -55,3 +55,7 @@ class ModalFunction(Base):
     @property
     def owner(self) -> User:
         return self.modal_app.owner
+
+    @property
+    def file_contents(self) -> str:
+        return self.modal_app.file_contents
