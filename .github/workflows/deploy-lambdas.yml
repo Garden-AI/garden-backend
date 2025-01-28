@@ -7,48 +7,48 @@ on:
       - dev
   workflow_dispatch:
 permissions:
-  id-token: write   # This is required for requesting the JWT!
-  contents: read    # This is required for actions/checkout
+  id-token: write # This is required for requesting the JWT!
+  contents: read # This is required for actions/checkout
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
-    - name: configure aws credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: arn:aws:iam::557062710055:role/GH_Actions_Garden_Deployer
-        aws-region: us-east-1
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::557062710055:role/GH_Actions_Garden_Deployer
+          aws-region: us-east-1
 
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.12'
-    # Determine the environment suffix to target to based on the branch
-    - name: Set Environment
-      id: vars
-      run: |
-        if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
-          echo "::set-output name=env::prod"
-        else
-          echo "::set-output name=env::dev"
-        fi
-    - name: Upload Sandboxed Operations Function
-      run: |
-         # Install the requirements.
-         docker run --rm -v $(pwd):/var/task public.ecr.aws/sam/build-python3.12 /bin/sh -c "\
-            pip install --upgrade pip && \
-            pip install watchfiles --platform manylinux2014_x86_64 --only-binary=:all: --target ./packages && \
-            pip install modal==0.64.224 --target ./packages"
-         # Put the requirements into the top level of our deployable zip archive.
-         cd packages
-         zip -r ../app.zip *
-         cd ../garden-backend-service/src/sandboxed_functions
-         zip -r ../../../app.zip lambda_function.py
-         cd ../../..
-         # Deploy to Lambda.
-         aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://app.zip
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.12"
+      # Determine the environment suffix to target to based on the branch
+      - name: Set Environment
+        id: vars
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/prod" ]]; then
+            echo "::set-output name=env::prod"
+          else
+            echo "::set-output name=env::dev"
+          fi
+      - name: Upload Sandboxed Operations Function
+        run: |
+          # Install the requirements.
+          docker run --rm -v $(pwd):/var/task public.ecr.aws/sam/build-python3.12 /bin/sh -c "\
+             pip install --upgrade pip && \
+             pip install watchfiles --platform manylinux2014_x86_64 --only-binary=:all: --target ./packages && \
+             pip install modal==0.66.37 --target ./packages"
+          # Put the requirements into the top level of our deployable zip archive.
+          cd packages
+          zip -r ../app.zip *
+          cd ../garden-backend-service/src/sandboxed_functions
+          zip -r ../../../app.zip lambda_function.py
+          cd ../../..
+          # Deploy to Lambda.
+          aws lambda update-function-code --function-name GardenSandbox-${{ steps.vars.outputs.env }} --zip-file fileb://app.zip
