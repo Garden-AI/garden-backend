@@ -4,6 +4,8 @@ services:
       context: .
       args:
         INSTALL_DEV: true
+    environment:
+      - UV_COMPILE_BYTECODE=0
     ports:
       - "5500:80"
     volumes:
@@ -12,7 +14,8 @@ services:
       - ./.env:/app/.env
       - ./alembic.ini:/app/alembic.ini
       - ./migrations:/app/migrations
-    entrypoint: bash -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 80 --reload"
+      - uv-cache:/root/.cache/uv
+    entrypoint: bash -c "uv run alembic upgrade head && uv run uvicorn src.main:app --host 0.0.0.0 --port 80 --reload"
     depends_on:
       dev-db:
         condition: service_healthy
@@ -34,7 +37,7 @@ services:
     restart: always
     environment:
       # compose reads these from the default .env
-      - PGADMIN_DEFAULT_EMAIL=${DB_USERNAME}@example.com
+      - PGADMIN_DEFAULT_EMAIL=${DB_USERNAME}
       - PGADMIN_DEFAULT_PASSWORD=${DB_PASSWORD}
     volumes:
       - pgadmin-data:/root/.pgadmin
@@ -44,5 +47,6 @@ services:
       - dev-db
 
 volumes:
-  db-data-volume: # volume to persist database data between containers
+  db-data-volume: # persist database data between containers
   pgadmin-data:
+  uv-cache: # persist uv's cache across restarts

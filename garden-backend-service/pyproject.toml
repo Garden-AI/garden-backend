@@ -9,7 +9,7 @@ authors = [
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 
 dependencies = [
   "pydantic>=2.7.1",
@@ -32,7 +32,7 @@ dependencies = [
   "phonenumbers>=8.13.40",
   "structlog>=24.4.0",
   "sqlparse>=0.5.1",
-  "modal>=0.66.37,<0.67.0",      # Keep upper bound for modal
+  "modal>=0.66.37,<0.67.0",      # NOTE: remember to bump modal dep in sandboxed lambda functions when this changes
 ]
 
 [dependency-groups]
