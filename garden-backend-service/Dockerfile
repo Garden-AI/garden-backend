@@ -23,8 +23,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-install-project --no-group develop; \
   fi
 
-# Copy application code
-COPY src/ pyproject.toml uv.lock api-entrypoint.sh alembic.ini migrations/ /app/
+# Copy code to /app/
+COPY pyproject.toml uv.lock alembic.ini api-entrypoint.sh /app/
+COPY migrations /app/migrations
+COPY src /app/src
 RUN chmod +x /app/api-entrypoint.sh
 
 # finally install the project itself in its own layer
