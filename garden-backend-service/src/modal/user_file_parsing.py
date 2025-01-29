@@ -437,6 +437,7 @@ def try_parse_class_function_info(
                         function_info = ModalFunctionInfo(
                             function_name=f"{class_name}.{method_name}",
                             function_text=ast.unparse(method),
+                            function_desc=ast.get_docstring(method) or "",
                             app=app_info,
                             image=class_image,
                         )
