@@ -86,5 +86,5 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             )
 
             return JSONResponse(
-                status_code=500, content={"detail": "Internal Server Error"}
+                status_code=500, content={"detail": f"Internal Server Error: {str(e)}"}
             )
