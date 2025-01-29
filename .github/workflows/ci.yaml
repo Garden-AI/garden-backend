@@ -21,55 +21,32 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.10"
+          enable-cache: true
 
-      - name: Install pipx
-        run: |
-          pip install --upgrade pip
-          python -m pip install pipx
-          python -m pipx ensurepath
-        shell: bash
-
-      - name: Install poetry with pipx
-        run: |
-          pipx install poetry
-        shell: bash
-
-      - name: Add poetry to PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Setup local virtual environment
+      - name: Set up Python
         run: |
           cd ./garden-backend-service
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
-        shell: bash
-
-      - uses: actions/cache@v3
-        name: Define a cache for the venv based on the lock file
-        with:
-          path: ./.venv
-          key: venv-${{ hashFiles('poetry.lock') }}
+          uv python install
 
       - name: Install dependencies
         run: |
           cd ./garden-backend-service
-          poetry install --no-interaction --no-ansi --with=develop
+          uv sync --locked --group develop
 
       - name: Check for vulnerable libraries with safety
         run: |
           cd ./garden-backend-service
-          poetry run safety check
+          uv run safety check
 
       - name: Lint with Ruff
         run: |
           cd ./garden-backend-service
-          poetry run ruff check --output-format=github
+          uv run ruff check --output-format=github
 
       - name: Test with pytest
         run: |
           cd ./garden-backend-service
-          poetry run pytest
+          uv run pytest

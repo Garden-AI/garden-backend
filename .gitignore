@@ -177,3 +177,4 @@ response.json
 *.zip
 /garden-backend-service/repopack-output.txt
 /garden-backend-service/.basedpyright
+/garden-backend-service/.envrc

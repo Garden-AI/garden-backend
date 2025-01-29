@@ -1,7 +1,9 @@
 ## Repo Layout
+
 I wanted to organize the repo so we'd have a good idea of where new code should go as we build it out, and I took inspiration from a few more mature fastAPI apps (esp. globus compute's) to do so.
 
 here's the Vision:
+
 ```
 garden-backend-service/
 ├── README.md               # you are here
@@ -42,8 +44,9 @@ garden-backend-service/
 
 ## Local development
 
-#### Requirements:
-- poetry
+### Requirements
+
+- uv
 - docker
 - a .env file in this directory for setting environment variables as wanted/needed.
 
@@ -58,7 +61,6 @@ Our persistent config/environment variables are read from an aws secret at start
     DB_PASSWORD="your_password"
     DB_ENDPOINT="dev-db" # hostname of the db container in compose.yaml
 
-
 where the AWS access key variables correspond to the `garden_lightsail_user_dev` IAM user (which has permission to read the AWS secret). If you provide any additional variables which are also present in the `garden-backend-env-vars/dev` secret, the one you set in the .env file will take priority.
 
 You will also need a .env.postgres file for the postgres container:
@@ -69,9 +71,10 @@ You will also need a .env.postgres file for the postgres container:
 POSTGRES variables are used by Docker to configure the database container.
 
 ### Testing
+
 Run the API and database containers locally using `docker compose`:
 
-``` sh
+```sh
 docker compose up
 
 # or run in the background
@@ -81,39 +84,39 @@ docker compose up -d
 docker compose up --build
 ```
 
-Visit http://localhost:5500/docs and behold!
+Visit <http://localhost:5500/docs> and behold!
 
-Docker compose maps ./src, ./tests, and ./.env into the container so you can edit files locally
-and see the changes immediately reflected in the running container.
+Docker compose maps ./src, ./tests, and ./.env into the container so you can edit files locally and see the changes immediately reflected in the running container.
 
 Tear down and cleanup the containers:
-``` sh
+
+```sh
 docker compose down
 ```
 
 If you need to get in and run some database queries manually, connect to the running db container:
 
-``` sh
+```sh
 docker compose exec dev-db psql
 ```
 
 Similarly, if you need to run commands from the app container:
 
-``` sh
+```sh
 docker compose exec dev-api bash
 root@17126a5147f9:/app# pytest    # for example
 ```
 
-Database data is persisted in a local docker volume defined in `compose.yaml`. If you need a completely fresh
-database, remove the volume and restart the containers.
-``` sh
+Database data is persisted in a local docker volume defined in `compose.yaml`. If you need a completely fresh database, remove the volume and restart the containers.
+
+```sh
 docker compose down --volumes
 docker compose up
 ```
 
 ## Deployments
-On a push to `dev` or `prod` branches, we run a GitHub action to build and push to the official (and public) `gardenai/garden-service:latest` dockerhub repo, which lightsail then pulls down for the deployment. Logs etc are visible through the [lightsail page](https://lightsail.aws.amazon.com/ls/webapp/home/containers). Note that we don't have any actual "lightsail instances", just a lightsail container service so you'll need to be on the "containers" page to see the logs.
 
+On a push to `dev` or `prod` branches, we run a GitHub action to build and push to the official (and public) `gardenai/garden-service:latest` dockerhub repo, which lightsail then pulls down for the deployment. Logs etc are visible through the [lightsail page](https://lightsail.aws.amazon.com/ls/webapp/home/containers). Note that we don't have any actual "lightsail instances", just a lightsail container service so you'll need to be on the "containers" page to see the logs.
 
 ## Connect pgadmin to RDS instances
 
@@ -128,13 +131,13 @@ keypair.
 - **Option 1 AWS Console**
 
   Login to AWS and navigate to the EC2 Console. On the left nav panel
-  under network and security select *Key Pairs*.
+  under network and security select _Key Pairs_.
 
-  Click *Create key pair*.
+  Click _Create key pair_.
 
   Select "RSA" for the key pair type and select ".pem" for the format.
 
-  Create the key pair by clicking *Create key pair* at the bottom of
+  Create the key pair by clicking _Create key pair_ at the bottom of
   the page. Make sure to download the generated key pair as this is
   the only opportunity you have to save it. If you lose it you will
   need to create a new one.
@@ -149,28 +152,29 @@ keypair.
 
 ### **Add public key to EC2 instance**
 
-Login to AWS and go to the EC2 console. Click *Instances* on the
+Login to AWS and go to the EC2 console. Click _Instances_ on the
 left nav panel.
 
 Select the instance you want to connect to by clicking the
-checkbox next to the instance name. Then, click *Connect* and select
-the *EC2 Instance Connect* tab. For the connection type select
-*Connect using EC2 Instance Connect* and leave the username as the
+checkbox next to the instance name. Then, click _Connect_ and select
+the _EC2 Instance Connect_ tab. For the connection type select
+_Connect using EC2 Instance Connect_ and leave the username as the
 default `ubuntu`.
 
-Click *Connect* at the bottom of the page and a terminal will open
+Click _Connect_ at the bottom of the page and a terminal will open
 connected to the EC2 instance in the ec2-user's home directory.
 
 Add the public key of your new key pair to the file
 `~/.ssh/authorized_keys`.
 
-``` sh
+```sh
 echo "<public-key>" >> .ssh/authorized_keys
 ```
+
 You now have the ability to login to the instance with ssh using the
 private key from your key pair.
 
-``` sh
+```sh
 ssh -i <path-to-private-key> ubuntu@<hostname-or-ip-of-instance>
 ```
 
@@ -179,24 +183,24 @@ ssh -i <path-to-private-key> ubuntu@<hostname-or-ip-of-instance>
 With the pgadmin container running via `docker compose`, login to
 pgadmin at [localhost:8080](http://localhost:8080/).
 
-Click *Add New Server*.
+Click _Add New Server_.
 
 Set the name of the server to something meaningful like
-'garden_db_dev', then select the *Connection* tab.
+'garden*db_dev', then select the \_Connection* tab.
 
-For the *Host name/address*, *username* and *password* fields, check the `garden-backend-env-vars/{dev, prod}`AWS secret and copy the appropriate values (`DB_ENDPOINT`/ `DB_USERNAME`/`DB_PASSWORD`, respectively).
+For the _Host name/address_, _username_ and _password_ fields, check the `garden-backend-env-vars/{dev, prod}`AWS secret and copy the appropriate values (`DB_ENDPOINT`/ `DB_USERNAME`/`DB_PASSWORD`, respectively).
 
-Keep the *port* and *maintenance database* set with their default values.
+Keep the _port_ and _maintenance database_ set with their default values.
 
-Move to the *SSH Tunnel* tab of the server configuration and toggle
-*Use SSH tunneling* on.
+Move to the _SSH Tunnel_ tab of the server configuration and toggle
+_Use SSH tunneling_ on.
 
-*Tunnel host* should be the public hostname or IP of the EC2 instance.
-*Tunnel port* should be `22`
-*Username* should be `ubuntu`
-For *Authentication*, select *Identity file*
+_Tunnel host_ should be the public hostname or IP of the EC2 instance.
+_Tunnel port_ should be `22`
+_Username_ should be `ubuntu`
+For _Authentication_, select _Identity file_
 
-The *Identity file* should be the private key from your key
+The _Identity file_ should be the private key from your key
 pair. Click the folder icon and select the private key file. Since
 pgadmin is running in a container you will need to upload your private
 key file before you can select it here. Click the three dots in the
@@ -204,5 +208,5 @@ upper right side of the file browser and select upload. Add the
 private key file from you key pair. Once the file is uploaded to the
 container, you can select it.
 
-Click *Save* and if everything goes well pgadmin should connect to the
+Click _Save_ and if everything goes well pgadmin should connect to the
 RDS instance using the EC2 instance as an ssh tunnel.

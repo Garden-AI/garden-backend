@@ -1,31 +1,38 @@
-FROM python:3.11
+FROM python:3.12
+WORKDIR /app
 
-WORKDIR /app/
+# Install uv binary directly from the latest official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# paraphrased from: https://github.com/tiangolo/full-stack-fastapi-template/blob/master/backend/Dockerfile
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
-    cd /usr/local/bin && \
-    ln -s /opt/poetry/bin/poetry && \
-    poetry config virtualenvs.create false
+ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
+# copy instead of symlink since we don't include uv's cache in the final image
+ENV UV_LINK_MODE=copy
 
-# Copy poetry files
-COPY ./pyproject.toml ./poetry.lock* /app/
-
-# Allow installing dev dependencies
+# Install dependencies using uv with:
+# - A cached uv package directory (type=cache)
+# - Temporary access to requirements files (type=bind)
+# see: https://docs.astral.sh/uv/guides/integration/docker/#caching
 ARG INSTALL_DEV=false
-RUN bash -c "if [ $INSTALL_DEV == 'true' ] ; then poetry install --no-root --with=develop; else poetry install --no-root --only main ; fi"
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  if [ "$INSTALL_DEV" = "true" ] ; then \
+  uv sync --frozen --no-install-project --group develop ; \
+  else \
+  uv sync --frozen --no-install-project --no-group develop; \
+  fi
 
-COPY ./src /app/src
-
-# Copy alembic files
-COPY ./alembic.ini /app/
-COPY ./migrations /app/migrations
-
-COPY ./api-entrypoint.sh /app/
-# Make the entrypoint script executable
+# Copy code to /app/
+COPY pyproject.toml uv.lock alembic.ini api-entrypoint.sh /app/
+COPY migrations /app/migrations
+COPY src /app/src
 RUN chmod +x /app/api-entrypoint.sh
 
-ENTRYPOINT ["/app/api-entrypoint.sh"]
+# finally install the project itself in its own layer
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen
 
 EXPOSE 80
+
+ENTRYPOINT ["/app/api-entrypoint.sh"]
