@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -89,7 +90,7 @@ async def add_modal_app_async(
         monitor_modal_deployment,
         deploy_modal_app,
         deploy_config,
-        modal_app_db_model,
+        modal_app_db_model.id,
         settings,
     )
 
@@ -266,7 +267,7 @@ async def _save_modal_app_to_db(
     modal_app: ModalAppCreateRequest,
     user: User,
     full_app_name: str,
-    hardware_specs: dict,
+    hardware_specs: dict[str, dict[str, Any]],
 ):
     model_dict = modal_app.model_dump(
         exclude={
