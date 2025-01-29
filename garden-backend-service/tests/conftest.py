@@ -149,13 +149,6 @@ def override_get_settings_dependency(mock_settings):
 
 
 @pytest.fixture
-def override_get_settings_dependency_with_sync(mock_settings_with_sync):
-    app.dependency_overrides[get_settings] = lambda: mock_settings_with_sync
-    yield
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
 def mock_validate_modal_file_provider(request):
     mock_provider = AsyncMock(spec=ValidateModalFileProvider)
     mock_provider.return_value = getattr(request, "param", None) or {
@@ -266,12 +259,6 @@ def mock_settings(db_url):
     mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
     mock_settings.MODAL_USAGE_LIMIT = 5.0
     mock_settings.MODAL_TIMEOUT_SECONDS = 10.0
-    return mock_settings
-
-
-@pytest.fixture
-def mock_settings_with_sync(mock_settings):
-    mock_settings.SYNC_SEARCH_INDEX = True
     return mock_settings
 
 
