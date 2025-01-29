@@ -504,34 +504,3 @@ def _update_entrypoint_info_from_decorator(
             ) if f"{class_name}.{method_name}" in known_function_names:
                 ep_info.called_functions |= {f"{class_name}.{method_name}"}
     return ep_info
-
-
-def _parse_hardware_kwarg(node: ast.keyword):
-    # TODO remove if not needed
-    if node.arg in {"cpu", "memory"}:
-        match node.value:
-            case ast.Constant(value=val):
-                return val
-            case ast.Tuple(elts=[ast.Constant(value=val1), ast.Constant(value=val2)]):
-                return (val1, val2)
-    elif node.arg == "gpu":
-        match node.value:
-            case ast.Constant(value=val):
-                return val
-            case ast.List(elts=elts):
-                values = []
-                for element in elts:
-                    if isinstance(element, ast.Constant):
-                        # if it's a constant str or None, just include it
-                        gpu_key = element.value
-                    elif isinstance(element, ast.Name):
-                        # like `gpu=A100` instead of `gpu="A100"`
-                        # we persist it as the string instead since it's equivalent
-                        gpu_key = element.id
-                    elif isinstance(element, ast.Attribute):
-                        # like `gpu=modal.gpu.A100` or `gpu=modal.gpu.A100()`
-                        # best effort without exec-ing anything
-                        string_rep = ast.unparse(element)
-                        gpu_key = string_rep.split(".")[-1].strip("()")
-                    values += [gpu_key]
-                return values
