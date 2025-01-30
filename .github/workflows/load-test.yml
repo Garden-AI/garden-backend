@@ -1,0 +1,87 @@
+name: Load Tests
+
+on:
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: garden_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: load-tests/package-lock.json
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r garden-backend-service/requirements.txt
+
+      - name: Install Artillery
+        working-directory: load-tests
+        run: npm ci
+
+      - name: Start Garden Backend Service
+        run: |
+          cd garden-backend-service
+          # Set test environment variables
+          export GARDEN_ENV=test
+          export MODAL_USE_LOCAL=true
+          # Start the service
+          python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+          sleep 10  # Wait for service to be ready
+
+      - name: Run load tests
+        working-directory: load-tests
+        env:
+          # These are needed for token generation
+          GARDEN_ENV: test
+          API_CLIENT_ID: ${{ secrets.API_CLIENT_ID }}
+          API_CLIENT_SECRET: ${{ secrets.API_CLIENT_SECRET }}
+          GARDEN_DEFAULT_SCOPE: ${{ secrets.GARDEN_DEFAULT_SCOPE }}
+        run: npm run test:ci
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: artillery-test-results
+          path: load-tests/test-results.json
+
+      - name: Check test results
+        working-directory: load-tests
+        run: |
+          if [ -f test-results.json ]; then
+            # Check if any scenarios failed
+            if grep -q '"errors":' test-results.json; then
+              echo "Load tests detected errors"
+              exit 1
+            fi
+          else
+            echo "Test results file not found"
+            exit 1
+          fi
