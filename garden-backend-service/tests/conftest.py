@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
@@ -10,6 +10,7 @@ import pytest
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
+from modal_proto import api_pb2
 from sqlalchemy import text
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import Session
@@ -400,3 +401,76 @@ def mock_is_doi_registered(mocker):
     mock_garden.return_value = False
 
     return mock_garden
+
+
+@pytest.fixture
+def mock_modal_function() -> MagicMock:
+    """Fixture for mocking a Modal function"""
+    mock_function = MagicMock()
+    mock_function._invocation_function_id.return_value = "mock_function_id"
+    mock_function.spec.return_value = {"cpu": 0.125, "gpus": "A100", "memory": None}
+    return mock_function
+
+
+@pytest.fixture
+def mock_modal_invocation() -> AsyncMock:
+    """Fixture for mocking a Modal invocation with successful result"""
+    mock_invocation = AsyncMock()
+    mock_invocation.function_call_id = "mock_call_id"
+    # Mock successful output
+    mock_invocation.pop_function_call_outputs.return_value = MagicMock(
+        outputs=[
+            api_pb2.FunctionGetOutputsItem(
+                result=api_pb2.GenericResult(
+                    status=api_pb2.GenericResult.GENERIC_STATUS_SUCCESS,
+                    data=b"mock_result",
+                ),
+                data_format=api_pb2.DATA_FORMAT_PICKLE,
+            )
+        ]
+    )
+    return mock_invocation
+
+
+@pytest.fixture
+def modal_test_environment(
+    client: AsyncClient,
+    mocker,
+    mock_modal_function,
+    mock_modal_invocation,
+    override_publisher_group_membership,
+    override_authenticated_dependency,
+    override_sandboxed_functions,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mock_db_session,
+    mock_auth_state,
+):
+    """Composite fixture that sets up all dependencies needed for Modal testing.
+
+    This combines the most commonly used fixtures for Modal-related tests into a single fixture.
+    Returns a dictionary containing the initialized test client and other useful test objects.
+    """
+    return {
+        "client": client,
+        "mocker": mocker,
+        "mock_function": mock_modal_function,
+        "mock_invocation": mock_modal_invocation,
+        "auth_state": mock_auth_state,
+        "modal_client": override_get_modal_client_dependency,
+    }
+
+
+@pytest.fixture
+def modal_deployment_environment(
+    modal_test_environment: dict[str, Any],
+    mock_modal_app_create_request_one_function: dict[str, Any],
+):
+    """Composite fixture specifically for Modal deployment tests.
+
+    Extends modal_test_environment with deployment-specific fixtures and configuration.
+    """
+    return {
+        **modal_test_environment,
+        "app_request": mock_modal_app_create_request_one_function,
+    }

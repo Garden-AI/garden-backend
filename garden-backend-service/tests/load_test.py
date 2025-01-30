@@ -1,11 +1,9 @@
 import asyncio
 import base64
 from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import AsyncClient
-from modal_proto import api_pb2
 
 from src.api.schemas.modal.invocations import ModalInvocationRequest
 from src.modal.status import AsyncModalJobStatus
@@ -52,20 +50,21 @@ async def create_modal_app_request(
     client: AsyncClient,
     app_name: str,
     mock_modal_app_create_request_one_function: Dict[str, Any],
-):
+) -> Dict[str, Any]:
     """Helper function to create a modal app deployment request"""
     # Use the mock request as base and override specific fields
     request_data = mock_modal_app_create_request_one_function.copy()
     request_data["app_name"] = app_name
 
-    # Get the function name from the request data
     function_name = request_data["modal_functions"][0]["function_name"]
 
     # Create new file contents with matching app name and function name
     file_contents = create_modal_file_contents(app_name, function_name)
     request_data["file_contents"] = file_contents
 
-    return await client.post("/modal-apps/async", json=request_data)
+    response = await client.post("/modal-apps/async", json=request_data)
+    assert response.status_code == 200
+    return response.json()
 
 
 async def get_modal_app(client: AsyncClient, app_id: int) -> Dict[str, Any]:
@@ -98,6 +97,21 @@ async def wait_for_deployment_status(
         await asyncio.sleep(poll_interval_seconds)
 
 
+async def create_modal_invocation_request(
+    client: AsyncClient,
+    function_id: int,
+    args_kwargs_serialized: bytes = b"mock_input_data",
+) -> Dict[str, Any]:
+    """Helper function to create a modal invocation request"""
+    request_data = ModalInvocationRequest(
+        function_id=function_id,
+        args_kwargs_serialized=args_kwargs_serialized,
+    ).model_dump()
+    response = await client.post("/modal-invocations/async", json=request_data)
+    assert response.status_code == 200
+    return response.json()
+
+
 async def wait_for_invocation_status(
     client: AsyncClient,
     invocation_id: int,
@@ -124,73 +138,54 @@ async def wait_for_invocation_status(
         await asyncio.sleep(poll_interval_seconds)
 
 
-async def create_modal_invocation_request(
-    client: AsyncClient,
-    function_id: int,
-) -> Any:
-    """Helper function to create a modal invocation request"""
-    request_data = ModalInvocationRequest(
-        function_id=function_id,
-        args_kwargs_serialized=b"mock_input_data",
-    ).model_dump()
-    return await client.post("/modal-invocations/async", json=request_data)
-
-
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_concurrent_modal_deployments(
-    client: AsyncClient,
-    mocker,
-    override_publisher_group_membership,
-    override_authenticated_dependency,
-    override_sandboxed_functions,
-    override_get_settings_dependency,
-    mock_db_session,
-    mock_auth_state,
-    mock_modal_app_create_request_one_function,
-    num_concurrent_requests,
+    modal_deployment_environment: dict[str, Any],
+    num_concurrent_requests: int,
 ):
+    """Test that multiple Modal apps can be deployed concurrently"""
+    env = modal_deployment_environment
+    client = env["client"]
+    mocker = env["mocker"]
+
     # Mock the deployment and validation functions
     mocker.patch(
         "src.api.dependencies.sandboxed_functions.deploy_modal_app",
-        side_effect=mock_deploy,
+        side_effect=lambda config: asyncio.sleep(2.0),  # Simulate deployment time
     )
     mocker.patch(
         "src.api.dependencies.sandboxed_functions.validate_modal_file",
-        side_effect=mock_validate_modal_file,
+        return_value={
+            "functions": {"predict_iris_type": {"cpu": 0.1, "memory": 256, "gpu": None}}
+        },
     )
 
     # Create multiple apps concurrently
-    num_apps: int = num_concurrent_requests
-    app_creation_tasks = []
-    for i in range(num_apps):
-        app_name = f"app-{i}"
-        task = create_modal_app_request(
-            client, app_name, mock_modal_app_create_request_one_function
-        )
-        app_creation_tasks.append(task)
+    app_creation_tasks = [
+        create_modal_app_request(client, f"app-{i}", env["app_request"])
+        for i in range(num_concurrent_requests)
+    ]
 
     # Wait for all apps to be created
-    responses = await asyncio.gather(*app_creation_tasks)
+    created_apps = await asyncio.gather(*app_creation_tasks)
 
     # Verify all creations were successful and get app IDs
     app_ids = []
-    for response in responses:
-        assert response.status_code == 200
-        app_data = response.json()
+    for app_data in created_apps:
         assert app_data["deploy_status"] == AsyncModalJobStatus.PENDING.value
         app_ids.append(app_data["id"])
 
     # Wait for all deployments to complete concurrently
-    deployment_tasks = []
-    for app_id in app_ids:
-        task = wait_for_deployment_status(
+    deployment_tasks = [
+        wait_for_deployment_status(
             client,
             app_id,
             AsyncModalJobStatus.DONE.value,
-            timeout_seconds=10.0,  # Longer timeout for concurrent deployments
+            timeout_seconds=10.0,
         )
-        deployment_tasks.append(task)
+        for app_id in app_ids
+    ]
 
     # Wait for all deployments to finish
     final_apps = await asyncio.gather(*deployment_tasks)
@@ -204,86 +199,52 @@ async def test_concurrent_modal_deployments(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_concurrent_modal_invocations(
-    client: AsyncClient,
-    mocker,
-    override_publisher_group_membership,
-    override_authenticated_dependency,
-    override_sandboxed_functions,
-    override_get_settings_dependency,
-    override_get_modal_client_dependency,
-    mock_db_session,
-    mock_auth_state,
-    mock_modal_app_create_request_one_function,
-    num_concurrent_requests,
+    modal_deployment_environment: dict[str, Any],
+    num_concurrent_requests: int,
 ):
-    # Mock the deployment and validation functions first
-    mocker.patch(
-        "src.api.dependencies.sandboxed_functions.deploy_modal_app",
-        side_effect=mock_deploy,
-    )
-    mocker.patch(
-        "src.api.dependencies.sandboxed_functions.validate_modal_file",
-        side_effect=mock_validate_modal_file,
-    )
+    """Test that multiple Modal functions can be invoked concurrently"""
+    env = modal_deployment_environment
+    client = env["client"]
+    mocker = env["mocker"]
 
     # Create a modal app with a function to invoke
-    response = await client.post(
-        "/modal-apps", json=mock_modal_app_create_request_one_function
-    )
+    response = await client.post("/modal-apps", json=env["app_request"])
     assert response.status_code == 200
     response_data = response.json()
     function_id = response_data["modal_function_ids"][0]
 
-    # Mock the modal function lookup and invocation creation
-    mock_invocation = AsyncMock()
-    mock_invocation.function_call_id = "mock_call_id"
-    # Mock the pop_function_call_outputs to simulate a successful invocation
-    mock_outputs_response = MagicMock()
-    output_item = api_pb2.FunctionGetOutputsItem(
-        result=api_pb2.GenericResult(
-            status=api_pb2.GenericResult.GENERIC_STATUS_SUCCESS, data=b"mock_result"
-        ),
-        data_format=api_pb2.DATA_FORMAT_PICKLE,
-    )
-    mock_outputs_response.outputs = [output_item]
-    mock_invocation.pop_function_call_outputs.return_value = mock_outputs_response
-
-    mock_function = MagicMock()
-    mock_function._invocation_function_id.return_value = "mock_function_id"
-    mocker.patch("modal.functions._Function.lookup", return_value=mock_function)
+    # Mock the modal function lookup and invocation
+    mocker.patch("modal.functions._Function.lookup", return_value=env["mock_function"])
     mocker.patch(
         "src.api.routes.modal.invocations._create_invocation",
-        return_value=mock_invocation,
+        return_value=env["mock_invocation"],
     )
 
     # Create multiple invocations concurrently
-    num_invocations: int = num_concurrent_requests
-    invocation_tasks = []
-    for _ in range(num_invocations):
-        task = create_modal_invocation_request(client, function_id)
-        invocation_tasks.append(task)
+    invocation_tasks = [
+        create_modal_invocation_request(client, function_id)
+        for _ in range(num_concurrent_requests)
+    ]
 
     # Wait for all invocations to be created
-    responses = await asyncio.gather(*invocation_tasks)
+    created_invocations = await asyncio.gather(*invocation_tasks)
 
     # Verify all creations were successful and get invocation IDs
     invocation_ids = []
-    for response in responses:
-        assert response.status_code == 200
-        invocation_data = response.json()
+    for invocation_data in created_invocations:
         assert invocation_data["status"] == AsyncModalJobStatus.PENDING.value
         invocation_ids.append(invocation_data["id"])
 
     # Wait for all invocations to complete concurrently
-    completion_tasks = []
-    for invocation_id in invocation_ids:
-        task = wait_for_invocation_status(
+    completion_tasks = [
+        wait_for_invocation_status(
             client,
             invocation_id,
             AsyncModalJobStatus.DONE.value,
-            timeout_seconds=10.0,  # Longer timeout for concurrent invocations
+            timeout_seconds=10.0,
         )
-        completion_tasks.append(task)
+        for invocation_id in invocation_ids
+    ]
 
     # Wait for all invocations to finish
     final_invocations = await asyncio.gather(*completion_tasks)
