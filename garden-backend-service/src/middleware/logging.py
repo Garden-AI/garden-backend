@@ -84,5 +84,5 @@ def add_error_handling_middleware(app: FastAPI) -> None:
             )
 
             return JSONResponse(
-                status_code=500, content={"detail": "Internal Server Error"}
+                status_code=500, content={"detail": f"Internal Server Error: {str(e)}"}
             )

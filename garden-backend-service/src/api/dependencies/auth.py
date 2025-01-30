@@ -1,10 +1,11 @@
 from datetime import datetime
+from typing import AsyncGenerator
 
 import globus_sdk
 import structlog
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import func, select
+from sqlalchemy import exc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -47,12 +48,31 @@ async def authed_user(
     db: AsyncSession = Depends(get_db_session),
     auth: AuthenticationState = Depends(authenticated),
     settings: Settings = Depends(get_settings),
-) -> User:
+) -> AsyncGenerator[User, None]:
     try:
-        user, created = await User.get_or_create(
-            db,
-            identity_id=auth.identity_id,
+        # First try to get the user
+        user = await db.scalar(
+            select(User).where(User.identity_id == auth.identity_id).limit(1)
         )
+
+        created = False
+        if user is None:
+            try:
+                # User doesn't exist, create them
+                user = User(identity_id=auth.identity_id)
+                db.add(user)
+                await db.flush()
+                created = True
+            except exc.IntegrityError:
+                # Another request created the user before us
+                await db.rollback()
+                user = await db.scalar(
+                    select(User).where(User.identity_id == auth.identity_id).limit(1)
+                )
+                if user is None:
+                    raise HTTPException(
+                        status_code=500, detail="Failed to create or retrieve user"
+                    )
 
         # Add the user to Garden Users Globus group if they are new
         if created:

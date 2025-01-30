@@ -25,21 +25,6 @@ class Base(AsyncAttrs, DeclarativeBase):
 
         return (await db.execute(q.limit(1))).scalar_one_or_none()
 
-    @classmethod
-    async def get_or_create(
-        cls: Type[T], db: AsyncSession, **kwargs: Any
-    ) -> tuple[T, bool]:
-        obj = await cls.get(db, **kwargs)
-        created = False
-
-        if not obj:
-            obj = cls(**kwargs)
-            await obj._asave(db)
-            await db.refresh(obj)
-            created = True
-
-        return obj, created
-
     async def _asave(self, db: AsyncSession) -> None:
         db.add(self)
         await db.flush()
