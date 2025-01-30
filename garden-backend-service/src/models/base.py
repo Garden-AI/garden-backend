@@ -1,6 +1,6 @@
 from typing import Any, Optional, Type, TypeVar
 
-from sqlalchemy import exc, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncAttrs, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm.attributes import QueryableAttribute
@@ -24,32 +24,6 @@ class Base(AsyncAttrs, DeclarativeBase):
             q = q.order_by(getattr(cls, order_by).desc())
 
         return (await db.execute(q.limit(1))).scalar_one_or_none()
-
-    @classmethod
-    async def get_or_create(
-        cls: Type[T], db: AsyncSession, **kwargs: Any
-    ) -> tuple[T, bool]:
-        # First try to get the object
-        obj = await cls.get(db, **kwargs)
-        if obj is not None:
-            return obj, False
-
-        try:
-            # Object doesn't exist, try to create it
-            obj = cls(**kwargs)
-            db.add(obj)
-            await db.flush()
-            return obj, True
-        except exc.IntegrityError:
-            # If we hit an integrity error, someone else created the object
-            await db.rollback()
-            # Try to get the object again
-            obj = await cls.get(db, **kwargs)
-            if obj is None:
-                # In the very unlikely case that the object disappeared,
-                # try the whole operation once more
-                return await cls.get_or_create(db, **kwargs)
-            return obj, False
 
     async def _asave(self, db: AsyncSession) -> None:
         db.add(self)

@@ -78,7 +78,7 @@ async def wait_for_deployment_status(
     client: AsyncClient,
     app_id: int,
     target_status: str,
-    timeout_seconds: float = 10.0,
+    timeout_seconds: float = 15.0,
     poll_interval_seconds: float = 0.5,
 ) -> Dict[str, Any]:
     """Wait for a modal app to reach the target deployment status"""
