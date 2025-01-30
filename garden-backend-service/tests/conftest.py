@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -29,6 +30,15 @@ from src.api.dependencies.sandboxed_functions import (
 from src.config import Settings, get_settings
 from src.main import app
 from src.models.base import Base
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--num-concurrent-requests",
+        type=int,
+        default=os.getenv("GARDEN_TEST_NUM_CONCURRENT_REQUESTS", 30),
+        help="Number of concurrent requests to run in load tests.",
+    )
 
 
 @pytest.fixture
@@ -260,6 +270,11 @@ def mock_settings(db_url):
     mock_settings.MODAL_USAGE_LIMIT = 5.0
     mock_settings.MODAL_TIMEOUT_SECONDS = 10.0
     return mock_settings
+
+
+@pytest.fixture
+def num_concurrent_requests(request):
+    return request.config.getoption("--num-concurrent-requests")
 
 
 @pytest.fixture

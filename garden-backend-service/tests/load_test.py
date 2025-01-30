@@ -148,6 +148,7 @@ async def test_concurrent_modal_deployments(
     mock_db_session,
     mock_auth_state,
     mock_modal_app_create_request_one_function,
+    num_concurrent_requests,
 ):
     # Mock the deployment and validation functions
     mocker.patch(
@@ -160,7 +161,7 @@ async def test_concurrent_modal_deployments(
     )
 
     # Create multiple apps concurrently
-    num_apps = 30
+    num_apps: int = num_concurrent_requests
     app_creation_tasks = []
     for i in range(num_apps):
         app_name = f"app-{i}"
@@ -213,6 +214,7 @@ async def test_concurrent_modal_invocations(
     mock_db_session,
     mock_auth_state,
     mock_modal_app_create_request_one_function,
+    num_concurrent_requests,
 ):
     # Mock the deployment and validation functions first
     mocker.patch(
@@ -255,7 +257,7 @@ async def test_concurrent_modal_invocations(
     )
 
     # Create multiple invocations concurrently
-    num_invocations = 30
+    num_invocations: int = num_concurrent_requests
     invocation_tasks = []
     for _ in range(num_invocations):
         task = create_modal_invocation_request(client, function_id)
