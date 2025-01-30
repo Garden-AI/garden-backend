@@ -1,20 +1,18 @@
 import time
 import uuid
+from typing import Callable
 
 import structlog
-from fastapi import Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.exceptions.modal import ModalException, handle_modal_exception
 from src.exceptions.utils import format_traceback
 
 
-class LogRequestIdMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-
-    async def dispatch(self, request: Request, call_next):
+def add_request_id_middleware(app: FastAPI) -> None:
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next: Callable) -> Response:
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
@@ -28,14 +26,14 @@ class LogRequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class LogProcessTimeMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-
-    async def dispatch(self, request: Request, call_next):
+def add_process_time_middleware(app: FastAPI) -> None:
+    @app.middleware("http")
+    async def process_time_middleware(
+        request: Request, call_next: Callable
+    ) -> Response:
         start_time = time.time()
 
-        response: Response = await call_next(request)
+        response = await call_next(request)
 
         process_time = (time.time() - start_time) * 1000
         formatted_process_time = f"{process_time:.2f}"
@@ -55,11 +53,11 @@ class LogProcessTimeMiddleware(BaseHTTPMiddleware):
         return response
 
 
-class ErrorHandlingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-
-    async def dispatch(self, request: Request, call_next):
+def add_error_handling_middleware(app: FastAPI) -> None:
+    @app.middleware("http")
+    async def error_handling_middleware(
+        request: Request, call_next: Callable
+    ) -> Response:
         try:
             return await call_next(request)
         except ModalException as e:
