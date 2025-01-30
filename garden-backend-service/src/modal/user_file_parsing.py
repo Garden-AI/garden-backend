@@ -62,12 +62,16 @@ class ModalAppInfo:
 class ModalFunctionInfo:
     function_name: str
     function_text: str
+    function_desc: str
     app: ModalAppInfo
     image: ModalImageInfo
-    hardware_spec: dict = field(
-        default_factory=dict
-    )  # ^should be same shape the estimate_usage helper expects
-    # TODO remove hardware_spec if not needed
+
+
+@dataclass
+class ModalLocalEntrypointInfo:
+    function_name: str
+    function_text: str
+    called_functions: set[str] = field(default_factory=set)
 
 
 @dataclass
@@ -75,6 +79,7 @@ class ModalFileParseResults:
     images: list[ModalImageInfo] = field(default_factory=list)
     apps: list[ModalAppInfo] = field(default_factory=list)
     functions: list[ModalFunctionInfo] = field(default_factory=list)
+    local_entrypoints: list[ModalLocalEntrypointInfo] = field(default_factory=list)
 
 
 def parse_modal_file(contents: str) -> ModalFileParseResults:
@@ -95,6 +100,7 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
     images = {}
     apps = {}
     functions = {}
+    local_entrypoints = []
 
     for node in tree.body:
         match node:
@@ -123,6 +129,12 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
             ):
                 for function_info in class_function_infos:
                     functions[function_info.function_name] = function_info
+            case (
+                ast.FunctionDef() as local_ep_def
+            ) if local_entrypoint_info := try_parse_local_entrypoint_info(
+                local_ep_def, functions
+            ):
+                local_entrypoints += [local_entrypoint_info]
 
     if "app" not in apps:
         raise ModalException(
@@ -134,6 +146,7 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
         images=list(images.values()),
         apps=list(apps.values()),
         functions=list(functions.values()),
+        local_entrypoints=local_entrypoints,
     )
 
 
@@ -330,6 +343,7 @@ def try_parse_function_info(
             function_info = ModalFunctionInfo(
                 function_name=function_name,
                 function_text=ast.unparse(node),
+                function_desc=ast.get_docstring(node) or "",
                 app=app_info,
                 image=app_info.image,  # default is app image, but decorator kwarg takes priority
             )
@@ -359,8 +373,6 @@ def _update_function_info_from_decorator(
                 # handle case where kwarg is `image=modal.Image.<chained_image_methods>`
                 image_info = try_parse_image_info(kw.value)
                 func_info.image = image_info
-            case ast.keyword(arg=arg) if arg in {"cpu", "gpu", "memory"}:
-                func_info.hardware_spec[arg] = _parse_hardware_kwarg(kw)
             case ast.keyword(arg="name", value=ast.Constant(value=str(new_name))):
                 func_info.function_name = new_name
             case ast.keyword(arg=arg) if arg in FUNCTION_KWARG_BLOCKLIST:
@@ -425,6 +437,7 @@ def try_parse_class_function_info(
                         function_info = ModalFunctionInfo(
                             function_name=f"{class_name}.{method_name}",
                             function_text=ast.unparse(method),
+                            function_desc=ast.get_docstring(method) or "",
                             app=app_info,
                             image=class_image,
                         )
@@ -435,32 +448,60 @@ def try_parse_class_function_info(
             return None
 
 
-def _parse_hardware_kwarg(node: ast.keyword):
-    # TODO remove if not needed
-    if node.arg in {"cpu", "memory"}:
-        match node.value:
-            case ast.Constant(value=val):
-                return val
-            case ast.Tuple(elts=[ast.Constant(value=val1), ast.Constant(value=val2)]):
-                return (val1, val2)
-    elif node.arg == "gpu":
-        match node.value:
-            case ast.Constant(value=val):
-                return val
-            case ast.List(elts=elts):
-                values = []
-                for element in elts:
-                    if isinstance(element, ast.Constant):
-                        # if it's a constant str or None, just include it
-                        gpu_key = element.value
-                    elif isinstance(element, ast.Name):
-                        # like `gpu=A100` instead of `gpu="A100"`
-                        # we persist it as the string instead since it's equivalent
-                        gpu_key = element.id
-                    elif isinstance(element, ast.Attribute):
-                        # like `gpu=modal.gpu.A100` or `gpu=modal.gpu.A100()`
-                        # best effort without exec-ing anything
-                        string_rep = ast.unparse(element)
-                        gpu_key = string_rep.split(".")[-1].strip("()")
-                    values += [gpu_key]
-                return values
+def try_parse_local_entrypoint_info(
+    node: ast.FunctionDef,
+    parsed_functions: dict[str, ModalFunctionInfo] | None = None,
+) -> ModalLocalEntrypointInfo | None:
+    parsed_functions = parsed_functions or {}
+    match node:
+        case ast.FunctionDef(name=entrypoint_name) if _is_decorated_local_entrypoint(
+            node
+        ):
+            entrypoint_info = ModalLocalEntrypointInfo(
+                function_name=entrypoint_name,
+                function_text=ast.unparse(node),
+            )
+            return _update_entrypoint_info_from_decorator(
+                node, entrypoint_info, set(parsed_functions.keys())
+            )
+        case _:
+            return None
+
+
+def _is_decorated_local_entrypoint(node: ast.FunctionDef) -> bool:
+    """Check if a function node is decorated like @<some_app>.local_entrypoint."""
+    for decorator in node.decorator_list:
+        match decorator:
+            case ast.Call(ast.Attribute(attr="local_entrypoint")):
+                return True
+    return False
+
+
+def _update_entrypoint_info_from_decorator(
+    fn_node: ast.FunctionDef,
+    info: ModalLocalEntrypointInfo,
+    known_function_names: set[str],
+) -> ModalLocalEntrypointInfo:
+    ep_info = copy.deepcopy(info)
+    # walk the function node's subtree for any Calls which match the name of a
+    # function (or method) we've already seen
+    for node in ast.walk(fn_node):
+        match node:
+            # case 1: function_name.remote()
+            case ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id=called_function_name), attr="remote"
+                )
+            ) if called_function_name in known_function_names:
+                ep_info.called_functions |= {called_function_name}
+            # case 2: class_name.method_name.remote()
+            case ast.Call(
+                func=ast.Attribute(
+                    value=ast.Attribute(
+                        value=ast.Name(id=class_name), attr=method_name
+                    ),
+                    attr="remote",
+                )
+            ) if f"{class_name}.{method_name}" in known_function_names:
+                ep_info.called_functions |= {f"{class_name}.{method_name}"}
+    return ep_info

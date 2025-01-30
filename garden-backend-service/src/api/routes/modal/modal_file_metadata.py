@@ -38,11 +38,14 @@ async def parse_modal_file_metadata(
             function_text=fn.function_text,
             file_contents=request.file_contents,
             title=fn.function_name,
-            description=None,
+            description=fn.function_desc,
             year=str(datetime.now().year),
             requirements=fn.image.pip_requirements,
             conda_requirements=fn.image.conda_requirements,
         )
+        for local_ep in results.local_entrypoints:
+            if fn.function_name in local_ep.called_functions:
+                meta.test_functions += [local_ep.function_text]
         function_metas += [meta]
 
     if len(results.apps) != 1:

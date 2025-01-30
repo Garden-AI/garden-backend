@@ -11,6 +11,7 @@ from tests.fixtures.modal_file_constants import (
     VALID_CLASS_BASED,
     VALID_CONDA_PACKAGES,
     VALID_MULTIPLE_IMAGES,
+    VALID_MULTIPLE_LOCAL_ENTRYPOINTS,
     VALID_NO_CUSTOM_IMAGE,
 )
 
@@ -124,6 +125,36 @@ async def test_validate_class_based(client, _metadata_validation_fixtures):
     )
     for fn_info in data["modal_functions"]:
         assert "scikit-learn" in fn_info["requirements"]
+        assert len(fn_info["test_functions"]) == 1
+        assert (
+            "def main():" in fn_info["test_functions"][0]
+        )  # both have same local entrypoint
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_validate_multiple_local_entrypoints(
+    client, _metadata_validation_fixtures
+):
+    response = await client.post(
+        "/modal-file-metadata", json={"file_contents": VALID_MULTIPLE_LOCAL_ENTRYPOINTS}
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    # should have distinct local_entrypoints
+    assert (
+        data["modal_functions"][0]["test_functions"]
+        != data["modal_functions"][1]["test_functions"]
+    )
+
+    for fn_info in data["modal_functions"]:
+        assert len(fn_info["test_functions"]) == 1
+        test_fn = fn_info["test_functions"][0]
+        if fn_info["function_name"] == "science_stuff":
+            assert "science r u l e s" in test_fn
+        else:
+            assert "BILL! BILL! BILL! BILL!" in test_fn
 
 
 @pytest.mark.asyncio

@@ -98,8 +98,39 @@ class Model:
     @modal.method()
     def predict_proba(self, x):
         return self.model.predict_proba(x)
+
+@app.local_entrypoint()
+def main():
+    Model.predict.remote("abc")
+    Model.predict_proba.remote("123")
 """
 
+# Valid case: Different local entrypoints for different functions
+VALID_MULTIPLE_LOCAL_ENTRYPOINTS = """
+import modal
+
+app = modal.App("science-app")
+
+@app.function()
+def science_stuff():
+    import numpy as np
+    return np.random.rand(10)
+
+@app.local_entrypoint()
+def test_science_stuff():
+    print(science_stuff.remote("science r u l e s"))
+
+@app.function()
+def ml_stuff():
+    import torch
+    return torch.rand(10)
+
+
+@app.local_entrypoint()
+def test_ml_stuff():
+    results = ml_stuff.remote("BILL! BILL! BILL! BILL!")
+    print(results)
+"""
 # Valid case: Using micromamba for conda packages
 VALID_CONDA_PACKAGES = """
 import modal
