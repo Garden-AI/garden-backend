@@ -22,9 +22,9 @@ from src.api.routes import (
 from src.api.routes.mdf import search as mdf_search
 from src.config import Settings, get_settings
 from src.middleware.logging import (
-    ErrorHandlingMiddleware,
-    # LogProcessTimeMiddleware,
-    # LogRequestIdMiddleware,
+    add_error_handling_middleware,
+    add_process_time_middleware,
+    add_request_id_middleware,
 )
 
 
@@ -57,12 +57,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(ErrorHandlingMiddleware)
-# As currently written (subclassing BaseHTTPMiddleware), these middlewares interfere with background tasks
-# See https://github.com/encode/starlette/issues/919 for more details
-# TODO: Find a way to work around this and bring these log statements back
-# app.add_middleware(LogProcessTimeMiddleware)
-# app.add_middleware(LogRequestIdMiddleware)
+
+# Add our custom middleware
+add_error_handling_middleware(app)
+add_process_time_middleware(app)
+add_request_id_middleware(app)
 
 app.include_router(greet.router)
 app.include_router(doi.router)
