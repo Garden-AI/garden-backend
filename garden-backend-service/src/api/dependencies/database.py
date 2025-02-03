@@ -20,44 +20,51 @@ log = get_logger(__name__)
 
 SEARCH_SQL_INIT_LOCK_ID = 20250117  # YYYYMMDD when implemented
 
-# Global engine instance
-_engine: AsyncEngine | None = None
-_async_session_maker: async_sessionmaker[AsyncSession] | None = None
 
+class DatabaseEngine:
+    """A singleton class to manage database engine and session maker instances."""
 
-def get_engine(postgres_url: str) -> AsyncEngine:
-    """Get or create the singleton database engine."""
-    global _engine
-    if _engine is None:
-        _engine = create_async_engine(
-            postgres_url, echo=False, pool_size=20, max_overflow=10
-        )
-    return _engine
+    _instance = None
+    _engine: AsyncEngine | None = None
+    _async_session_maker: async_sessionmaker[AsyncSession] | None = None
 
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
-def get_session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
-    """Get or create the singleton session maker."""
-    global _async_session_maker
-    if _async_session_maker is None:
-        _async_session_maker = async_sessionmaker(
-            bind=engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
-    return _async_session_maker
+    @classmethod
+    def get_instance(cls) -> "DatabaseEngine":
+        """Get the singleton instance of DatabaseEngine."""
+        return cls()
 
+    def get_engine(self, postgres_url: str) -> AsyncEngine:
+        """Get or create the singleton database engine."""
+        if self._engine is None:
+            self._engine = create_async_engine(
+                postgres_url,
+                echo=False,
+            )
+        return self._engine
 
-@asynccontextmanager
-async def get_session() -> AsyncIterator[AsyncSession]:
-    """Get a database session from the session maker."""
-    session_maker = get_session_maker(
-        get_engine(get_settings().SQLALCHEMY_DATABASE_URL)
-    )
-    async with session_maker() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+    def get_session_maker(
+        self, engine: AsyncEngine
+    ) -> async_sessionmaker[AsyncSession]:
+        """Get or create the singleton session maker."""
+        if self._async_session_maker is None:
+            self._async_session_maker = async_sessionmaker(
+                bind=engine,
+                class_=AsyncSession,
+                expire_on_commit=False,
+            )
+        return self._async_session_maker
+
+    def dispose(self) -> None:
+        """Dispose of the engine and session maker. Mainly useful for testing."""
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
+        self._async_session_maker = None
 
 
 @asynccontextmanager
@@ -116,13 +123,18 @@ async def get_db_session(
     settings=Depends(get_settings),
 ) -> AsyncIterator[AsyncSession]:
     """Get a database session from the singleton session maker."""
-    async with get_session() as session:
-        yield session
+    session_maker = await get_db_session_maker(settings)
+    async with session_maker() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 async def get_db_session_maker(
     settings=Depends(get_settings),
 ) -> async_sessionmaker[AsyncSession]:
     """Get the singleton session maker instance."""
-    engine = get_engine(settings.SQLALCHEMY_DATABASE_URL)
-    return get_session_maker(engine)
+    db_engine = DatabaseEngine.get_instance()
+    engine = db_engine.get_engine(settings.SQLALCHEMY_DATABASE_URL)
+    return db_engine.get_session_maker(engine)
