@@ -1,5 +1,5 @@
 config:
-  target: "http://localhost:5500"
+  target: "${GARDEN_BACKEND_URL:http://localhost:5500}"  # Default to localhost if not set
   timeout: 10
   phases:
     - duration: 5
@@ -7,10 +7,11 @@ config:
       name: "Warm up"
     - duration: 15
       arrivalRate: 10
-      rampTo: 50
+      rampTo: 30
       name: "Ramp up load"
     - duration: 30
       arrivalRate: 30
+      rampTo: 50
       name: "Sustained load"
 
   plugins:

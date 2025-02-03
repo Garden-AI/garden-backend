@@ -3,16 +3,11 @@
   "version": "1.0.0",
   "description": "Load testing suite for Garden Backend Service",
   "scripts": {
-    "get-token": "python3 get_test_token.py",
-    "test": "AUTH_TOKEN=$(npm run -s get-token) artillery run load-test-config.yml",
-    "test:local": "AUTH_TOKEN=$(npm run -s get-token) artillery run --target http://localhost:8000 load-test-config.yml",
-    "test:staging": "AUTH_TOKEN=$(npm run -s get-token) artillery run --target https://staging-api.example.com load-test-config.yml",
-    "test:ci": "AUTH_TOKEN=$(npm run -s get-token) artillery run --output test-results.json load-test-config.yml && artillery report test-results.json",
-    "test:quick": "AUTH_TOKEN=$(npm run -s get-token) artillery run --config '{\"phases\": [{\"duration\": 30, \"arrivalRate\": 5}]}' load-test-config.yml"
+    "test": "artillery run load-test-config.yml"
   },
   "keywords": ["load-testing", "artillery", "performance"],
-  "author": "",
-  "license": "ISC",
+  "author": "Hayden Holbrook <hholbrook@uchicago.edu>",
+  "license": "MIT",
   "devDependencies": {
     "artillery": "^2.0.0"
   }
