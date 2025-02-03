@@ -1,18 +1,14 @@
-import asyncio
 import os
-import random
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
 
 import src.logging  # noqa  # import to ensure logger is configured
 from src.api.dependencies.database import (
     async_init,
     get_db_session_maker,
-    get_session,
 )
 from src.api.routes import (
     docker_push_token,
@@ -21,23 +17,18 @@ from src.api.routes import (
     gardens,
     greet,
     hello_database,
+    load_test,
     modal,
     notebook,
     users,
 )
 from src.api.routes.mdf import search as mdf_search
-from src.config import Settings, get_settings
+from src.config import get_settings
 from src.middleware.logging import (
     add_error_handling_middleware,
     add_process_time_middleware,
     add_request_id_middleware,
 )
-from src.models.garden import Garden
-
-# def get_db_session_maker(settings: Settings) -> async_sessionmaker[AsyncSession]:
-#     postgres_url = settings.SQLALCHEMY_DATABASE_URL
-#     engine = create_async_engine(postgres_url, echo=False)
-#     return async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 
 @asynccontextmanager
@@ -85,40 +76,11 @@ app.include_router(modal.modal_file_metadata.router)
 
 app.include_router(mdf_search.router)
 
+# Include load test routes only in development environments
+if get_settings().GARDEN_ENV in ["dev", "test", "local"]:
+    app.include_router(load_test.router)
+
 
 @app.get("/")
 async def greet_world():
     return {"Hello there": "You must be World"}
-
-
-async def load_test_task(settings: Settings, sleep_seconds: int):
-    """Background task that randomly creates or reads from the database then sleeps for a bit.
-
-    The idea is to test how our async database setup interacts with the rest of the app and event loop
-    under heavy load.
-    """
-    async with get_session() as db:
-        if random.random() < 0.5:  # 50% chance of write
-            new_garden = Garden(
-                name="Load Test Garden",
-                description="Created during load test",
-            )
-            db.add(new_garden)
-            await db.commit()
-        # Do a read
-        stmt = select(Garden).limit(1)
-        result = await db.scalars(stmt)
-        garden = result.first()
-    await asyncio.sleep(sleep_seconds)
-    return garden
-
-
-@app.get("/load-test/{sleep_seconds}")
-async def load_test(
-    sleep_seconds: int,
-    background_tasks: BackgroundTasks,
-    settings: Settings = Depends(get_settings),
-):
-    """Simulate a route that passes jobs to a background task"""
-    background_tasks.add_task(load_test_task, settings, sleep_seconds)
-    return {"status": "ok"}
