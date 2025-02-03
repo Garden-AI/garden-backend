@@ -21,6 +21,7 @@ async def load_test_task(settings: Settings, sleep_seconds: int):
     The idea is to test how our async database setup interacts with the rest of the app and event loop
     under heavy load.
     """
+    garden_ids = []
     garden = None
     async for db in get_db_session(settings):
         if random.random() < 0.5:  # 50% chance of write
@@ -44,11 +45,16 @@ async def load_test_task(settings: Settings, sleep_seconds: int):
             db.add(new_garden)
             await db.commit()
             garden = new_garden
+            garden_ids.append(new_garden.id)
         else:
             # Do a read
             stmt = select(Garden).limit(1)
             result = await db.scalars(stmt)
             garden = result.first()
+        # clean up any gardens created during this task
+        for garden_id in garden_ids:
+            garden = await db.get(Garden, garden_id)
+            await db.delete(garden) if garden else None
         break  # We only want to do this once
 
     await asyncio.sleep(sleep_seconds)

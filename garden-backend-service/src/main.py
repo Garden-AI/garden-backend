@@ -1,5 +1,4 @@
 import os
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -30,9 +29,18 @@ from src.middleware.logging import (
     add_request_id_middleware,
 )
 
+app = FastAPI()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+async def startup_event():
     settings = get_settings()
     session_maker = await get_db_session_maker(settings=settings)
 
@@ -43,17 +51,10 @@ async def lifespan(app: FastAPI):
     # load text-search sql
     await async_init(session_maker, Path(settings.GARDEN_SEARCH_SQL_DIR))
 
-    yield
+    # Include load test routes only in development environments
+    if settings.GARDEN_ENV in ["dev", "local"]:
+        app.include_router(load_test.router)
 
-
-app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Add our custom middleware
 add_error_handling_middleware(app)
@@ -75,10 +76,6 @@ app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
 app.include_router(mdf_search.router)
-
-# Include load test routes only in development environments
-if get_settings().GARDEN_ENV in ["dev", "test", "local"]:
-    app.include_router(load_test.router)
 
 
 @app.get("/")

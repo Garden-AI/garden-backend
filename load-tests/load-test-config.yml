@@ -1,6 +1,10 @@
 config:
-  target: "${GARDEN_BACKEND_URL:http://localhost:5500}"  # Default to localhost if not set
   timeout: 10
+  environments:
+    local:
+      target: "http://localhost:5500"
+    dev:
+      target: "https://api-dev.thegardens.ai"
   phases:
     - duration: 5
       arrivalRate: 5
