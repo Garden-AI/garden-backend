@@ -4,7 +4,7 @@
   "description": "Load testing suite for Garden Backend Service",
   "scripts": {
     "test:local": "artillery run -e local load-test-config.yml",
-    "test:dev": "artillery run -e dev load-test-config.yml",
+    "test:dev": "artillery run -e dev load-test-config.yml"
   },
   "keywords": ["load-testing", "artillery", "performance"],
   "author": "Hayden Holbrook <hholbrook@uchicago.edu>",
