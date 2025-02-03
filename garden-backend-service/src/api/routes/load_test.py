@@ -23,6 +23,7 @@ async def load_test_task(settings: Settings, sleep_seconds: int):
     """
     garden_ids = []
     garden = None
+    await asyncio.sleep(sleep_seconds)
     async for db in get_db_session(settings):
         if random.random() < 0.5:  # 50% chance of write
             new_garden = Garden(
@@ -57,7 +58,6 @@ async def load_test_task(settings: Settings, sleep_seconds: int):
             await db.delete(garden) if garden else None
         break  # We only want to do this once
 
-    await asyncio.sleep(sleep_seconds)
     return garden
 
 
