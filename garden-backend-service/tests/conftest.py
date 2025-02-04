@@ -11,8 +11,9 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from modal_proto import api_pb2
-from sqlalchemy import text
+from sqlalchemy import NullPool, text
 from sqlalchemy.engine import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 
@@ -105,6 +106,7 @@ def mock_db_session(
     mock_settings,
     override_get_settings_dependency,
     _sync_engine,
+    mocker,
 ):
     """Provide a mock database session to the test.
 
@@ -115,6 +117,19 @@ def mock_db_session(
     Base.metadata.create_all(_sync_engine)
     with Session(_sync_engine) as db:
         init(db, Path(mock_settings.GARDEN_SEARCH_SQL_DIR))
+
+    # NullPool fixes an issue where the engine connections are reused between tests
+    # and the tests interfere with each other. This doesn't happen in the real app,
+    #  I think it has something to do with pytest's async setup
+    def _create_async_engine(a, b):
+        # a and b are ignored, they are just placeholders for the arguments
+        return create_async_engine(
+            mock_settings.SQLALCHEMY_DATABASE_URL, poolclass=NullPool
+        )  # null pool is needed to avoid connections being reused
+
+    mocker.patch(
+        "src.api.dependencies.database.DatabaseEngine.get_engine", _create_async_engine
+    )
 
     # Let the test use the database
     yield

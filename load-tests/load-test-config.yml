@@ -1,0 +1,30 @@
+config:
+  timeout: 10
+  environments:
+    local:
+      target: "http://localhost:5500"
+    dev:
+      target: "https://api-dev.thegardens.ai"
+  phases:
+    - duration: 5
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 15
+      arrivalRate: 10
+      rampTo: 30
+      name: "Ramp up load"
+    - duration: 30
+      arrivalRate: 30
+      rampTo: 50
+      name: "Sustained load"
+
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Load Test"
+    flow:
+      - get:
+          url: "/load-test/5"
+          expect:
+            - statusCode: 200
