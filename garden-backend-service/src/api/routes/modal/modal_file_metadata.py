@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, status
@@ -11,7 +12,11 @@ from src.api.schemas.modal.modal_app import (
 from src.api.schemas.modal.modal_function import ModalFunctionMetadata
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
-from src.modal.user_file_parsing import ModalFileParseResults, parse_modal_file
+from src.modal.user_file_parsing import (
+    ModalFileParseResults,
+    ModalLocalEntrypointInfo,
+    parse_modal_file,
+)
 from src.models import User
 
 logger = get_logger(__name__)
@@ -46,6 +51,7 @@ async def parse_modal_file_metadata(
         for local_ep in results.local_entrypoints:
             if fn.function_name in local_ep.called_functions:
                 meta.test_functions += [local_ep.function_text]
+                meta.example_usage += f"\n{_make_example_usage(local_ep)}"
         function_metas += [meta]
 
     if len(results.apps) != 1:
@@ -67,3 +73,22 @@ async def parse_modal_file_metadata(
     )
 
     return response
+
+
+def _make_example_usage(info: ModalLocalEntrypointInfo) -> str:
+    """Helper: builds a plausible example_usage source code string from extracted ModalLocalEntrypointInfo"""
+    # Remove decorators from the top of the function
+    function_text = info.function_text
+
+    # Pattern to match decorator lines (starts with @, continues until newline)
+    decorator_pattern = r"^\s*@[^\n]*\n"
+    cleaned_text = re.sub(decorator_pattern, "", function_text, flags=re.MULTILINE)
+
+    # For each called function, replace {function}.remote(<args>) with my_garden.{function}(<args>)
+    for called_function in info.called_functions:
+        example_call_pattern = rf"{called_function}\.remote\((.*?)\)"
+        cleaned_text = re.sub(
+            example_call_pattern, rf"my_garden.{called_function}(\1)", cleaned_text
+        )
+
+    return cleaned_text.strip("\n") + "\n\n"
