@@ -12,6 +12,7 @@ class ModalFunctionMetadata(CommonFunctionMetadata):
     doi: str | None = None
     # modal supports conda requirements but entrypoints don't
     conda_requirements: list[str] = Field(default_factory=list)
+    example_usage: str = ""
 
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):

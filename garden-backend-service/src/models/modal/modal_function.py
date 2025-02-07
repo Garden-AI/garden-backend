@@ -36,6 +36,7 @@ class ModalFunction(Base):
     hardware_spec: Mapped[dict] = mapped_column(JSON)
 
     test_functions: Mapped[list[str]] = mapped_column(ARRAY(String))
+    example_usage: Mapped[str | None]
 
     # NOTE: modifications to these lists / dictionaries won't be picked up
     # by sqlalchemy ORM. Updates should replace with a copy.
