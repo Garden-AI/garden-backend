@@ -48,7 +48,7 @@ class ModalImageInfo:
 def _image_default() -> ModalImageInfo:
     # helper for use with default_factory below
     call_node = ast.parse("modal.Image.debian_slim()").body[0].value
-    return try_parse_image_info(call_node)
+    return try_parse_image_info(call_node, parsed_images={})
 
 
 @dataclass
@@ -107,7 +107,7 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
             # Case 1: assigning a Modal image to a variable
             case ast.Assign(
                 targets=[ast.Name(id=image_name)], value=ast.Call() as call_node
-            ) if image_info := try_parse_image_info(call_node):
+            ) if image_info := try_parse_image_info(call_node, images):
                 images[image_name] = image_info
 
             # Case 2: assigning a Modal app to a variable
@@ -151,7 +151,11 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
 
 
 # image info helpers
-def try_parse_image_info(node: ast.Call, _info=None) -> ModalImageInfo | None:
+def try_parse_image_info(
+    node: ast.Call,
+    parsed_images: dict[str, ModalImageInfo],
+    _info=None,
+) -> ModalImageInfo | None:
     """Return a ModalImageInfo object if the given Call node constructs a modal Image, otherwise return None."""
     info = _info or ModalImageInfo()
 
@@ -167,10 +171,17 @@ def try_parse_image_info(node: ast.Call, _info=None) -> ModalImageInfo | None:
             )
         ):
             return _update_image_info_from_root_staticmethod(node, info)
+        # base case 2: method chained on an existing image variable, like `my_img = my_base_image.<factory_method>`
+        case ast.Attribute(value=ast.Name(id=image_var)) if image_var in parsed_images:
+            base_info = parsed_images[image_var]
+            new_info = _update_image_info_from_factory_method(node, base_info)
+            new_info.pip_requirements.extend(info.pip_requirements)
+            new_info.conda_requirements.extend(info.conda_requirements)
+            return new_info
         # recursive case: chained method, the value of the attribute node is another call node
         case ast.Attribute(value=ast.Call() as next_node):
             info = _update_image_info_from_factory_method(node, info)
-            return try_parse_image_info(next_node, info)
+            return try_parse_image_info(next_node, parsed_images, info)
         # otherwise, this call node doesn't construct a valid modal image
         case _:
             return None
@@ -311,7 +322,7 @@ def _update_app_info_from_constructor(
                     app_info.image = image_info
                 elif kw.arg == "image" and isinstance(kw.value, ast.Call):
                     # handle case where kwarg is `image=modal.Image.<chained_image_methods>`
-                    image_info = try_parse_image_info(kw.value)
+                    image_info = try_parse_image_info(kw.value, parsed_images)
                     app_info.image = image_info
 
                 # TODO disallow other kwargs? (volumes, etc)
@@ -361,6 +372,7 @@ def _update_function_info_from_decorator(
     parsed_images: dict[str, ModalImageInfo] | None = None,
     parsed_apps: dict[str, ModalAppInfo] | None = None,
 ) -> ModalFunctionInfo:
+    parsed_images = parsed_images or {}
     func_info = copy.deepcopy(info)
     for kw in node.keywords:
         match kw:
@@ -371,8 +383,11 @@ def _update_function_info_from_decorator(
                 func_info.image = image_info
             case ast.keyword(arg="image", value=ast.Call()):
                 # handle case where kwarg is `image=modal.Image.<chained_image_methods>`
-                image_info = try_parse_image_info(kw.value)
-                func_info.image = image_info
+                image_info = try_parse_image_info(kw.value, parsed_images)
+                if image_info is None:
+                    func_info.image = _image_default()  # default is sane if this fails, no need to error and stop the publish attempt
+                else:
+                    func_info.image = image_info
             case ast.keyword(arg="name", value=ast.Constant(value=str(new_name))):
                 func_info.function_name = new_name
             case ast.keyword(arg=arg) if arg in FUNCTION_KWARG_BLOCKLIST:
@@ -417,7 +432,7 @@ def try_parse_class_function_info(
                         image_name = kw.value.id
                         class_image = parsed_images.get(image_name) or class_image
                     case ast.keyword(arg="image", value=ast.Call()):
-                        class_image = try_parse_image_info(kw.value)
+                        class_image = try_parse_image_info(kw.value, parsed_images)
 
             # Collect all methods decorated with @modal.method()
             for method in node.body:
