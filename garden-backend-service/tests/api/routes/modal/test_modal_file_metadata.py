@@ -10,6 +10,7 @@ from tests.fixtures.modal_file_constants import (
     VALID_BASIC_IMPORTS,
     VALID_CLASS_BASED,
     VALID_CONDA_PACKAGES,
+    VALID_MULTIPLE_IMAGE_VARIABLE_REFERENCES,
     VALID_MULTIPLE_IMAGES,
     VALID_MULTIPLE_LOCAL_ENTRYPOINTS,
     VALID_NO_CUSTOM_IMAGE,
@@ -107,6 +108,33 @@ async def test_validate_multiple_images(client, _metadata_validation_fixtures):
             assert set(fn_info["requirements"]) == {"numpy", "scipy"}
         elif fn_info["function_name"] == "ml_stuff":
             assert set(fn_info["requirements"]) == {"torch", "transformers"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_validate_multiple_image_variables(client, _metadata_validation_fixtures):
+    response = await client.post(
+        "/modal-file-metadata",
+        json={"file_contents": VALID_MULTIPLE_IMAGE_VARIABLE_REFERENCES},
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    _assert_response_metadata(
+        data, "multi-image-app", expected_function_names=["science_stuff", "ml_stuff"]
+    )
+
+    for fn_info in data["modal_functions"]:
+        if fn_info["function_name"] == "science_stuff":
+            assert set(fn_info["requirements"]) == {"numpy", "scipy"}
+        elif fn_info["function_name"] == "ml_stuff":
+            # should have requirements from both images
+            assert set(fn_info["requirements"]) == {
+                "numpy",
+                "scipy",
+                "torch",
+                "transformers",
+            }
 
 
 @pytest.mark.asyncio

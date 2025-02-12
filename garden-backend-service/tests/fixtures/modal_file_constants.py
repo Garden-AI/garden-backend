@@ -204,3 +204,32 @@ def secure_function():
     import os
     return os.environ["MY_SECRET"]
 """
+
+VALID_MULTIPLE_IMAGE_VARIABLE_REFERENCES = """ 
+import modal
+
+# Base scientific image
+SCI_IMAGE = modal.Image.debian_slim().pip_install(
+    "numpy",
+    "scipy"
+)
+
+# Image for deep learning
+ML_IMAGE = SCI_IMAGE.pip_install(
+    "torch",
+    "transformers"
+)
+
+app = modal.App("multi-image-app")
+
+@app.function(image=SCI_IMAGE)
+def science_stuff():
+    import numpy as np
+    return np.random.rand(10)
+
+@app.function(image=ML_IMAGE, gpu="A100")
+def ml_stuff():
+    import torch
+    return torch.rand(10)
+
+"""
