@@ -59,6 +59,7 @@ class CommonFunctionPatchRequest(BaseSchema):
     year: str | None = None
 
     function_text: str | None = None
+    example_usage: str | None = None
 
     authors: UniqueList[str] | None = None
     tags: UniqueList[str] | None = None
