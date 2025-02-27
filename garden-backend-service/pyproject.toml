@@ -32,7 +32,8 @@ dependencies = [
   "phonenumbers>=8.13.40",
   "structlog>=24.4.0",
   "sqlparse>=0.5.1",
-  "modal>=0.66.37,<0.67.0",      # NOTE: remember to bump modal dep in sandboxed lambda functions when this changes
+  "modal>=0.66.37,<0.67.0", # NOTE: remember to bump modal dep in sandboxed lambda functions when this changes
+  "arxiv>=2.1.3",
 ]
 
 [dependency-groups]

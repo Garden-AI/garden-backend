@@ -34,6 +34,16 @@ class BaseSchema(BaseModel, from_attributes=True):
         return val
 
 
+class BaseRelatedMetadataSchema(BaseSchema, extra="allow"):
+    """Base class for "related metadata" types like papers, repositories etc.
+
+    For these types we typically want to allow (rather than ignore) extra
+    metadata fields when we store/retrieve the raw json in the DB.
+    """
+
+    ...
+
+
 T = TypeVar("T")
 
 
