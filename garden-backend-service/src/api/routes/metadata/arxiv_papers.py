@@ -12,7 +12,6 @@ router = APIRouter(prefix="/arxiv-paper-metadata")
 def extract_arxiv_paper_metadata(
     request: LinkArxivMetadataRequest,
 ) -> LinkArxivMetadataResponse:
-    # Use the arxiv package to fetch paper metadata
     try:
         client = arxiv.Client()
         search = arxiv.Search(id_list=[request.arxiv_identifier], max_results=1)

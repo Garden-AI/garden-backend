@@ -17,6 +17,7 @@ from src.api.routes import (
     greet,
     hello_database,
     load_test,
+    metadata,
     modal,
     notebook,
     users,
@@ -74,6 +75,8 @@ app.include_router(modal.invocations.router)
 app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
+
+app.include_router(metadata.arxiv_papers.router)
 
 app.include_router(mdf_search.router)
 
