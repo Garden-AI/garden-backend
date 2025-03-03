@@ -20,6 +20,7 @@ class ModalApp(Base):
     __tablename__ = "modal_apps"
     id: Mapped[int] = mapped_column(primary_key=True)
     app_name: Mapped[str]
+    original_app_name: Mapped[str]
     base_image_name: Mapped[str]
     requirements: Mapped[list[str]] = mapped_column(ARRAY(String))
     conda_requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))

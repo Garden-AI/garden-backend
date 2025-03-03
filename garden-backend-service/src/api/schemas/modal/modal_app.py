@@ -10,6 +10,7 @@ from .modal_function import ModalFunctionMetadata, ModalFunctionMetadataResponse
 
 class ModalAppMetadata(BaseSchema):
     app_name: str
+    original_app_name: str | None = None
     modal_functions: list[ModalFunctionMetadata] = Field(default_factory=list)
     file_contents: str
 
