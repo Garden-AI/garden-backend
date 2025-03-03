@@ -1,22 +1,24 @@
 from pydantic import Field
 
-from .base import BaseSchema, UniqueList, Url
+from .base import BaseRelatedMetadataSchema, BaseSchema, UniqueList, Url
 
 
-class _RepositoryMetadata(BaseSchema):
+class _RepositoryMetadata(BaseRelatedMetadataSchema):
     repo_name: str
     url: Url
     contributors: UniqueList[str] = Field(default_factory=list)
 
 
-class _PaperMetadata(BaseSchema):
-    title: str
+class _PaperMetadata(BaseRelatedMetadataSchema):
+    title: str | None = None
     authors: UniqueList[str] = Field(default_factory=list)
-    doi: str | None
-    citation: str | None
+    doi: str | None = None
+    description: str | None = None
+    citation: str | None = None
+    url: Url | None = None
 
 
-class _DatasetMetadata(BaseSchema):
+class _DatasetMetadata(BaseRelatedMetadataSchema):
     title: str = Field(...)
     doi: str | None
     url: Url
@@ -25,7 +27,7 @@ class _DatasetMetadata(BaseSchema):
 
 
 # protected_namespaces=() to allow model_* attribute names
-class _ModelMetadata(BaseSchema, protected_namespaces=()):
+class _ModelMetadata(BaseRelatedMetadataSchema, protected_namespaces=()):
     model_identifier: str
     model_repository: str
     model_version: str | None
