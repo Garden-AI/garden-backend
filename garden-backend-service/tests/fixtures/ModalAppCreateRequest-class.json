@@ -1,5 +1,6 @@
 {
     "app_name": "class-app",
+    "original_app_name": "class-app",
     "modal_function_names": ["Model.say_hi"],
     "version": "0.0.1",
     "requirements": [],

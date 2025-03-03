@@ -46,9 +46,10 @@ async def add_modal_app(
         modal_app, validate_modal_file
     )
     full_app_name = _generate_app_name(user, modal_app.app_name)
+    original_app_name = modal_app.app_name
 
     modal_app_db_model = await _save_modal_app_to_db(
-        db, modal_app, user, full_app_name, hardware_specs
+        db, modal_app, user, full_app_name, original_app_name, hardware_specs
     )
 
     await _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)
@@ -73,10 +74,10 @@ async def add_modal_app_async(
     hardware_specs = await _validate_modal_app_metadata_helper(
         modal_app, validate_modal_file
     )
+    original_app_name = modal_app.app_name
     full_app_name = _generate_app_name(user, modal_app.app_name)
-
     modal_app_db_model = await _save_modal_app_to_db(
-        db, modal_app, user, full_app_name, hardware_specs
+        db, modal_app, user, full_app_name, original_app_name, hardware_specs
     )
 
     deploy_config = {
@@ -267,6 +268,7 @@ async def _save_modal_app_to_db(
     modal_app: ModalAppCreateRequest,
     user: User,
     full_app_name: str,
+    original_app_name: str,
     hardware_specs: dict[str, dict[str, Any]],
 ):
     model_dict = modal_app.model_dump(
@@ -279,6 +281,7 @@ async def _save_modal_app_to_db(
     )
     model_dict["user_id"] = user.id
     model_dict["app_name"] = full_app_name
+    model_dict["original_app_name"] = original_app_name
     for modal_fn in model_dict["modal_functions"]:
         name = modal_fn["function_name"]
         modal_fn["hardware_spec"] = hardware_specs[name]
