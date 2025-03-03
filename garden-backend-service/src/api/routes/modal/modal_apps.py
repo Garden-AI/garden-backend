@@ -46,9 +46,10 @@ async def add_modal_app(
         modal_app, validate_modal_file
     )
     full_app_name = _generate_app_name(user, modal_app.app_name)
+    original_app_name = modal_app.app_name
 
     modal_app_db_model = await _save_modal_app_to_db(
-        db, modal_app, user, full_app_name, hardware_specs
+        db, modal_app, user, full_app_name, original_app_name, hardware_specs
     )
 
     await _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)

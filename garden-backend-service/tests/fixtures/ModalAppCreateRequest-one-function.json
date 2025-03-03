@@ -1,5 +1,6 @@
 {
   "app_name": "app",
+  "original_app_name": "app",
   "modal_functions": [
     {
       "is_archived": false,
