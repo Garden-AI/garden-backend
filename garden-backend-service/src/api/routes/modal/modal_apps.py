@@ -39,9 +39,6 @@ async def add_modal_app(
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
     in_modal_publishers_group: bool = Depends(in_modal_publishers_group),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
-
     hardware_specs = await _validate_modal_app_metadata_helper(
         modal_app, validate_modal_file
     )
@@ -68,9 +65,6 @@ async def add_modal_app_async(
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
     in_modal_publishers_group: bool = Depends(in_modal_publishers_group),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
-
     hardware_specs = await _validate_modal_app_metadata_helper(
         modal_app, validate_modal_file
     )
@@ -157,12 +151,8 @@ def _validate_modal_app_metadata(app_metadata: ModalAppCreateRequest):
 async def get_modal_app(
     id: int,
     db: AsyncSession = Depends(get_db_session),
-    user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
-
     modal_app = await ModalApp.get(db, id=id, order_by="version")
     if modal_app is None:
         raise HTTPException(

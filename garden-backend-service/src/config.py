@@ -62,14 +62,12 @@ class Settings(BaseSettings):
     MDF_API_CLIENT_SECRET: str
     MDF_SEARCH_INDEX_UUID: str
 
-    MODAL_ENABLED: bool
     MODAL_TOKEN_ID: str
     MODAL_TOKEN_SECRET: str
     MODAL_ENV: str = "dev"
     MODAL_USE_LOCAL: bool = False
     MODAL_USAGE_LIMIT: float = 5.0
     MODAL_TIMEOUT_SECONDS: float = 25.0
-    MODAL_VIP_LIST: list[str] = []
     MODAL_PUBLISHERS_GROUP_ID: str = "84d1669a-9d51-11ef-8d7c-1769556b58bd"
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"

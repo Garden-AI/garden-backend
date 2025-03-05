@@ -50,8 +50,6 @@ async def make_blob_upload_url(
     This proxies the Modal BlobCreate RPC to get upload URLs that the Garden SDK
     can use directly to upload large arguments to Modal's blob storage.
     """
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
 
     # Forward the request to Modal
     request = api_pb2.BlobCreateRequest(
@@ -90,8 +88,6 @@ async def invoke_modal_fn(
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
     db: AsyncSession = Depends(get_db_session),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
     # We want to mimic the behavior of the modal.Function._call_function method when the sdk hits this route.
     # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request,
     # then awaiting a run_function helper to both collect and de-serialize the results.
@@ -165,9 +161,6 @@ async def invoke_modal_fn_async(
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
     db: AsyncSession = Depends(get_db_session),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
-
     # Fetch function from the database
     modal_fn: ModalFunction | None = await ModalFunction.get(db, id=body.function_id)
     if modal_fn is None:
