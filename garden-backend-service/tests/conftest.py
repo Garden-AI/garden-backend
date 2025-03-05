@@ -281,7 +281,6 @@ def mock_settings(db_url):
     mock_settings.MODAL_TOKEN_ID = "fake-token-id"
     mock_settings.MODAL_TOKEN_SECRET = "fake-token-secret"
     mock_settings.MODAL_USE_LOCAL = True
-    mock_settings.MODAL_ENABLED = True
     mock_settings.GARDEN_SEARCH_SQL_DIR = "src/api/search/sql.sql"
     mock_settings.MODAL_USAGE_LIMIT = 5.0
     mock_settings.MODAL_TIMEOUT_SECONDS = 10.0

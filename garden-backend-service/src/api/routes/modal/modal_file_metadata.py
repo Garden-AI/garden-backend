@@ -28,11 +28,8 @@ async def parse_modal_file_metadata(
     request: ModalFileMetadataRequest,
     settings: Settings = Depends(get_settings),
     user: User = Depends(authed_user),
-    _modal_vip: bool = Depends(in_modal_publishers_group),
+    in_modal_publishers_group: bool = Depends(in_modal_publishers_group),
 ):
-    if not settings.MODAL_ENABLED:
-        raise NotImplementedError("Garden's Modal integration has not been enabled")
-
     results: ModalFileParseResults = parse_modal_file(request.file_contents)
     logger.info("Validated user modal file")
 
