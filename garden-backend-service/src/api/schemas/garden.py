@@ -59,10 +59,11 @@ class GardenPatchRequest(BaseSchema):
     language: str | None = None
     tags: UniqueList[str] | None = None
     version: str | None = None
-    entrypoint_aliases: dict[str, str] = None
+    entrypoint_aliases: dict[str, str] | None = None
     is_archived: bool | None = None
     is_test: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
+    modal_function_ids: UniqueList[int] | None = None
 
 
 class GardenSearchFilter(BaseSchema):
