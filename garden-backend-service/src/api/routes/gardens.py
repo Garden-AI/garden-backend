@@ -266,7 +266,21 @@ async def update_garden(
                 detail="Cannot update a published garden's entrypoints.",
             )
         # collect entrypoints by DOI
-        garden.entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
+        garden.entrypoints = await _collect_entrypoints(
+            garden_data.entrypoint_ids or [], db
+        )
+
+    # Prevent updating modal functions on published gardens
+    if "modal_function_ids" in garden_patch_dict:
+        if not garden.doi_is_draft:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update a published garden's entrypoints.",
+            )
+        # collect entrypoints by DOI
+        garden.modal_functions = await _collect_modal_functions(
+            garden_data.modal_function_ids or [], db
+        )
 
     for key, value in garden_patch_dict.items():
         setattr(garden, key, value)
