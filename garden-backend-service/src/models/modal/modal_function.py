@@ -44,6 +44,7 @@ class ModalFunction(Base):
     repositories: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     papers: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
     datasets: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
+    notebooks: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON))
 
     requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     conda_requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))

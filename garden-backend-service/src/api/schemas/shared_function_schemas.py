@@ -33,6 +33,12 @@ class _ModelMetadata(BaseRelatedMetadataSchema, protected_namespaces=()):
     model_version: str | None
 
 
+class _NotebookMetadata(BaseRelatedMetadataSchema):
+    title: str
+    description: str | None
+    url: Url
+
+
 class CommonFunctionMetadata(BaseSchema):
     is_archived: bool = False
 
@@ -51,6 +57,7 @@ class CommonFunctionMetadata(BaseSchema):
     repositories: list[_RepositoryMetadata] = Field(default_factory=list)
     papers: list[_PaperMetadata] = Field(default_factory=list)
     datasets: list[_DatasetMetadata] = Field(default_factory=list)
+    notebooks: list[_NotebookMetadata] = Field(default_factory=list)
 
 
 class CommonFunctionPatchRequest(BaseSchema):
@@ -72,3 +79,4 @@ class CommonFunctionPatchRequest(BaseSchema):
     repositories: list[_RepositoryMetadata] | None = None
     papers: list[_PaperMetadata] | None = None
     datasets: list[_DatasetMetadata] | None = None
+    notebooks: list[_NotebookMetadata] | None = None
