@@ -236,7 +236,7 @@ def ml_stuff():
 VALID_F_STRING_FROM_REGISTRY = """
 import modal
 
-app = modal.App("valid-fstring-from-registry-app")
+
 alignn_image = (
     modal.Image.from_registry(f"nvidia/cuda:12.4.0-devel-ubuntu22.04", add_python="3.10")
     .apt_install("git")
@@ -253,4 +253,11 @@ alignn_image = (
         "pyyaml"
     )
 )   
+
+app = modal.App("valid-fstring-from-registry-app", image=alignn_image)
+
+@app.function(image=alignn_image, gpu="A100")
+def alignn_stuff():
+    import alignn
+    return alignn.predict("Hello, world!")
 """
