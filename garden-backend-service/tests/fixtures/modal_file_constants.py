@@ -233,3 +233,24 @@ def ml_stuff():
     return torch.rand(10)
 
 """
+VALID_F_STRING_FROM_REGISTRY = """
+import modal
+
+app = modal.App("valid-fstring-from-registry-app")
+alignn_image = (
+    modal.Image.from_registry(f"nvidia/cuda:12.4.0-devel-ubuntu22.04", add_python="3.10")
+    .apt_install("git")
+    .pip_install("numpy==1.26.4")
+    .run_commands(
+        "pip install  dgl -f https://data.dgl.ai/wheels/torch-2.4/cu124/repo.html",
+        "pip install alignn"
+    )
+    .pip_install(
+        "jarvis-tools",
+        "torch==2.5.0",
+        "torchdata==0.9.0",
+        "scipy",
+        "pyyaml"
+    )
+)   
+"""
