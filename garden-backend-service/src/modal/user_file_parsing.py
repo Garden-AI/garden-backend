@@ -197,11 +197,18 @@ def _update_image_info_from_root_staticmethod(
         # Case 1: constructed with `Image.from_registry`
         case ast.Call(
             func=ast.Attribute(attr="from_registry"),
-            args=[ast.Constant(value=str(base_image_tag))],
+            args=[arg],
             keywords=keywords,
         ):
-            # save the explicit base image
-            new_info.base_image = base_image_tag
+            match arg:
+                # case 1a: image is referred to by a plain string
+                case ast.Constant(value=str(base_image_tag)):
+                    # save the explicit base image
+                    new_info.base_image = base_image_tag
+                case _:
+                    # else, if the arg is not a constant (e.g. it's an f-string or variable)
+                    # we can't reliably infer a base image
+                    new_info.base_image = "n/a"
             for kw in keywords:
                 if kw.arg == "add_python" and isinstance(kw.value, ast.Constant):
                     new_info.python_version = str(kw.value.value)
