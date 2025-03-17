@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -35,6 +39,48 @@ async def get_modal_function(
             detail=f"Modal Function not found with id {id}",
         )
     return modal_function
+
+
+@router.get("", status_code=status.HTTP_200_OK)
+async def get_modal_functions(
+    db: AsyncSession = Depends(get_db_session),
+    *,
+    id: list[int] | None = Query(None),
+    doi: list[str] | None = Query(None),
+    tags: list[str] | None = Query(None),
+    authors: list[str] | None = Query(None),
+    owner_uuid: UUID | None = Query(None),
+    draft: bool | None = Query(None),
+    year: str | None = Query(None),
+    limit: int = Query(50, le=100),
+) -> list[ModalFunctionMetadataResponse]:
+    """Fetch multiple modal functions according to query parameters."""
+    stmt = select(ModalFunction)
+
+    if id:
+        stmt = stmt.where(ModalFunction.id.in_(id))
+    if doi:
+        stmt = stmt.where(ModalFunction.doi.in_(doi))
+    if tags:
+        stmt = stmt.where(ModalFunction.tags.overlap(array(tags)))
+    if authors:
+        stmt = stmt.where(ModalFunction.authors.overlap(array(authors)))
+    if owner_uuid:
+        stmt = (
+            stmt.join(ModalFunction.modal_app)
+            .join(User)
+            .where(User.identity_id == owner_uuid)
+        )
+    if draft is not None:
+        if draft:
+            stmt = stmt.where(ModalFunction.doi == None)  # noqa: E711
+        else:
+            stmt = stmt.where(ModalFunction.doi != None)  # noqa: E711
+    if year:
+        stmt = stmt.where(ModalFunction.year == year)
+
+    result = await db.scalars(stmt.limit(limit))
+    return result.all()
 
 
 @router.patch("/{id}", response_model=ModalFunctionMetadataResponse)
