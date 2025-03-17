@@ -28,6 +28,91 @@ async def test_get_modal_function(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_get_modal_functions(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    # Create a modal app which adds a modal function
+    create_app_response = await post_modal_app(
+        client, mock_modal_app_create_request_one_function
+    )
+
+    # Test getting all modal functions
+    response = await client.get("/modal-functions")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) >= 1
+
+    # Test filtering by ID
+    created_function_id = create_app_response["modal_functions"][0]["id"]
+    response = await client.get(f"/modal-functions?id={created_function_id}")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 1
+    assert response_data[0]["id"] == created_function_id
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_modal_functions_with_tags(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    # Create a modal app with a function that has tags
+    app_data = mock_modal_app_create_request_one_function.copy()
+    app_data["modal_functions"][0]["tags"] = ["tag1", "tag2"]
+
+    await post_modal_app(client, app_data)
+
+    # Test filtering by tag
+    response = await client.get("/modal-functions?tags=tag1")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) >= 1
+    assert "tag1" in response_data[0]["tags"]
+
+    # Test filtering by non-existent tag
+    response = await client.get("/modal-functions?tags=non-existent-tag")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_modal_functions_with_draft(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    # Create a modal app with a function (draft by default since doi is null)
+    await post_modal_app(client, mock_modal_app_create_request_one_function)
+
+    # Test filtering by draft status
+    response = await client.get("/modal-functions?draft=true")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) >= 1
+    assert response_data[0]["doi"] is None
+
+    # Test filtering by published status
+    response = await client.get("/modal-functions?draft=false")
+    assert response.status_code == 200
+    response_data = response.json()
+    # Should be empty since all functions are drafts
+    assert len(response_data) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_patch_modal_function_partial_update(
     client,
     mock_db_session,
