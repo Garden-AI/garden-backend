@@ -73,9 +73,9 @@ async def get_modal_functions(
         )
     if draft is not None:
         if draft:
-            stmt = stmt.where(ModalFunction.doi is None)
+            stmt = stmt.where(ModalFunction.doi == None)  # noqa: E711
         else:
-            stmt = stmt.where(ModalFunction.doi is not None)
+            stmt = stmt.where(ModalFunction.doi != None)  # noqa: E711
     if year:
         stmt = stmt.where(ModalFunction.year == year)
 
