@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Table
+from sqlalchemy import Column, ForeignKey, Integer, PrimaryKeyConstraint, Table
 
 from src.models.base import Base
 
@@ -19,8 +19,9 @@ gardens_modal_functions = Table(
 users_saved_gardens = Table(
     "users_saved_gardens",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("garden_id", Integer, ForeignKey("gardens.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id")),
+    Column("garden_id", Integer, ForeignKey("gardens.id")),
+    PrimaryKeyConstraint("user_id", "garden_id"),
 )
 
 entrypoints_mdf_datasets = Table(
