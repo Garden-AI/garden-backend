@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
@@ -127,7 +128,18 @@ async def save_garden(
     try:
         await db.commit()
         logger.info("Saved garden", doi=doi)
-        return user.saved_gardens
+        # Explicitly fetch gardens with all needed relationships
+        garden_ids = [g.id for g in user.saved_gardens]
+        stmt = (
+            select(Garden)
+            .where(Garden.id.in_(garden_ids))
+            .options(selectinload(Garden.owner), selectinload(Garden.modal_functions))
+        )
+        result = await db.execute(stmt)
+        gardens = result.scalars().all()
+
+        return gardens
+
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
@@ -173,10 +185,16 @@ async def remove_saved_garden(
     try:
         logger.info("Removed saved garden", doi=doi)
         await db.commit()
-        return [
-            GardenMetadataResponse.model_validate(garden)
-            for garden in user.saved_gardens
-        ]
+        garden_ids = [g.id for g in user.saved_gardens]
+        stmt = (
+            select(Garden)
+            .where(Garden.id.in_(garden_ids))
+            .options(selectinload(Garden.owner), selectinload(Garden.modal_functions))
+        )
+        result = await db.execute(stmt)
+        gardens = result.scalars().all()
+
+        return gardens
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
