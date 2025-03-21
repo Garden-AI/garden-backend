@@ -28,5 +28,5 @@ class User(Base):
     saved_gardens: Mapped[list["Garden"]] = relationship(
         "Garden",
         secondary=users_saved_gardens,
-        lazy="select",
+        lazy="selectin",
     )
