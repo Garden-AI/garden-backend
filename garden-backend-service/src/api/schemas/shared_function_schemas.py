@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import AliasPath, Field
 
 from .base import BaseRelatedMetadataSchema, BaseSchema, UniqueList, Url
 
@@ -40,6 +40,7 @@ class _NotebookMetadata(BaseRelatedMetadataSchema):
 
 
 class CommonFunctionMetadata(BaseSchema):
+    owner: str = Field(alias=AliasPath("owner", "name"))
     is_archived: bool = False
 
     function_text: str
