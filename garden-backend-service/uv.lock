@@ -738,7 +738,7 @@ requires-dist = [
     { name = "greenlet", specifier = ">=3.0.3" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "modal", specifier = ">=0.66.37,<0.67.0" },
+    { name = "modal", specifier = ">=0.73.116,<0.74.0" },
     { name = "phonenumbers", specifier = ">=8.13.40" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "pydantic", specifier = ">=2.7.1" },
@@ -1404,7 +1404,7 @@ wheels = [
 
 [[package]]
 name = "modal"
-version = "0.66.52"
+version = "0.73.116"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1422,8 +1422,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchfiles" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/bd/b2/2f3839491ec740ee583d480e09466acced02e16534e6ac0d3dc0c5f291e5/modal-0.73.116.tar.gz", hash = "sha256:b4759535758f8a1bd0222ba9291e6bcaedc2c8875c5c69cf0b60e84609c621b7", size = 473223 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/fd/31e0a26615914b754f9390e40eb5251a63cb4bcafccbab440177ce921445/modal-0.66.52-py3-none-any.whl", hash = "sha256:29e3d8d45adeb46a56a663556d55778b4065b55562009fa0c58c457026ea4c14", size = 487512 },
+    { url = "https://files.pythonhosted.org/packages/7a/35/5a96e6bb52cd38c99441b4ce7ed75613242a1e27ed7cb40c54eab3c7f6c1/modal-0.73.116-py3-none-any.whl", hash = "sha256:953738e6e2cfb9727317d91852b5bf3a8da2f6e2a6efee65619302573ad2b181", size = 539953 },
 ]
 
 [[package]]

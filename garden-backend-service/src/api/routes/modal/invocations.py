@@ -7,6 +7,7 @@ from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
+import modal._functions
 from modal._resolver import Resolver
 from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import (
@@ -117,7 +118,7 @@ async def invoke_modal_fn(
 
     # fetch the function from modal
     log.info("fetching function object from modal")
-    function = await modal.functions._Function.lookup(
+    function = await modal._functions._Function.lookup(
         app_name=modal_fn.modal_app.app_name,
         tag=modal_fn.function_name,
         environment_name=settings.MODAL_ENV,
@@ -183,7 +184,7 @@ async def invoke_modal_fn_async(
     # Fetch the function from modal
     log.info("Fetching function object from modal")
 
-    function = _fetch_modal_function(modal_client, modal_fn, settings)
+    function = await _fetch_modal_function(modal_client, modal_fn, settings)
 
     # Create the _Invocation object
     log.info("Requesting invocation with modal")
@@ -286,24 +287,25 @@ async def _fetch_modal_function(
     client: modal.Client,
     fn_data: ModalFunction,
     settings: Settings,
-) -> modal.functions._Function:
+) -> modal._functions._Function:
     resolver = Resolver(client=client)  # needed to hydrate objects eagerly
     if METHOD_LOOKUP_IS_DEPRECATED:
         if "." in fn_data.function_name:
             # if function belongs to a class, we need to instantiate a hydrated instance of the class to get at the _Function object
             cls_name, method_name = fn_data.function_name.split(".")
-            cls = await modal.cls._Cls.from_name(
+            cls = modal.cls._Cls.from_name(
                 fn_data.modal_app.app_name,
                 cls_name,
                 environment_name=settings.MODAL_ENV,
             )
             obj = cls()
-            await resolver.load(obj)
+            # await resolver.load(obj)
             function_obj = getattr(obj, method_name)
+            await resolver.load(function_obj)
             return function_obj
         else:
             # else we need to hydrate a function we looked up by name
-            obj = await modal.functions._Function.from_name(
+            obj = modal._functions._Function.from_name(
                 fn_data.modal_app.app_name,
                 fn_data.function_name,
                 environment_name=settings.MODAL_ENV,
@@ -312,7 +314,7 @@ async def _fetch_modal_function(
             return obj
 
     else:
-        function = await modal.functions._Function.lookup(
+        function = await modal._functions._Function.lookup(
             fn_data.modal_app.app_name,
             fn_data.function_name,
             environment_name=settings.MODAL_ENV,
@@ -328,8 +330,8 @@ async def _create_invocation(
     args_kwargs_serialized: bytes = b"",
     args_blob_id: str | None = None,
     method_name="",
-) -> modal.functions._Invocation:
-    function_id = function._invocation_function_id()
+) -> modal._functions._Invocation:
+    function_id = function.object_id
     # build the input payload with pre-serialized args (or blob ID)
     if args_blob_id is not None:
         inputs_item = api_pb2.FunctionPutInputsItem(
@@ -366,7 +368,7 @@ async def _create_invocation(
     logger.debug("received FunctionMap RPC response", map_response=map_response)
 
     if map_response.pipelined_inputs:
-        return modal.functions._Invocation(client.stub, function_call_id, client)
+        return modal._functions._Invocation(client.stub, function_call_id, client)
 
     # second request seems to be primarily for error handling, but might as well stay consistent
     inputs_request = api_pb2.FunctionPutInputsRequest(

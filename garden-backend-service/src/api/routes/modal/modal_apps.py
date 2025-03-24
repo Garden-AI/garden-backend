@@ -274,7 +274,13 @@ async def _save_modal_app_to_db(
     model_dict["original_app_name"] = original_app_name
     for modal_fn in model_dict["modal_functions"]:
         name = modal_fn["function_name"]
-        modal_fn["hardware_spec"] = hardware_specs[name]
+        if "." in name:
+            class_name, method_name = name.split(".")
+            # methods will share the same hardware spec as the special
+            # "class.*" modal function
+            modal_fn["hardware_spec"] = hardware_specs[f"{class_name}.*"]
+        else:
+            modal_fn["hardware_spec"] = hardware_specs[name]
         if "file_contents" in modal_fn:
             # redundant with app contents but part of schema
             del modal_fn["file_contents"]

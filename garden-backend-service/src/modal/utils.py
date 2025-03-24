@@ -43,7 +43,7 @@ async def resolve_modal_invocation(
 
 
 async def monitor_modal_invocation(
-    invocation: modal.functions._Invocation,
+    invocation: modal._functions._Invocation,
     db_invocation: ModalInvocation,
     client: modal.Client,
     settings: Settings,
