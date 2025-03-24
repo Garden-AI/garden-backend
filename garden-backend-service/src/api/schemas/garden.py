@@ -32,7 +32,8 @@ class GardenCreateRequest(GardenMetadata):
 
 
 class GardenMetadataResponse(GardenMetadata):
-    owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
+    owner: str = Field(validation_alias=AliasPath("owner", "name"))
+    owner_identity_id: UUID = Field(validation_alias=AliasPath("owner", "identity_id"))
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
