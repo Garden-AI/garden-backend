@@ -179,3 +179,4 @@ response.json
 /garden-backend-service/.basedpyright
 /garden-backend-service/.envrc
 .envrc
+/.vscode/

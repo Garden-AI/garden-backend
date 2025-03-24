@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -5,6 +7,7 @@ from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
+from modal._resolver import Resolver
 from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import (
     authed_user,
@@ -34,6 +37,10 @@ from src.models.user import User
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/modal-invocations")
+
+
+modal_version = tuple(int(x) for x in version("modal").split("."))
+METHOD_LOOKUP_IS_DEPRECATED = modal_version >= (0, 73, 26)
 
 
 @router.post(
@@ -175,12 +182,8 @@ async def invoke_modal_fn_async(
 
     # Fetch the function from modal
     log.info("Fetching function object from modal")
-    function = await modal.functions._Function.lookup(
-        app_name=modal_fn.modal_app.app_name,
-        tag=modal_fn.function_name,
-        environment_name=settings.MODAL_ENV,
-        client=modal_client,
-    )
+
+    function = _fetch_modal_function(modal_client, modal_fn, settings)
 
     # Create the _Invocation object
     log.info("Requesting invocation with modal")
@@ -277,6 +280,45 @@ async def _get_blob_download_url(client: modal.Client, blob_id: str) -> str:
         client.stub.BlobGet, api_pb2.BlobGetRequest(blob_id=blob_id)
     )
     return response.download_url
+
+
+async def _fetch_modal_function(
+    client: modal.Client,
+    fn_data: ModalFunction,
+    settings: Settings,
+) -> modal.functions._Function:
+    resolver = Resolver(client=client)  # needed to hydrate objects eagerly
+    if METHOD_LOOKUP_IS_DEPRECATED:
+        if "." in fn_data.function_name:
+            # if function belongs to a class, we need to instantiate a hydrated instance of the class to get at the _Function object
+            cls_name, method_name = fn_data.function_name.split(".")
+            cls = await modal.cls._Cls.from_name(
+                fn_data.modal_app.app_name,
+                cls_name,
+                environment_name=settings.MODAL_ENV,
+            )
+            obj = cls()
+            await resolver.load(obj)
+            function_obj = getattr(obj, method_name)
+            return function_obj
+        else:
+            # else we need to hydrate a function we looked up by name
+            obj = await modal.functions._Function.from_name(
+                fn_data.modal_app.app_name,
+                fn_data.function_name,
+                environment_name=settings.MODAL_ENV,
+            )
+            await resolver.load(obj)
+            return obj
+
+    else:
+        function = await modal.functions._Function.lookup(
+            fn_data.modal_app.app_name,
+            fn_data.function_name,
+            environment_name=settings.MODAL_ENV,
+            client=client,
+        )
+        return function
 
 
 async def _create_invocation(
