@@ -5,6 +5,7 @@ from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
+import modal._functions
 from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.database import get_db_session_maker
 from src.config import Settings

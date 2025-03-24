@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
 import modal
+import modal.gpu
 from modal.gpu import (
     A10G,
     A100,
@@ -43,12 +44,12 @@ def estimate_usage(
     gpu_spec = spec.get("gpus") or []
     if isinstance(gpu_spec, list):
         # assume the most expensive gpu in the list
-        gpus = [modal.gpu._parse_gpu_config(gpu) for gpu in gpu_spec]
+        gpus = [modal.gpu.parse_gpu_config(gpu) for gpu in gpu_spec]
         gpu = max(
             gpus, key=lambda gpu: MODAL_PRICES.get(gpu.__class__, 0), default=None
         )
     else:
-        gpu = modal.gpu._parse_gpu_config(gpu_spec)
+        gpu = modal.gpu.parse_gpu_config(gpu_spec)
     gpu_usage = (
         MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds * gpu.count if gpu else 0
     )
