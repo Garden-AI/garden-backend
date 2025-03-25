@@ -7,7 +7,7 @@ def test_estimate_usage():
     expensive_specs = {"cpu": 8.0, "gpus": "A10G", "memory": (4096, 8192)}
     expensive_specs_double_gpu = {
         "cpu": 8.0,
-        "gpus": ["A10G:2"],
+        "gpus": ["A10G"],
         "memory": (4096, 8192),
     }
     # when we have a list of gpus, it should assume the more expensive gpu
