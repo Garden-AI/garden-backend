@@ -28,6 +28,5 @@ def test_estimate_usage():
     really_expensive_usage = estimate_usage(really_expensive_func, 30)
 
     assert cheap_usage > 0
-    assert cheap_usage < expensive_usage
-    assert expensive_usage == expensive_usage_double_gpu
+    assert cheap_usage < expensive_usage < expensive_usage_double_gpu
     assert expensive_usage < really_expensive_usage
