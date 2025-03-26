@@ -5,6 +5,7 @@ from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
+import modal._functions
 from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.database import get_db_session_maker
 from src.config import Settings
@@ -43,7 +44,7 @@ async def resolve_modal_invocation(
 
 
 async def monitor_modal_invocation(
-    invocation: modal.functions._Invocation,
+    invocation: modal._functions._Invocation,
     db_invocation: ModalInvocation,
     client: modal.Client,
     settings: Settings,

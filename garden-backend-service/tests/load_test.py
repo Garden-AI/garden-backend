@@ -214,7 +214,10 @@ async def test_concurrent_modal_invocations(
     function_id = response_data["modal_function_ids"][0]
 
     # Mock the modal function lookup and invocation
-    mocker.patch("modal.functions._Function.lookup", return_value=env["mock_function"])
+    mocker.patch(
+        "src.api.routes.modal.invocations._fetch_modal_function",
+        return_value=env["mock_function"],
+    )
     mocker.patch(
         "src.api.routes.modal.invocations._create_invocation",
         return_value=env["mock_invocation"],

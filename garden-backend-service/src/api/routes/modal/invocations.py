@@ -5,6 +5,8 @@ from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import modal
+import modal._functions
+from modal._resolver import Resolver
 from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import (
     authed_user,
@@ -18,13 +20,11 @@ from src.api.schemas.modal.invocations import (
     ModalBlobUploadURLResponse,
     ModalInvocationOutputsResponse,
     ModalInvocationRequest,
-    ModalInvocationResponse,
     _ModalGenericResult,
     _MultiPartUpload,
     _UploadType,
 )
 from src.config import Settings, get_settings
-from src.exceptions.modal import ModalException
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_invocation
 from src.models.modal.invocations import ModalInvocation
@@ -78,79 +78,6 @@ async def make_blob_upload_url(
         )
 
 
-@router.post("", response_model=ModalInvocationResponse)
-async def invoke_modal_fn(
-    body: ModalInvocationRequest,
-    background_tasks: BackgroundTasks,
-    user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
-    modal_client: modal.Client = Depends(get_modal_client),
-    under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
-    db: AsyncSession = Depends(get_db_session),
-):
-    # We want to mimic the behavior of the modal.Function._call_function method when the sdk hits this route.
-    # In their code, this means creating an `_Invocation` object to both serialize arguments and build a request,
-    # then awaiting a run_function helper to both collect and de-serialize the results.
-    # (see: https://github.com/modal-labs/modal-client/blob/9507909d066785591b1d4f79f76b9e3ec4a07a33/modal/functions.py#L1191)
-
-    # In this route we want to mimic their logic as closely as possible modulo (de-)serialization, with those steps performed on the user's machine
-    # (like it would if they were using modal directly).
-    #
-    # fetch function from db
-    modal_fn: ModalFunction | None = await ModalFunction.get(db, id=body.function_id)
-    if modal_fn is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No Modal Function with id {body.function_id} found.",
-        )
-
-    app_name = modal_fn.modal_app.app_name
-    function_name = modal_fn.function_name
-    log = logger.bind(app_name=app_name, function_name=function_name)
-
-    # fetch the function from modal
-    log.info("fetching function object from modal")
-    function = await modal.functions._Function.lookup(
-        app_name=modal_fn.modal_app.app_name,
-        tag=modal_fn.function_name,
-        environment_name=settings.MODAL_ENV,
-        client=modal_client,
-    )
-
-    # create the _Invocation object
-    log.info("Requesting invocation with modal")
-    # If this is a class method, we need to specify the method name
-    method_name = ""
-    if "." in modal_fn.function_name:
-        _, method_name = modal_fn.function_name.split(".")
-    invocation = await _create_invocation(
-        function,
-        modal_client,
-        args_kwargs_serialized=body.args_kwargs_serialized,
-        method_name=method_name,
-    )
-
-    # Log the invocation in the DB
-    db_invocation = ModalInvocation(
-        user_id=user.id,
-        function_id=modal_fn.id,
-        function_call_id=invocation.function_call_id,
-    )
-    db.add(db_invocation)
-    await db.commit()
-
-    await monitor_modal_invocation(invocation, db_invocation, modal_client, settings)
-
-    await db.refresh(db_invocation)
-    if db_invocation.output is not None:
-        return api_pb2.FunctionGetOutputsItem.FromString(db_invocation.output)
-    else:
-        raise ModalException(
-            f"Error invoking modal function with id: {db_invocation.id}. Error: {db_invocation.error}",
-            status_code=500,
-        )
-
-
 @router.post("/async")
 async def invoke_modal_fn_async(
     body: ModalInvocationRequest,
@@ -175,12 +102,8 @@ async def invoke_modal_fn_async(
 
     # Fetch the function from modal
     log.info("Fetching function object from modal")
-    function = await modal.functions._Function.lookup(
-        app_name=modal_fn.modal_app.app_name,
-        tag=modal_fn.function_name,
-        environment_name=settings.MODAL_ENV,
-        client=modal_client,
-    )
+
+    function = await _fetch_modal_function(modal_client, modal_fn, settings)
 
     # Create the _Invocation object
     log.info("Requesting invocation with modal")
@@ -279,6 +202,35 @@ async def _get_blob_download_url(client: modal.Client, blob_id: str) -> str:
     return response.download_url
 
 
+async def _fetch_modal_function(
+    client: modal.Client,
+    fn_data: ModalFunction,
+    settings: Settings,
+) -> modal._functions._Function:
+    resolver = Resolver(client=client)  # needed to hydrate objects eagerly
+    if "." in fn_data.function_name:
+        # if function belongs to a class, we need to instantiate a hydrated instance of the class to get at the _Function object
+        cls_name, method_name = fn_data.function_name.split(".")
+        cls = modal.cls._Cls.from_name(
+            fn_data.modal_app.app_name,
+            cls_name,
+            environment_name=settings.MODAL_ENV,
+        )
+        obj = cls()
+        function_obj = getattr(obj, method_name)
+        await resolver.load(function_obj)
+        return function_obj
+    else:
+        # else we need to hydrate a function we looked up by name
+        obj = modal._functions._Function.from_name(
+            fn_data.modal_app.app_name,
+            fn_data.function_name,
+            environment_name=settings.MODAL_ENV,
+        )
+        await resolver.load(obj)
+        return obj
+
+
 async def _create_invocation(
     function: modal.Function,
     client: modal.Client,
@@ -286,8 +238,8 @@ async def _create_invocation(
     args_kwargs_serialized: bytes = b"",
     args_blob_id: str | None = None,
     method_name="",
-) -> modal.functions._Invocation:
-    function_id = function._invocation_function_id()
+) -> modal._functions._Invocation:
+    function_id = function.object_id
     # build the input payload with pre-serialized args (or blob ID)
     if args_blob_id is not None:
         inputs_item = api_pb2.FunctionPutInputsItem(
@@ -324,7 +276,7 @@ async def _create_invocation(
     logger.debug("received FunctionMap RPC response", map_response=map_response)
 
     if map_response.pipelined_inputs:
-        return modal.functions._Invocation(client.stub, function_call_id, client)
+        return modal._functions._Invocation(client.stub, function_call_id, client)
 
     # second request seems to be primarily for error handling, but might as well stay consistent
     inputs_request = api_pb2.FunctionPutInputsRequest(
@@ -338,4 +290,4 @@ async def _create_invocation(
         raise Exception(
             "Could not create function call - the input queue seems to be full"
         )
-    return modal.functions._Invocation(client.stub, function_call_id, client)
+    return modal._functions._Invocation(client.stub, function_call_id, client)

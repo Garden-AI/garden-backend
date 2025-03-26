@@ -7,7 +7,7 @@ def test_estimate_usage():
     expensive_specs = {"cpu": 8.0, "gpus": "A10G", "memory": (4096, 8192)}
     expensive_specs_double_gpu = {
         "cpu": 8.0,
-        "gpus": ["A10G", "A10G"],
+        "gpus": ["A10G:2"],
         "memory": (4096, 8192),
     }
     # when we have a list of gpus, it should assume the more expensive gpu
@@ -28,6 +28,5 @@ def test_estimate_usage():
     really_expensive_usage = estimate_usage(really_expensive_func, 30)
 
     assert cheap_usage > 0
-    assert cheap_usage < expensive_usage
-    assert expensive_usage == expensive_usage_double_gpu
+    assert cheap_usage < expensive_usage < expensive_usage_double_gpu
     assert expensive_usage < really_expensive_usage

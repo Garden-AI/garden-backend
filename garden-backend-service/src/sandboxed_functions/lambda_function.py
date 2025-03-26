@@ -68,7 +68,7 @@ def get_function_specs(
 
 
 def extract_from_spec(
-    spec: modal.functions._FunctionSpec, keys: list[str]
+    spec: modal._functions._FunctionSpec, keys: list[str]
 ) -> dict[str, Any]:
     """Return a new dict with only the keys matching the given list.
 
@@ -98,8 +98,9 @@ def deploy_modal_app(args: DeployModalAppArgs):
     import os
 
     from modal import enable_output
-    from modal.cli.run import deploy_app, ensure_env
     from modal.client import Client
+    from modal.environments import ensure_env
+    from modal.runner import deploy_app
 
     os.environ["MODAL_AUTOMOUNT"] = "False"
 

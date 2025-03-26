@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from modal_proto import api_pb2
@@ -22,6 +22,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
     in_modal_publishers_group,
+    under_modal_usage_limit,
 )
 from src.api.dependencies.database import init
 from src.api.dependencies.modal import get_modal_client
@@ -170,6 +171,19 @@ def mock_modal_publisher_auth_state(
 @pytest.fixture
 def override_get_settings_dependency(mock_settings):
     app.dependency_overrides[get_settings] = lambda: mock_settings
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_usage_limit_dependency():
+    async def mock_usage_limit():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is over Modal usage limit for the month.",
+        )
+
+    app.dependency_overrides[under_modal_usage_limit] = mock_usage_limit
     yield
     app.dependency_overrides.clear()
 

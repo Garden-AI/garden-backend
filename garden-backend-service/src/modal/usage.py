@@ -1,13 +1,6 @@
 from collections.abc import Sequence
 
-import modal
-from modal.gpu import (
-    A10G,
-    A100,
-    H100,
-    L4,
-    T4,
-)
+import modal.gpu
 from src.models.modal.modal_function import ModalFunction
 
 DEFAULT_CPUS = 0.125
@@ -15,11 +8,11 @@ DEFAULT_MEMORY_MB = 256
 
 # see: https://modal.com/pricing
 MODAL_PRICES = {
-    H100: 0.001267,  # per GPU per second
-    A100: 0.000944,  # TODO figure out how to include the cheaper A100 variant
-    A10G: 0.000306,
-    L4: 0.000222,
-    T4: 0.000164,
+    "H100": 0.001267,  # per GPU per second
+    "A100": 0.000944,  # TODO figure out how to include the cheaper A100 variant
+    "A10G": 0.000306,
+    "L4": 0.000222,
+    "T4": 0.000164,
     "memory": 0.00000667,  # per GB per second
     "cpu": 0.000038,  # per core per second
 }
@@ -43,14 +36,18 @@ def estimate_usage(
     gpu_spec = spec.get("gpus") or []
     if isinstance(gpu_spec, list):
         # assume the most expensive gpu in the list
-        gpus = [modal.gpu._parse_gpu_config(gpu) for gpu in gpu_spec]
+        gpus = [modal.gpu.parse_gpu_config(gpu) for gpu in gpu_spec]
         gpu = max(
-            gpus, key=lambda gpu: MODAL_PRICES.get(gpu.__class__, 0), default=None
+            gpus,
+            key=lambda gpu: MODAL_PRICES.get(gpu.gpu_type.upper(), 0),
+            default=None,
         )
     else:
-        gpu = modal.gpu._parse_gpu_config(gpu_spec)
+        gpu = modal.gpu.parse_gpu_config(gpu_spec)
     gpu_usage = (
-        MODAL_PRICES.get(gpu.__class__, 0) * exec_time_seconds * gpu.count if gpu else 0
+        MODAL_PRICES.get(gpu.gpu_type.upper(), 0) * exec_time_seconds * gpu.count
+        if gpu
+        else 0
     )
 
     mem_spec = spec.get("memory") or DEFAULT_MEMORY_MB
