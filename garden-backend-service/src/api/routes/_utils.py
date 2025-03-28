@@ -17,6 +17,13 @@ from src.models._associations import gardens_entrypoints
 
 logger = get_logger(__name__)
 
+SUPER_USERS: list[str] = [
+    "c8741264-d274-11e5-bee7-f30dff9f1ea8",  # Ben
+    "6c9e223f-c215-4c26-9abb-262dbce0001c",  # Will
+    "76024960-c68b-4fec-8cb8-b65b096f18da",  # Owen
+    "e9a17e09-657b-4087-a719-241ab72b1d9b",  # Hayden
+]
+
 
 def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
     """Check that a given Garden or Entrypoint is safe to delete, i.e. has a draft DOI and is owned by the user.
@@ -25,7 +32,10 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
 
         HTTPException: if obj is not owned by user or has a registered 'findable' DOI
     """
-    if obj.owner.identity_id != user.identity_id:
+    if (
+        obj.owner.identity_id != user.identity_id
+        or str(user.identity_id) not in SUPER_USERS
+    ):
         logger.info(
             f"Failed to delete or replace object {str(type(obj).__name__).lower()} (not owned by user)"
         )
@@ -54,8 +64,10 @@ def assert_editable_by_user(
     Raises:
         HTTPException: If obj is not owned by user or is an archived resource (and resource is not being unarchived).
     """
-
-    if obj.owner.identity_id != user.identity_id:
+    if (
+        obj.owner.identity_id != user.identity_id
+        or str(user.identity_id) not in SUPER_USERS
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to edit {str(type(obj).__name__).lower()} (not owned by user {user.username})",
