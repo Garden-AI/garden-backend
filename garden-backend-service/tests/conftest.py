@@ -303,7 +303,6 @@ def mock_settings(db_url):
         "6c9e223f-c215-4c26-9abb-262dbce0001c",  # Will
         "76024960-c68b-4fec-8cb8-b65b096f18da",  # Owen
         "e9a17e09-657b-4087-a719-241ab72b1d9b",  # Hayden
-        "00000000-0000-0000-0000-000000000000",  # Mock test user
     ]
     return mock_settings
 
