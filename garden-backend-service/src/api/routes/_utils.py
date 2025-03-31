@@ -11,7 +11,7 @@ from structlog import get_logger
 from src.api.schemas.entrypoint import EntrypointPatchRequest
 from src.api.schemas.garden import GardenPatchRequest
 from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
-from src.config import Settings
+from src.config import Settings, get_settings
 from src.models import Entrypoint, Garden, ModalFunction, User
 from src.models._associations import gardens_entrypoints
 
@@ -22,10 +22,12 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
     """Check that a given Garden or Entrypoint is safe to delete, i.e. has a draft DOI and is owned by the user.
 
     Raises:
-
         HTTPException: if obj is not owned by user or has a registered 'findable' DOI
     """
-    if obj.owner.identity_id != user.identity_id:
+    if (
+        obj.owner.identity_id != user.identity_id
+        and str(user.identity_id) not in get_settings().SUPER_USERS
+    ):
         logger.info(
             f"Failed to delete or replace object {str(type(obj).__name__).lower()} (not owned by user)"
         )
@@ -54,8 +56,10 @@ def assert_editable_by_user(
     Raises:
         HTTPException: If obj is not owned by user or is an archived resource (and resource is not being unarchived).
     """
-
-    if obj.owner.identity_id != user.identity_id:
+    if (
+        obj.owner.identity_id != user.identity_id
+        and str(user.identity_id) not in get_settings().SUPER_USERS
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to edit {str(type(obj).__name__).lower()} (not owned by user {user.username})",

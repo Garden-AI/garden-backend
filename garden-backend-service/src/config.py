@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     MODAL_USAGE_LIMIT: float = 5.0
     MODAL_TIMEOUT_SECONDS: float = 25.0
     MODAL_PUBLISHERS_GROUP_ID: str = "84d1669a-9d51-11ef-8d7c-1769556b58bd"
+    SUPER_USERS: list[str] = [
+        "c8741264-d274-11e5-bee7-f30dff9f1ea8",  # Ben
+        "6c9e223f-c215-4c26-9abb-262dbce0001c",  # Will
+        "76024960-c68b-4fec-8cb8-b65b096f18da",  # Owen
+        "e9a17e09-657b-4087-a719-241ab72b1d9b",  # Hayden
+    ]
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 
