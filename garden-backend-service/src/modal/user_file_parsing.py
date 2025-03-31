@@ -23,14 +23,12 @@ FUNCTION_KWARG_BLOCKLIST = {
     "secrets",
     "mounts",
     "network_file_systems",
-    "volumes",
     "allow_cross_region_volumes",
     "proxy",
     "keep_warm",
     "is_generator",
     "cloud",
     "region",
-    "enable_memory_snapshot",
     "block_network",
 }
 
