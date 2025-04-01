@@ -22,6 +22,7 @@ class ModalFunctionMetadataResponse(ModalFunctionMetadata):
     modal_app_id: int
     owner: str = Field(validation_alias=AliasPath("owner", "name"))
     owner_identity_id: UUID = Field(validation_alias=AliasPath("owner", "identity_id"))
+    hardware_spec: dict
 
 
 class ModalFunctionPatchRequest(CommonFunctionPatchRequest):
