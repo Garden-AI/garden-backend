@@ -176,3 +176,16 @@ def in_modal_publishers_group(
             detail="You are not a member of the required group to publish Modal functions.",
         )
     return True
+
+
+def is_super_user(
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+) -> bool:
+    """Check if the authenticated user is a super user."""
+    if str(user.identity_id) not in settings.SUPER_USERS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a super user to perform this action",
+        )
+    return True
