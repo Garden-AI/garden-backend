@@ -5,7 +5,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user, in_modal_publishers_group
+from src.api.dependencies.auth import (
+    authed_user,
+    in_modal_publishers_group,
+    is_super_user,
+)
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
@@ -19,6 +23,7 @@ from src.api.schemas.modal.modal_app import (
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
+from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_deployment
 from src.models import ModalApp, User
 
@@ -90,6 +95,47 @@ async def add_modal_app_async(
     )
 
     return modal_app_db_model
+
+
+@router.post("/redeploy/{id}", response_model=AsyncModalAppMetadataResponse)
+async def redeploy_modal_app(
+    id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+    deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
+    _is_super_user: bool = Depends(is_super_user),
+):
+    """Redeploy a modal app in-place. Only available to super users."""
+    modal_app = await ModalApp.get(db, id=id)
+    if modal_app is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Modal App not found with id {id}",
+        )
+
+    # reset deploy status to pending
+    modal_app.deploy_status = AsyncModalJobStatus.PENDING
+    modal_app.deploy_error = None
+    await db.commit()
+
+    deploy_config = {
+        "app_name": modal_app.app_name,
+        "env": settings.MODAL_ENV,
+        "file_contents": modal_app.file_contents,
+        "token_id": settings.MODAL_TOKEN_ID,
+        "token_secret": settings.MODAL_TOKEN_SECRET,
+    }
+
+    background_tasks.add_task(
+        monitor_modal_deployment,
+        deploy_modal_app,
+        deploy_config,
+        modal_app.id,
+        settings,
+    )
+
+    return modal_app
 
 
 def _validate_modal_app_metadata(app_metadata: ModalAppCreateRequest):
