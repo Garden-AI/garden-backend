@@ -677,7 +677,7 @@ async def test_search_gardens_returns_gardens(
     assert len(search_result["garden_meta"]) == 1
     assert search_result["count"] == 1
     assert search_result["offset"] == 0
-    assert search_result["facets"]["authors"] == {"Owen": 1}
+    assert search_result["facets"]["model_authors"] == {"Owen": 1}
     assert search_result["facets"]["year"] == {"2023": 1}
 
 
@@ -688,6 +688,7 @@ async def test_search_gardens_applies_filters_correctly(
     mock_db_session,
     override_authenticated_dependency,
     mock_garden_create_request_no_entrypoints_json,
+    mock_auth_state,
 ):
     g1 = mock_garden_create_request_no_entrypoints_json
 
@@ -710,6 +711,7 @@ async def test_search_gardens_applies_filters_correctly(
             {"field_name": "authors", "values": ["Owen"]},
             {"field_name": "tags", "values": ["testing"]},
             {"field_name": "description", "values": ["testing"]},
+            {"field_name": "owner", "values": [f"{mock_auth_state.name}"]},
         ],
     }
     response = await client.post("gardens/search", json=body)
@@ -718,7 +720,7 @@ async def test_search_gardens_applies_filters_correctly(
     search_result = response.json()
     assert len(search_result["garden_meta"]) == 1
     assert search_result["garden_meta"][0]["authors"][0] == "Owen"
-    assert search_result["facets"]["authors"] == {"Owen": 1}
+    assert search_result["facets"]["model_authors"] == {"Owen": 1}
     assert search_result
 
 
@@ -767,7 +769,7 @@ async def test_search_gardens_facet_counts_are_correct(
     assert res1.status_code == 200
     search_res1 = res1.json()
     facets1 = search_res1["facets"]
-    assert facets1["authors"]["Owen"] == 3
+    assert facets1["model_authors"]["Owen"] == 3
     assert facets1["tags"]["python"] == 2
     assert facets1["tags"]["testing"] == 1
     assert facets1["year"]["2023"] == 3
@@ -782,7 +784,7 @@ async def test_search_gardens_facet_counts_are_correct(
     assert res2.status_code == 200
     search_res2 = res2.json()
     facets2 = search_res2["facets"]
-    assert facets2["authors"]["Owen"] == 1
+    assert facets2["model_authors"]["Owen"] == 1
     assert facets2["tags"]["testing"] == 1
     assert facets2["year"]["2023"] == 1
 

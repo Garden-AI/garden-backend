@@ -74,7 +74,8 @@ class GardenSearchFilter(BaseSchema):
 
 class GardenSearchFacets(BaseSchema):
     tags: dict[str, int] = Field(default_factory=dict)
-    authors: dict[str, int] = Field(default_factory=dict)
+    model_authors: dict[str, int] = Field(default_factory=dict)
+    gardeners: dict[str, int] = Field(default_factory=dict)
     year: dict[str, int] = Field(default_factory=dict)
 
 

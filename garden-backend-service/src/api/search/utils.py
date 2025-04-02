@@ -8,6 +8,7 @@ from src.api.schemas.garden import (
     GardenSearchFilter,
     GardenSearchSort,
 )
+from src.models import User
 from src.models.base import Base
 
 
@@ -53,7 +54,12 @@ def apply_filters(
         if not hasattr(model, filter.field_name):
             raise ValueError(f"Invalid filter field_name: {filter.field_name}")
         for value in filter.values:
-            if type(getattr(model, filter.field_name).type) is ARRAY:
+            if filter.field_name == "owner":
+                stmt = stmt.join(getattr(model, filter.field_name)).where(
+                    User.name == value
+                )
+                continue
+            if type(getattr(model, filter.field_name)) is ARRAY:
                 stmt = stmt.where(
                     func.array_to_string(getattr(model, filter.field_name), " ").match(
                         value
@@ -85,6 +91,8 @@ async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacet
               are the count of gardens associated with each tag.
             - `authors` (dict[str, int]): A dictionary where keys are author names and values
               are the count of gardens authored by each individual.
+            - `gardeners` (dict[str, int]): A dictionary where keys are gardner names and values
+              are the count of gardens created by each gardener.
             - `year` (dict[str, int]): A dictionary where keys are years (as strings) and values
               are the count of gardens created in each year.
 
@@ -99,9 +107,18 @@ async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacet
     ).group_by(column("tag"))
 
     authors_query = select(
-        func.unnest(filtered_gardens.c.authors).label("author"),
+        func.unnest(filtered_gardens.c.authors).label("model_author"),
         func.count().label("count"),
-    ).group_by(column("author"))
+    ).group_by(column("model_author"))
+
+    gardeners_query = (
+        select(
+            User.name.label("gardener"),
+            func.count().label(name="count"),
+        )
+        .join(filtered_gardens, User.id == filtered_gardens.c.user_id)
+        .group_by(column("gardener"))
+    )
 
     year_query = select(
         filtered_gardens.c.year.label("year"), func.count().label("count")
@@ -109,13 +126,17 @@ async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacet
 
     tags_result = await db.execute(tags_query)
     authors_result = await db.execute(authors_query)
+    gardeners_result = await db.execute(gardeners_query)
     year_result = await db.execute(year_query)
 
     tags = {row[0]: row[1] for row in tags_result.all()}
     authors = {row[0]: row[1] for row in authors_result.all()}
+    gardeners = {row[0]: row[1] for row in gardeners_result.all()}
     year = {str(row[0]): row[1] for row in year_result.all()}
 
-    return GardenSearchFacets(tags=tags, authors=authors, year=year)
+    return GardenSearchFacets(
+        tags=tags, model_authors=authors, gardeners=gardeners, year=year
+    )
 
 
 def sort_results(model: Base, stmt: Select, sort: GardenSearchSort):
