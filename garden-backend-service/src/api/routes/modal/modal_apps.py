@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 import modal
-from modal.cli.utils import get_app_id_from_name
+from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import (
     authed_user,
     in_modal_publishers_group,
@@ -236,18 +236,18 @@ async def delete_modal_app(
 
     app_name = modal_app.app_name
     _raise_if_undeletable(modal_app, user, log)
-
-    await db.delete(modal_app)
-    await db.commit()
-    log.info("Deleted Modal App from database")
     try:
+        await db.delete(modal_app)
+        log.info("Deleted Modal App from database")
         await _stop_modal_app(app_name, modal_client, settings)
         log.info("stopped app on modal")
     except Exception as e:
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error stopping app on modal: {str(e)}",
         )
+    await db.commit()
     return {"detail": f"Successfully deleted modal app with id {id}."}
 
 
@@ -371,10 +371,18 @@ async def _deploy_modal_app_helper(
 async def _stop_modal_app(
     app_name: str, modal_client: modal.client._Client, settings: Settings
 ):
-    app_id = await get_app_id_from_name.aio(app_name, settings.MODAL_ENV, modal_client)
-    request = api_pb2.AppStopRequest(
-        app_id=app_id,
-        source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,  # not sure if preferable
-        # to APP_STOP_SOURCE_CLI, which is how the cmd I'm plagiarizing does it
+    # Get the app id from the app name
+    id_request = api_pb2.AppGetByDeploymentNameRequest(
+        namespace=api_pb2.DEPLOYMENT_NAMESPACE_WORKSPACE,
+        name=app_name,
+        environment_name=settings.MODAL_ENV,
     )
-    await modal_client.stub.AppStop(request)
+    id_response = await retry_transient_errors(
+        modal_client.stub.AppGetByDeploymentName, id_request
+    )
+    # Stop the app
+    stop_request = api_pb2.AppStopRequest(
+        app_id=id_response.app_id,
+        source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
+    )
+    await retry_transient_errors(modal_client.stub.AppStop, stop_request)
