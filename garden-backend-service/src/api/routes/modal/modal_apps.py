@@ -2,15 +2,19 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
+import modal
+from modal.cli.utils import get_app_id_from_name
 from src.api.dependencies.auth import (
     authed_user,
     in_modal_publishers_group,
     is_super_user,
 )
 from src.api.dependencies.database import get_db_session
+from src.api.dependencies.modal import get_modal_client
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
@@ -217,6 +221,7 @@ async def delete_modal_app(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
     settings: Settings = Depends(get_settings),
+    modal_client=Depends(get_modal_client),
 ):
     # Get the modal app
     # see if it's deletable by the user
@@ -229,12 +234,21 @@ async def delete_modal_app(
             detail=f"No Modal App found with id {id}.",
         )
 
+    app_name = modal_app.app_name
     _raise_if_undeletable(modal_app, user, log)
 
     await db.delete(modal_app)
     await db.commit()
     log.info("Deleted Modal App from database")
-    return {"detail": f"Successfully deleted garden with id {id}."}
+    try:
+        await _stop_modal_app(app_name, modal_client, settings)
+        log.info("stopped app on modal")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error stopping app on modal: {str(e)}",
+        )
+    return {"detail": f"Successfully deleted modal app with id {id}."}
 
 
 def _raise_if_undeletable(modal_app, user, log):
@@ -352,3 +366,15 @@ async def _deploy_modal_app_helper(
             "token_secret": settings.MODAL_TOKEN_SECRET,
         }
     )
+
+
+async def _stop_modal_app(
+    app_name: str, modal_client: modal.client._Client, settings: Settings
+):
+    app_id = await get_app_id_from_name.aio(app_name, settings.MODAL_ENV, modal_client)
+    request = api_pb2.AppStopRequest(
+        app_id=app_id,
+        source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,  # not sure if preferable
+        # to APP_STOP_SOURCE_CLI, which is how the cmd I'm plagiarizing does it
+    )
+    await modal_client.stub.AppStop(request)
