@@ -151,22 +151,31 @@ async def test_delete_modal_app(
     mock_modal_publisher_auth_state,
     mock_modal_app_create_request_one_function,
     override_sandboxed_functions,
+    mocker,
+    override_get_modal_client_dependency,
+    override_get_settings_dependency,
 ):
     post_response = await post_modal_app(
         client, mock_modal_app_create_request_one_function
     )
 
     app_id = post_response["id"]
+
+    mock_stop_app = mocker.patch("src.api.routes.modal.modal_apps._stop_modal_app")
+
     delete_response = await client.delete(f"/modal-apps/{app_id}")
     assert delete_response.status_code == 200
     assert delete_response.json() == {
-        "detail": f"Successfully deleted garden with id {app_id}."
+        "detail": f"Successfully deleted modal app with id {app_id}."
     }
 
     # Verify deletion is idempotent
     response = await client.delete(f"/modal-apps/{app_id}")
     assert response.status_code == 200
     assert response.json() == {"detail": f"No Modal App found with id {app_id}."}
+
+    # Verify _stop_modal_app was not called again for non-existent app
+    mock_stop_app.assert_called_once()
 
 
 def test_generate_app_names(mock_auth_state):
