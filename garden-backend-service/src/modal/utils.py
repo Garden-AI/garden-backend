@@ -88,7 +88,7 @@ async def monitor_modal_invocation(
 
 
 async def monitor_modal_deployment(
-    deploy_func: Callable[..., Awaitable[None]],
+    deploy_func: Callable[..., Awaitable[dict]],
     deploy_config: dict[str, str | bytes],
     app_id: int,
     settings: Settings,
@@ -96,10 +96,11 @@ async def monitor_modal_deployment(
     session_maker = await get_db_session_maker(settings=settings)
 
     try:
-        await deploy_func(deploy_config)
+        result = await deploy_func(deploy_config)
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=app_id):
                 modal_app.deploy_status = AsyncModalJobStatus.DONE
+                modal_app.modal_app_id = result["app_id"]
                 await session.commit()
     except Exception as e:
         async with session_maker() as session:

@@ -58,8 +58,12 @@ async def add_modal_app(
     modal_app_db_model = await _save_modal_app_to_db(
         db, modal_app, user, full_app_name, original_app_name, hardware_specs
     )
-
-    await _deploy_modal_app_helper(deploy_modal_app, full_app_name, modal_app, settings)
+    # get app id from deployment if successful
+    app_id = await _deploy_modal_app_helper(
+        deploy_modal_app, full_app_name, modal_app, settings
+    )
+    modal_app_db_model.modal_app_id = app_id
+    await db.commit()
 
     return modal_app_db_model
 
@@ -255,11 +259,12 @@ async def delete_modal_app(
         )
 
     app_name = modal_app.app_name
+    app_id = modal_app.modal_app_id
     _raise_if_undeletable(modal_app, user, log)
     try:
         await db.delete(modal_app)
         log.info("Deleted Modal App from database")
-        await _stop_modal_app(app_name, modal_client, settings)
+        await _stop_modal_app(app_name, modal_client, settings, app_id)
         log.info("stopped app on modal")
     except Exception as e:
         await db.rollback()
@@ -376,8 +381,8 @@ async def _deploy_modal_app_helper(
     full_app_name: str,
     modal_app: ModalAppCreateRequest,
     settings: Settings,
-):
-    await deploy_modal_app(
+) -> str:
+    result = await deploy_modal_app(
         {
             "app_name": full_app_name,
             "env": settings.MODAL_ENV,
@@ -386,23 +391,45 @@ async def _deploy_modal_app_helper(
             "token_secret": settings.MODAL_TOKEN_SECRET,
         }
     )
+    return result["app_id"]
+
+
+async def _lookup_app_id(
+    app_name: str, modal_client: modal.client._Client, settings: Settings
+) -> str | None:
+    """Look up an app ID from Modal using AppListRequest.
+
+    This is more reliable than AppGetByDeploymentNameRequest as it searches
+    through all apps in the environment.
+    """
+    request = api_pb2.AppListRequest(
+        environment_name=settings.MODAL_ENV,
+    )
+    response = await retry_transient_errors(modal_client.stub.AppList, request)
+
+    for app in response.apps:
+        if app.name == app_name:
+            return app.app_id
+    return None
 
 
 async def _stop_modal_app(
-    app_name: str, modal_client: modal.client._Client, settings: Settings
+    app_name: str,
+    modal_client: modal.client._Client,
+    settings: Settings,
+    app_id: str | None = None,
 ):
-    # Get the app id from the app name
-    id_request = api_pb2.AppGetByDeploymentNameRequest(
-        namespace=api_pb2.DEPLOYMENT_NAMESPACE_WORKSPACE,
-        name=app_name,
-        environment_name=settings.MODAL_ENV,
-    )
-    id_response = await retry_transient_errors(
-        modal_client.stub.AppGetByDeploymentName, id_request
-    )
+    if app_id is None:
+        app_id = await _lookup_app_id(app_name, modal_client, settings)
+        if app_id is None:
+            logger.warning(
+                f"Could not find app ID for {app_name}, skipping stop request"
+            )
+            return
+
     # Stop the app
     stop_request = api_pb2.AppStopRequest(
-        app_id=id_response.app_id,
+        app_id=app_id,
         source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
     )
     await retry_transient_errors(modal_client.stub.AppStop, stop_request)
