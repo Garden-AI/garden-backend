@@ -145,6 +145,25 @@ async def test_get_modal_app(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_get_modal_apps(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+):
+    num_apps = 5
+    for _ in range(num_apps):
+        await post_modal_app(client, mock_modal_app_create_request_one_function)
+
+    get_response = await client.get("/modal-apps/")
+    assert get_response.status_code == 200
+    get_response_data = get_response.json()
+    assert len(get_response_data) == num_apps
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_delete_modal_app(
     client,
     mock_db_session,

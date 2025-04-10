@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from modal_proto import api_pb2
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -191,6 +192,25 @@ def _validate_modal_app_metadata(app_metadata: ModalAppCreateRequest):
             suggested_fix="Make sure function names in the Modal App creation request match the function names in the Modal file",
         )
     return
+
+
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    response_model=list[AsyncModalAppMetadataResponse],
+)
+async def get_modal_apps(
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+):
+    """Get all of the current user's Modal Apps"""
+    query = (
+        select(ModalApp).where(ModalApp.user_id == user.id).order_by(ModalApp.id.desc())
+    )
+    result = await db.execute(query)
+    modal_apps = result.scalars().all()
+    logger.info(f"Found {len(modal_apps)} modal apps for user {user.id}")
+    return modal_apps
 
 
 @router.get(
