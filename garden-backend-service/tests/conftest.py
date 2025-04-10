@@ -200,7 +200,9 @@ def mock_validate_modal_file_provider(request):
 
 @pytest.fixture
 def mock_deploy_modal_app_provider():
-    return AsyncMock(spec=DeployModalAppProvider)
+    return AsyncMock(
+        spec=DeployModalAppProvider, return_value={"app_id": "ap-fakeappid"}
+    )
 
 
 @pytest.fixture
