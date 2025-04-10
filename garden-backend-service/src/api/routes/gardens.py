@@ -82,6 +82,34 @@ async def search_gardens(
 
 
 @router.post(
+    "/gardens-using-functions",
+    status_code=status.HTTP_200_OK,
+    response_model=list[GardenMetadataResponse],
+)
+async def get_gardens_using_functions(
+    function_ids: list[int],
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Get all gardens that use any of the provided function IDs.
+
+    Args:
+        function_ids: List of function IDs to search for
+        db: Database session
+
+    Returns:
+        List of gardens that use any of the provided functions
+    """
+    stmt = select(Garden).where(
+        Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
+    )
+    result = await db.scalars(stmt)
+    gardens = result.all()
+
+    logger.info(f"Found {len(gardens)} gardens using function IDs: {function_ids}")
+    return gardens
+
+
+@router.post(
     "/search",
     status_code=status.HTTP_200_OK,
     response_model=GardenSearchResponse,
