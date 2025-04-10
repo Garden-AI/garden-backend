@@ -81,19 +81,19 @@ async def search_gardens(
     return result.all()
 
 
-@router.post(
+@router.get(
     "/gardens-using-functions",
     status_code=status.HTTP_200_OK,
     response_model=list[GardenMetadataResponse],
 )
-async def get_gardens_using_functions(
-    function_ids: list[int],
+async def get_gardens_by_function_ids(
+    function_ids: Annotated[list[int], Query()],
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get all gardens that use any of the provided function IDs.
 
     Args:
-        function_ids: List of function IDs to search for
+        function_ids: List of function IDs to search for as query parameters
         db: Database session
 
     Returns:
