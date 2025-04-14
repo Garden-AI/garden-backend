@@ -134,6 +134,8 @@ async def invoke_modal_fn_async(
         function_id=modal_fn.id,
     )
     db.add(db_log)
+    await db.commit()  # Commit to get the log ID
+    await db.refresh(db_log)  # Refresh to get the ID
 
     db_result = ModalInvocationResult(
         function_id=modal_fn.id,

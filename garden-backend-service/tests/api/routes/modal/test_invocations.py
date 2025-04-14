@@ -72,20 +72,30 @@ async def test_invoke_modal_fn(
     assert response_data["status"] == "pending"
     invocation_id = response_data["id"]
 
-    # Mock the database invocation object for the GET request
-    mock_db_invocation = MagicMock()
-    mock_db_invocation.id = invocation_id
-    mock_db_invocation.status = AsyncModalJobStatus.DONE
-    mock_db_invocation.output = api_pb2.FunctionGetOutputsItem(
+    # Mock the database objects for the GET request
+    mock_db_log = MagicMock()
+    mock_db_log.id = invocation_id
+    mock_db_log.user_id = 1
+    mock_db_log.function_id = test_function_id
+    mock_db_log.date_invoked = "2024-01-01T00:00:00"
+    mock_db_log.date_resolved = None
+    mock_db_log.estimated_usage = 1.0
+
+    mock_db_result = MagicMock()
+    mock_db_result.id = invocation_id
+    mock_db_result.status = AsyncModalJobStatus.DONE
+    mock_db_result.output = api_pb2.FunctionGetOutputsItem(
         result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
         data_format=api_pb2.DATA_FORMAT_PICKLE,
     ).SerializeToString()
-    mock_db_invocation.error = None
+    mock_db_result.error = None
+    mock_db_result.log = mock_db_log
+    mock_db_log.result = mock_db_result
 
-    # Mock database query for GET request
+    # Mock database queries for GET request
     mocker.patch(
-        "src.api.routes.modal.invocations.ModalInvocation.get",
-        return_value=mock_db_invocation,
+        "src.api.routes.modal.invocations.ModalInvocationResult.get",
+        return_value=mock_db_result,
     )
 
     # Get the invocation result
@@ -221,18 +231,31 @@ async def test_get_modal_invocation_output(
     override_get_settings_dependency,
     mocker,
 ):
-    # Create a mock database invocation object
-    mock_invocation = MagicMock()
-    mock_invocation.id = 1
-    mock_invocation.status = "done"
-    mock_invocation.output = api_pb2.FunctionGetOutputsItem(
+    # Create mock database objects
+    mock_db_log = MagicMock()
+    mock_db_log.id = 1
+    mock_db_log.user_id = 1
+    mock_db_log.function_id = 1
+    mock_db_log.date_invoked = "2024-01-01T00:00:00"
+    mock_db_log.date_resolved = None
+    mock_db_log.estimated_usage = 1.0
+
+    mock_db_result = MagicMock()
+    mock_db_result.id = 1
+    mock_db_result.status = AsyncModalJobStatus.DONE
+    mock_db_result.output = api_pb2.FunctionGetOutputsItem(
         result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
         data_format=api_pb2.DATA_FORMAT_PICKLE,
     ).SerializeToString()
-    mock_invocation.error = None
+    mock_db_result.error = None
+    mock_db_result.log = mock_db_log
+    mock_db_log.result = mock_db_result
 
-    # Patch ModalInvocation.get to return the mock object
-    mocker.patch("src.models.ModalInvocation.get", return_value=mock_invocation)
+    # Patch ModalInvocationResult.get to return the mock object
+    mocker.patch(
+        "src.api.routes.modal.invocations.ModalInvocationResult.get",
+        return_value=mock_db_result,
+    )
 
     # Send the GET request
     response = await client.get("/modal-invocations/1")
@@ -387,20 +410,30 @@ async def test_invoke_modal_fn_with_blob_args(
     assert response_data["status"] == "pending"
     invocation_id = response_data["id"]
 
-    # Mock the database invocation object for the GET request
-    mock_db_invocation = MagicMock()
-    mock_db_invocation.id = invocation_id
-    mock_db_invocation.status = AsyncModalJobStatus.DONE
-    mock_db_invocation.output = api_pb2.FunctionGetOutputsItem(
+    # Mock the database objects for the GET request
+    mock_db_log = MagicMock()
+    mock_db_log.id = invocation_id
+    mock_db_log.user_id = 1
+    mock_db_log.function_id = test_function_id
+    mock_db_log.date_invoked = "2024-01-01T00:00:00"
+    mock_db_log.date_resolved = None
+    mock_db_log.estimated_usage = 1.0
+
+    mock_db_result = MagicMock()
+    mock_db_result.id = invocation_id
+    mock_db_result.status = AsyncModalJobStatus.DONE
+    mock_db_result.output = api_pb2.FunctionGetOutputsItem(
         result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
         data_format=api_pb2.DATA_FORMAT_PICKLE,
     ).SerializeToString()
-    mock_db_invocation.error = None
+    mock_db_result.error = None
+    mock_db_result.log = mock_db_log
+    mock_db_log.result = mock_db_result
 
     # Mock database query for GET request
     mocker.patch(
-        "src.api.routes.modal.invocations.ModalInvocation.get",
-        return_value=mock_db_invocation,
+        "src.api.routes.modal.invocations.ModalInvocationResult.get",
+        return_value=mock_db_result,
     )
 
     # Get the invocation result
@@ -427,10 +460,18 @@ async def test_get_modal_invocation_output_with_blob_result(
     override_get_modal_client_dependency,
     mocker,
 ):
-    # Create a mock database invocation object with blob-based result
-    mock_invocation = MagicMock()
-    mock_invocation.id = 1
-    mock_invocation.status = AsyncModalJobStatus.DONE
+    # Create mock database objects with blob-based result
+    mock_db_log = MagicMock()
+    mock_db_log.id = 1
+    mock_db_log.user_id = 1
+    mock_db_log.function_id = 1
+    mock_db_log.date_invoked = "2024-01-01T00:00:00"
+    mock_db_log.date_resolved = None
+    mock_db_log.estimated_usage = 1.0
+
+    mock_db_result = MagicMock()
+    mock_db_result.id = 1
+    mock_db_result.status = AsyncModalJobStatus.DONE
 
     # Create output with blob reference instead of inline data
     test_result = api_pb2.GenericResult(status=0, data_blob_id="test-result-blob-id")
@@ -438,8 +479,10 @@ async def test_get_modal_invocation_output_with_blob_result(
         result=test_result,
         data_format=api_pb2.DATA_FORMAT_PICKLE,
     )
-    mock_invocation.output = output_item.SerializeToString()
-    mock_invocation.error = None
+    mock_db_result.output = output_item.SerializeToString()
+    mock_db_result.error = None
+    mock_db_result.log = mock_db_log
+    mock_db_log.result = mock_db_result
 
     # Mock blob URL retrieval
     mock_blob_response = MagicMock()
@@ -450,8 +493,8 @@ async def test_get_modal_invocation_output_with_blob_result(
 
     # Mock database query
     mocker.patch(
-        "src.api.routes.modal.invocations.ModalInvocation.get",
-        return_value=mock_invocation,
+        "src.api.routes.modal.invocations.ModalInvocationResult.get",
+        return_value=mock_db_result,
     )
     response = await client.get("/modal-invocations/1")
     assert response.status_code == 200
