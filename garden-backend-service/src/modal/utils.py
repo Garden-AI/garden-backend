@@ -10,7 +10,7 @@ from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.database import get_db_session_maker
 from src.config import Settings
 from src.exceptions.modal import ModalException
-from src.models.modal.invocations import ModalInvocation
+from src.models.modal.invocations import ModalInvocationResult
 from src.models.modal.modal_app import ModalApp
 from src.models.modal.modal_function import ModalFunction
 
@@ -18,26 +18,26 @@ from .status import AsyncModalJobStatus
 from .usage import estimate_usage
 
 
-async def cancel_modal_invocation(invocation: ModalInvocation, client: modal.Client):
+async def cancel_modal_invocation(result: ModalInvocationResult, client: modal.Client):
     request: api_pb2.FunctionCallCancelRequest = api_pb2.FunctionCallCancelRequest(
-        function_call_id=invocation.function_call_id,
+        function_call_id=result.function_call_id,
         terminate_containers=True,
     )
     await retry_transient_errors(client.stub.FunctionCallCancel, request)
 
 
 async def resolve_modal_invocation(
-    invocation: ModalInvocation,
+    result: ModalInvocationResult,
     status: AsyncModalJobStatus,
     session: AsyncSession,
 ):
-    if func := await ModalFunction.get(session, id=invocation.function_id):
-        invocation.date_resolved = datetime.now()
+    if func := await ModalFunction.get(session, id=result.function_id):
+        result.log.date_resolved = datetime.now()
         execution_time = (
-            invocation.date_resolved - invocation.date_invoked
+            result.log.date_resolved - result.log.date_invoked
         ).total_seconds()
-        invocation.estimated_usage = estimate_usage(func, execution_time)
-        invocation.status = status
+        result.log.estimated_usage = estimate_usage(func, execution_time)
+        result.status = status
         await session.commit()
     else:
         raise ValueError(f"No Modal Function with id: {id} found!")
@@ -45,13 +45,13 @@ async def resolve_modal_invocation(
 
 async def monitor_modal_invocation(
     invocation: modal._functions._Invocation,
-    db_invocation: ModalInvocation,
+    db_result: ModalInvocationResult,
     client: modal.Client,
     settings: Settings,
 ):
     session_maker = await get_db_session_maker(settings=settings)
     async with session_maker() as session:
-        if inv := await ModalInvocation.get(session, id=db_invocation.id):
+        if result := await ModalInvocationResult.get(session, id=db_result.id):
             try:
                 # Try and get the invocation outputs
                 outputs_response = await invocation.pop_function_call_outputs(
@@ -60,18 +60,18 @@ async def monitor_modal_invocation(
                 )
                 # If we have outputs, the invocation suceeded, write the outputs to the DB
                 if outputs_response.outputs:
-                    inv.output = outputs_response.outputs[0].SerializeToString()
+                    result.output = outputs_response.outputs[0].SerializeToString()
                     await resolve_modal_invocation(
-                        inv, AsyncModalJobStatus.DONE, session
+                        result, AsyncModalJobStatus.DONE, session
                     )
                     await session.commit()
                     return
                 # If there are no outputs and unfinished inputs the invocation has timed out, cancel it!
                 if outputs_response.num_unfinished_inputs > 0:
-                    await cancel_modal_invocation(inv, client)
-                    inv.error = "Timed out!"
+                    await cancel_modal_invocation(result, client)
+                    result.error = "Timed out!"
                     await resolve_modal_invocation(
-                        inv, AsyncModalJobStatus.TIMED_OUT, session
+                        result, AsyncModalJobStatus.TIMED_OUT, session
                     )
                     raise ModalException("Modal Invocation Timed out!", status_code=408)
                 else:
@@ -81,9 +81,9 @@ async def monitor_modal_invocation(
                 raise
             except Exception as e:
                 # Otherwise, write the error to the DB
-                inv.error = str(e)
+                result.error = str(e)
                 status = AsyncModalJobStatus.ERROR
-                await resolve_modal_invocation(inv, status, session)
+                await resolve_modal_invocation(result, status, session)
                 await session.commit()
 
 

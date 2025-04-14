@@ -13,7 +13,7 @@ from src.api.dependencies.database import get_db_session
 from src.auth.auth_state import AuthenticationState
 from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
-from src.models.modal.invocations import ModalInvocation
+from src.models.modal.invocations import ModalInvocationLog
 from src.models.user import User
 
 log = get_logger(__name__)
@@ -110,9 +110,9 @@ async def under_modal_usage_limit(
 
     # Calculate total estimated usage during the current month
     monthly_usage = await db.scalar(
-        select(func.sum(ModalInvocation.estimated_usage)).where(
-            ModalInvocation.user_id == user.id,
-            ModalInvocation.date_invoked >= start_of_month,
+        select(func.sum(ModalInvocationLog.estimated_usage)).where(
+            ModalInvocationLog.user_id == user.id,
+            ModalInvocationLog.date_invoked >= start_of_month,
         )
     )
 
