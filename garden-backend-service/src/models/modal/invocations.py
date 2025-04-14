@@ -35,7 +35,6 @@ class ModalInvocationLog(Base):
         lazy="selectin", uselist=False
     )
 
-    function_call_id: Mapped[str]
     date_invoked: Mapped[datetime.datetime] = mapped_column(
         DateTime(), server_default=func.now()
     )

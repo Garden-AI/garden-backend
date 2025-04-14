@@ -26,7 +26,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("function_id", sa.Integer(), nullable=True),
-        sa.Column("function_call_id", sa.String(), nullable=False),
         sa.Column(
             "date_invoked",
             sa.DateTime(),
@@ -73,11 +72,11 @@ def upgrade() -> None:
     # First migrate data to modal_invocation_logs
     op.execute("""
         INSERT INTO modal_invocation_logs (
-            id, user_id, function_id, function_call_id,
+            id, user_id, function_id,
             date_invoked, date_resolved, estimated_usage
         )
         SELECT
-            id, user_id, function_id, function_call_id,
+            id, user_id, function_id,
             date_invoked, date_resolved, estimated_usage
         FROM modal_invocations
     """)
@@ -154,7 +153,7 @@ def downgrade() -> None:
             status, error, output
         )
         SELECT
-            l.id, l.user_id, l.function_id, l.function_call_id,
+            l.id, l.user_id, l.function_id, r.function_call_id,
             l.date_invoked, l.date_resolved, l.estimated_usage,
             r.status, r.error, r.output
         FROM modal_invocation_logs l
