@@ -27,7 +27,7 @@ from src.api.schemas.modal.invocations import (
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_invocation
-from src.models.modal.invocations import ModalInvocation
+from src.models.modal.invocations import ModalInvocationLog, ModalInvocationResult
 from src.models.modal.modal_function import ModalFunction
 from src.models.user import User
 
@@ -129,23 +129,30 @@ async def invoke_modal_fn_async(
         )
 
     # Log the invocation in the database
-    db_invocation = ModalInvocation(
+    db_log = ModalInvocationLog(
         user_id=user.id,
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
-        status=AsyncModalJobStatus.PENDING,
     )
-    db.add(db_invocation)
+    db.add(db_log)
+
+    db_result = ModalInvocationResult(
+        function_id=modal_fn.id,
+        function_call_id=invocation.function_call_id,
+        status=AsyncModalJobStatus.PENDING,
+        log_id=db_log.id,
+    )
+    db.add(db_result)
     await db.commit()
 
     # Add monitoring to background tasks
     background_tasks.add_task(
-        monitor_modal_invocation, invocation, db_invocation, modal_client, settings
+        monitor_modal_invocation, invocation, db_result, modal_client, settings
     )
 
     # Return the invocation ID immediately
     return AsyncModalInvocationResponse(
-        id=db_invocation.id,
+        id=db_result.id,
         status=AsyncModalJobStatus.PENDING.value,
     )
 
@@ -156,7 +163,7 @@ async def get_modal_invocation_output(
     modal_client: modal.Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
-    inv = await ModalInvocation.get(db, id=id)
+    inv = await ModalInvocationResult.get(db, id=id)
     if inv is None:
         return JSONResponse(
             status_code=404, content=f"Invocation with id: {id} not found."

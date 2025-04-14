@@ -31,7 +31,7 @@ class ModalInvocationLog(Base):
     function_id: Mapped[int | None] = mapped_column(
         ForeignKey("modal_functions.id"), nullable=True
     )
-    function: Mapped[ModalFunction | None] = relationship(
+    function: Mapped["ModalFunction | None"] = relationship(
         lazy="selectin", uselist=False
     )
 
