@@ -52,7 +52,12 @@ def upgrade() -> None:
         sa.Column(
             "status",
             postgresql.ENUM(
-                "PENDING", "DONE", "ERROR", "TIMED_OUT", name="asyncmodaljobstatus"
+                "PENDING",
+                "DONE",
+                "ERROR",
+                "TIMED_OUT",
+                name="asyncmodaljobstatus",
+                create_type=False,  # Use existing type
             ),
             nullable=False,
         ),
@@ -127,7 +132,12 @@ def downgrade() -> None:
         sa.Column(
             "status",
             postgresql.ENUM(
-                "PENDING", "ERROR", "DONE", "TIMED_OUT", name="asyncmodaljobstatus"
+                "PENDING",
+                "ERROR",
+                "DONE",
+                "TIMED_OUT",
+                name="asyncmodaljobstatus",
+                create_type=False,  # Use existing type
             ),
             autoincrement=False,
             nullable=False,
