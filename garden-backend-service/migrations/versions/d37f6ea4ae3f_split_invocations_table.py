@@ -51,7 +51,7 @@ def upgrade() -> None:
         sa.Column("function_call_id", sa.String(), nullable=False),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "PENDING", "DONE", "ERROR", "TIMED_OUT", name="asyncmodaljobstatus"
             ),
             nullable=False,

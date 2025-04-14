@@ -132,7 +132,6 @@ async def invoke_modal_fn_async(
     db_log = ModalInvocationLog(
         user_id=user.id,
         function_id=modal_fn.id,
-        function_call_id=invocation.function_call_id,
     )
     db.add(db_log)
 
