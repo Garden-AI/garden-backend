@@ -29,7 +29,7 @@ class ModalInvocationLog(Base):
 
     # Nullable since we want to keep logs even if function is deleted
     function_id: Mapped[int | None] = mapped_column(
-        ForeignKey("modal_functions.id"), nullable=True
+        ForeignKey("modal_functions.id", ondelete="SET NULL"), nullable=True
     )
     function: Mapped["ModalFunction | None"] = relationship(
         lazy="selectin", uselist=False
