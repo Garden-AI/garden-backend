@@ -69,6 +69,32 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
+
+    # First migrate data to modal_invocation_logs
+    op.execute("""
+        INSERT INTO modal_invocation_logs (
+            id, user_id, function_id, function_call_id,
+            date_invoked, date_resolved, estimated_usage
+        )
+        SELECT
+            id, user_id, function_id, function_call_id,
+            date_invoked, date_resolved, estimated_usage
+        FROM modal_invocations
+    """)
+
+    # Then migrate data to modal_invocation_results, ensuring log_id matches
+    op.execute("""
+        INSERT INTO modal_invocation_results (
+            id, function_id, function_call_id, status,
+            error, output, log_id
+        )
+        SELECT
+            id, function_id, function_call_id, status,
+            error, output, id
+        FROM modal_invocations
+        WHERE id IN (SELECT id FROM modal_invocation_logs)
+    """)
+
     op.drop_table("modal_invocations")
     # ### end Alembic commands ###
 
@@ -119,6 +145,22 @@ def downgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name="modal_invocations_pkey"),
     )
+
+    # Migrate data back from both tables to modal_invocations
+    op.execute("""
+        INSERT INTO modal_invocations (
+            id, user_id, function_id, function_call_id,
+            date_invoked, date_resolved, estimated_usage,
+            status, error, output
+        )
+        SELECT
+            l.id, l.user_id, l.function_id, l.function_call_id,
+            l.date_invoked, l.date_resolved, l.estimated_usage,
+            r.status, r.error, r.output
+        FROM modal_invocation_logs l
+        LEFT JOIN modal_invocation_results r ON l.id = r.log_id
+    """)
+
     op.drop_table("modal_invocation_results")
     op.drop_table("modal_invocation_logs")
     # ### end Alembic commands ###
