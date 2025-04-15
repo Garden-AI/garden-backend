@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Mapping
 
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -89,7 +89,7 @@ async def monitor_modal_invocation(
 
 async def monitor_modal_deployment(
     deploy_func: Callable[..., Awaitable[dict]],
-    deploy_config: dict[str, str | bytes],
+    deploy_config: Mapping[str, str | bytes],
     app_id: int,
     settings: Settings,
 ):

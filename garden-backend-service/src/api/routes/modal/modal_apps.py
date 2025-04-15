@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from modal_proto import api_pb2
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -34,7 +34,6 @@ from src.modal import parse_modal_file
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_deployment
 from src.models import ModalApp, ModalFunction, User
-from src.models._associations import gardens_modal_functions
 
 from .modal_file_metadata import parse_modal_file_metadata
 
@@ -190,17 +189,9 @@ async def patch_modal_app(
 
     # otherwise, do a "full publishing flow" with some extra validation
     existing_functions = {fn.function_name: fn for fn in modal_app.modal_functions}
-    # collect function names currently in use by any garden
-    query = select(ModalFunction.function_name).where(
-        and_(
-            ModalFunction.id.in_([fn.id for fn in existing_functions.values()]),
-            ModalFunction.id.in_(
-                select(gardens_modal_functions.c.modal_function_id).distinct()
-            ),
-        )
-    )
-    db_result = await db.execute(query)
-    required_names = set(db_result.scalars().all())
+
+    # TODO: required_names only needs to be functions actually in use
+    required_names = set(existing_functions.keys())
 
     # collect function names from the updated file_contents
     parsed_metadata = await parse_modal_file_metadata(
@@ -227,6 +218,7 @@ async def patch_modal_app(
     hardware_specs = sandbox_metadata["functions"]
 
     # update existing functions or create new ones in the db
+    # TODO: delete functions that are not in use nor present in updated app
     for modal_fn_meta in parsed_metadata.modal_functions:
         name = modal_fn_meta.function_name
         fn_data = modal_fn_meta.model_dump(exclude={"file_contents"})
