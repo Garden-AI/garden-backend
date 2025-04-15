@@ -171,7 +171,7 @@ async def patch_modal_app(
             detail=f"Modal App not found with id {id}",
         )
 
-    assert_editable_by_user(modal_app, user)
+    assert_editable_by_user(modal_app, patch_request, user)
     # Update other metadata fields provided in request
     patch_fields = patch_request.model_dump(
         exclude_none=True, exclude={"file_contents"}
