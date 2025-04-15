@@ -50,10 +50,25 @@ async def search_gardens(
     contributors: Annotated[list[str] | None, Query()] = None,
     tags: Annotated[list[str] | None, Query()] = None,
     year: Annotated[str | None, Query()] = None,
+    function_ids: Annotated[list[int] | None, Query()] = None,
     limit: Annotated[int | None, Query(le=100)] = 50,
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Fetch multiple gardens according to query parameters"""
+    """Fetch multiple gardens according to query parameters.
+
+    If function_ids is provided, only search for gardens using those functions.
+    Otherwise, perform a general search using the other parameters.
+    """
+    # Handle function-specific search
+    if function_ids is not None:
+        stmt = select(Garden).where(
+            Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
+        )
+        result = await db.scalars(stmt.limit(limit))
+        gardens = result.all()
+        return gardens
+
+    # Handle general search
     stmt = select(Garden)
 
     if doi is not None:
@@ -79,34 +94,6 @@ async def search_gardens(
 
     result = await db.scalars(stmt.limit(limit))
     return result.all()
-
-
-@router.get(
-    "/gardens-using-functions",
-    status_code=status.HTTP_200_OK,
-    response_model=list[GardenMetadataResponse],
-)
-async def get_gardens_by_function_ids(
-    function_ids: Annotated[list[int], Query()],
-    db: AsyncSession = Depends(get_db_session),
-):
-    """Get all gardens that use any of the provided function IDs.
-
-    Args:
-        function_ids: List of function IDs to search for as query parameters
-        db: Database session
-
-    Returns:
-        List of gardens that use any of the provided functions
-    """
-    stmt = select(Garden).where(
-        Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
-    )
-    result = await db.scalars(stmt)
-    gardens = result.all()
-
-    logger.info(f"Found {len(gardens)} gardens using function IDs: {function_ids}")
-    return gardens
 
 
 @router.post(
