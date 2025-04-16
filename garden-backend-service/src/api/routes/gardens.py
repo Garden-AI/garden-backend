@@ -194,65 +194,6 @@ async def delete_garden(
         return {"detail": f"No garden found with DOI {doi}."}
 
 
-@router.put("/{doi:path}", response_model=GardenMetadataResponse)
-async def create_or_replace_garden(
-    doi: str,
-    garden_data: GardenCreateRequest,
-    db: AsyncSession = Depends(get_db_session),
-    user: User = Depends(authed_user),
-):
-    log = logger.bind(doi=doi)
-
-    existing_garden: Garden | None = await Garden.get(db, doi=doi)
-    if existing_garden is None:
-        new_garden = await _create_new_garden(garden_data, db, user)
-        return new_garden
-
-    # check draft status with the real world (doi.org)
-    if garden_data.doi_is_draft is None:
-        registered = await is_doi_registered(garden_data.doi)
-        garden_data.doi_is_draft = not registered
-
-    assert_deletable_by_user(existing_garden, user)
-    # update ownership if specified
-    if garden_data.owner_identity_id is not None:
-        new_owner: User | None = await User.get(
-            db, identity_id=garden_data.owner_identity_id
-        )
-        existing_garden.owner = new_owner or user
-        log.info(
-            "Assigned garden ownership",
-            owner_identity_id=(new_owner or user).identity_id,
-            owner_username=(new_owner or user).username,
-        )
-
-    # update related entrypoints
-    new_entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
-    existing_garden.entrypoints = new_entrypoints
-
-    new_modal_functions = await _collect_modal_functions(
-        garden_data.modal_function_ids, db
-    )
-    existing_garden.modal_functions = new_modal_functions
-
-    # naive update with remaining values from payload
-    for key, value in garden_data.model_dump(
-        exclude={"owner_identity_id", "entrypoint_ids", "modal_function_ids"}
-    ).items():
-        setattr(existing_garden, key, value)
-    try:
-        await db.commit()
-    except IntegrityError as e:
-        log.exception("Failed to update garden", exc_info=True)
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Integrity error occurred: {str(e)}",
-        ) from e
-
-    return existing_garden
-
-
 @router.patch("/{doi:path}", response_model=GardenMetadataResponse)
 async def update_garden(
     doi: str,
@@ -275,11 +216,6 @@ async def update_garden(
 
     # Prevent updating entrypoints on published gardens
     if "entrypoint_ids" in garden_patch_dict:
-        if not garden.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot update a published garden's entrypoints.",
-            )
         # collect entrypoints by DOI
         garden.entrypoints = await _collect_entrypoints(
             garden_data.entrypoint_ids or [], db
@@ -287,11 +223,6 @@ async def update_garden(
 
     # Prevent updating modal functions on published gardens
     if "modal_function_ids" in garden_patch_dict:
-        if not garden.doi_is_draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot update a published garden's entrypoints.",
-            )
         # collect entrypoints by DOI
         garden.modal_functions = await _collect_modal_functions(
             garden_data.modal_function_ids or [], db
