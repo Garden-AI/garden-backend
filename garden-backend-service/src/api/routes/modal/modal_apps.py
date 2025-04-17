@@ -163,7 +163,10 @@ async def patch_modal_app(
     validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
     deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
 ):
-    """Update a modal app's metadata in-place."""
+    """Update a modal app's metadata in-place.
+
+    Triggers a redeployment if file_contents has changed.
+    """
     modal_app = await ModalApp.get(db, id=id)
     if modal_app is None:
         raise HTTPException(
@@ -180,7 +183,8 @@ async def patch_modal_app(
         setattr(modal_app, key, value)
 
     if patch_request.file_contents is None:
-        # if no changes to file contents, return without re-deploying
+        # if no changes to file contents, save and return without re-deploying
+        await db.commit()
         return modal_app
     else:
         modal_app.deploy_status = AsyncModalJobStatus.PENDING
