@@ -14,6 +14,9 @@ security: # configuration for the `safety check` command
         70612: # Vulnerability ID
             reason: Jinja2 is only a dependency because of safety itself. Also, per the vulnerability description, the maintainer and multiple third parties believe that this vulnerability isn't valid.
 
+        75976: # Vulnerability ID
+            reason: This only affects users that execute un-trusted templates. We don't do that here, so we can safely ignore this for now.
+
     continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities. We recommend you set this to False.
 alert: # configuration for the `safety alert` command
     security:
