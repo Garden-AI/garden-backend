@@ -20,17 +20,22 @@ from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
     ValidateModalFileProvider,
 )
+from src.api.routes._utils import assert_editable_by_user
 from src.api.schemas.modal.modal_app import (
     AsyncModalAppMetadataResponse,
     ModalAppCreateRequest,
     ModalAppMetadataResponse,
+    ModalAppPatchRequest,
+    ModalFileMetadataRequest,
 )
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, User
+from src.models import ModalApp, ModalFunction, User
+
+from .modal_file_metadata import parse_modal_file_metadata
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -144,6 +149,118 @@ async def redeploy_modal_app(
         settings,
     )
 
+    return modal_app
+
+
+@router.patch("/async/{id}", response_model=AsyncModalAppMetadataResponse)
+async def patch_modal_app(
+    id: int,
+    patch_request: ModalAppPatchRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
+    validate_modal_file: ValidateModalFileProvider = validate_modal_file_dep,
+    deploy_modal_app: DeployModalAppProvider = deploy_modal_app_dep,
+):
+    """Update a modal app's metadata in-place.
+
+    Triggers a redeployment if file_contents has changed.
+    """
+    modal_app = await ModalApp.get(db, id=id)
+    if modal_app is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Modal App not found with id {id}",
+        )
+
+    assert_editable_by_user(modal_app, patch_request, user)
+    # Update other metadata fields provided in request
+    patch_fields = patch_request.model_dump(
+        exclude_none=True, exclude={"file_contents"}
+    )
+    for key, value in patch_fields.items():
+        setattr(modal_app, key, value)
+
+    if patch_request.file_contents is None:
+        # if no changes to file contents, save and return without re-deploying
+        await db.commit()
+        return modal_app
+    else:
+        modal_app.deploy_status = AsyncModalJobStatus.PENDING
+        modal_app.deploy_error = None
+        modal_app.file_contents = patch_request.file_contents
+
+    # otherwise, do a "full publishing flow" with some extra validation
+    existing_functions = {fn.function_name: fn for fn in modal_app.modal_functions}
+
+    # TODO: required_names only needs to be functions actually in use
+    required_names = set(existing_functions.keys())
+
+    # collect function names from the updated file_contents
+    parsed_metadata = await parse_modal_file_metadata(
+        ModalFileMetadataRequest(file_contents=patch_request.file_contents)
+    )
+    parsed_fn_names = {fn.function_name for fn in parsed_metadata.modal_functions}
+    # updated app must not remove any functions in use
+    if missing_names := required_names - parsed_fn_names:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Function names ({', '.join(missing_names)}) not found in the updated Modal file, but are in use by one or more Gardens.",
+        )
+
+    if parsed_metadata.app_name != modal_app.original_app_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"App name mismatch: Got '{parsed_metadata.app_name}' from file but expected '{modal_app.original_app_name}'.",
+        )
+
+    # app looks valid, continue to deploying the app
+    sandbox_metadata = await validate_modal_file(
+        {"file_contents": patch_request.file_contents}
+    )
+    hardware_specs = sandbox_metadata["functions"]
+
+    # update existing functions or create new ones in the db
+    # TODO: delete functions that are not in use nor present in updated app
+    for modal_fn_meta in parsed_metadata.modal_functions:
+        name = modal_fn_meta.function_name
+        fn_data = modal_fn_meta.model_dump(exclude={"file_contents"})
+        # ensure up-to-date hardware spec
+        if "." in name:
+            class_name, _ = name.split(".")
+            # methods will share the same hardware spec as the special
+            # "class.*" modal function
+            fn_data["hardware_spec"] = hardware_specs[f"{class_name}.*"]
+        else:
+            fn_data["hardware_spec"] = hardware_specs[name]
+        # update existing function or create new one
+        if name in existing_functions:
+            # update the existing function with the new metadata
+            for field, value in fn_data.items():
+                setattr(existing_functions[name], field, value)
+        else:
+            # create a new function
+            new_fn = ModalFunction.from_dict(fn_data)
+            modal_app.modal_functions.append(new_fn)
+
+    await db.commit()
+    await db.refresh(modal_app)
+    # finally, redeploy the app
+    deploy_config = {
+        "app_name": modal_app.app_name,
+        "env": settings.MODAL_ENV,
+        "file_contents": patch_request.file_contents,
+        "token_id": settings.MODAL_TOKEN_ID,
+        "token_secret": settings.MODAL_TOKEN_SECRET,
+    }
+    background_tasks.add_task(
+        monitor_modal_deployment,
+        deploy_modal_app,
+        deploy_config,
+        modal_app.id,
+        settings,
+    )
     return modal_app
 
 
