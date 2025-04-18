@@ -290,7 +290,7 @@ async def _raise_if_undeletable(modal_app, user, log, db):
             gardens_modal_functions.c.modal_function_id.in_(function_ids)
         )
     )
-    if in_use_functions:
+    if in_use_functions.all():
         log.info("Failed to delete Modal App (functions in use by at least one garden)")
         garden_dois = await db.scalars(
             select(Garden.doi)
