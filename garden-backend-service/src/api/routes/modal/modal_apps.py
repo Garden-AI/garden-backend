@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from modal_proto import api_pb2
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -188,64 +188,42 @@ async def patch_modal_app(
         await db.commit()
         return modal_app
     else:
+        # otherwise, do a "full publishing flow" with some extra validation
         modal_app.deploy_status = AsyncModalJobStatus.PENDING
         modal_app.deploy_error = None
         modal_app.file_contents = patch_request.file_contents
 
-    # otherwise, do a "full publishing flow" with some extra validation
-    existing_functions = {fn.function_name: fn for fn in modal_app.modal_functions}
-
-    # TODO: required_names only needs to be functions actually in use
-    required_names = set(existing_functions.keys())
-
-    # collect function names from the updated file_contents
+    # parse contents like /modal-file-metadata route
     parsed_metadata = await parse_modal_file_metadata(
         ModalFileMetadataRequest(file_contents=patch_request.file_contents)
     )
-    parsed_fn_names = {fn.function_name for fn in parsed_metadata.modal_functions}
-    # updated app must not remove any functions in use
-    if missing_names := required_names - parsed_fn_names:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Function names ({', '.join(missing_names)}) not found in the updated Modal file, but are in use by one or more Gardens.",
-        )
-
     if parsed_metadata.app_name != modal_app.original_app_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"App name mismatch: Got '{parsed_metadata.app_name}' from file but expected '{modal_app.original_app_name}'.",
         )
 
-    # app looks valid, continue to deploying the app
+    existing_functions = {fn.function_name: fn for fn in modal_app.modal_functions}
+    existing_names = set(existing_functions.keys())
+    parsed_names = {fn.function_name for fn in parsed_metadata.modal_functions}
+
+    # Handle omitted functions if any exist
+    if omitted_names := existing_names - parsed_names:
+        await _handle_omitted_functions(
+            db, modal_app, existing_functions, omitted_names
+        )
+
+    # app looks valid, continue deploying the app
     sandbox_metadata = await validate_modal_file(
         {"file_contents": patch_request.file_contents}
     )
     hardware_specs = sandbox_metadata["functions"]
 
-    # update existing functions or create new ones in the db
-    # TODO: delete functions that are not in use nor present in updated app
-    for modal_fn_meta in parsed_metadata.modal_functions:
-        name = modal_fn_meta.function_name
-        fn_data = modal_fn_meta.model_dump(exclude={"file_contents"})
-        # ensure up-to-date hardware spec
-        if "." in name:
-            class_name, _ = name.split(".")
-            # methods will share the same hardware spec as the special
-            # "class.*" modal function
-            fn_data["hardware_spec"] = hardware_specs[f"{class_name}.*"]
-        else:
-            fn_data["hardware_spec"] = hardware_specs[name]
-        # update existing function or create new one
-        if name in existing_functions:
-            # update the existing function with the new metadata
-            for field, value in fn_data.items():
-                setattr(existing_functions[name], field, value)
-        else:
-            # create a new function
-            new_fn = ModalFunction.from_dict(fn_data)
-            modal_app.modal_functions.append(new_fn)
+    # update/create functions on the app with up-to-date metadata and hardware specs
+    await _update_or_create_modal_functions(
+        db, modal_app, existing_functions, parsed_metadata, hardware_specs
+    )
 
-    await db.commit()
     await db.refresh(modal_app)
     # finally, redeploy the app
     deploy_config = {
@@ -572,3 +550,94 @@ async def _stop_modal_app(
         source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
     )
     await retry_transient_errors(modal_client.stub.AppStop, stop_request)
+
+
+async def _handle_omitted_functions(
+    db: AsyncSession,
+    modal_app: ModalApp,
+    existing_functions: dict[str, ModalFunction],
+    omitted_names: set[str],
+) -> None:
+    """Handle functions that were omitted from the updated modal file.
+
+    Args:
+        db: Database session
+        modal_app: The modal app being updated
+        existing_functions: Dictionary of existing functions by name
+        omitted_names: Set of existing function names that were omitted from the new file
+    """
+    # query to check for omitted functions still in use by any gardens
+    stmt = (
+        select(ModalFunction.function_name, Garden.title, Garden.doi)
+        .join(Garden.modal_functions)
+        .where(
+            and_(
+                ModalFunction.modal_app_id == modal_app.id,
+                ModalFunction.function_name.in_(omitted_names),
+            )
+        )
+        .distinct()
+    )
+    result = await db.execute(stmt)
+    # mapping of omitted function name -> list of gardens that use it
+    functions_in_use = {}
+    for fn_name, title, doi in result:
+        if fn_name not in functions_in_use:
+            functions_in_use[fn_name] = []
+        functions_in_use[fn_name].append({"title": title, "doi": doi})
+
+    if functions_in_use:
+        err_message = "Functions that are currently in use by Gardens must be included in the updated Modal App:"
+        err_details = []
+        for fn_name, gardens in functions_in_use.items():
+            err_details.append(
+                f"Function '{fn_name}' is used by: {', '.join([f'{g['title']} ({g['doi']})' for g in gardens])}"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{err_message}\n\n" + "\n".join(err_details),
+        )
+    else:
+        # safe to delete omitted functions
+        for name in omitted_names:
+            modal_app.modal_functions.remove(existing_functions[name])
+            await db.delete(existing_functions[name])
+
+
+async def _update_or_create_modal_functions(
+    db: AsyncSession,
+    modal_app: ModalApp,
+    existing_functions: dict[str, ModalFunction],
+    parsed_metadata: Any,
+    hardware_specs: dict[str, dict[str, Any]],
+) -> None:
+    """Update or create modal functions based on parsed metadata.
+
+    Args:
+        db: Database session
+        modal_app: The modal app being updated
+        existing_functions: Dictionary of existing functions by name
+        parsed_metadata: Parsed metadata from the modal file
+        hardware_specs: Hardware specifications for each function
+    """
+    for modal_fn_meta in parsed_metadata.modal_functions:
+        name = modal_fn_meta.function_name
+        fn_data = modal_fn_meta.model_dump(exclude={"file_contents"})
+        # ensure up-to-date hardware spec
+        if "." in name:
+            class_name, _ = name.split(".")
+            # methods will share the same hardware spec as the special
+            # "class.*" modal function
+            fn_data["hardware_spec"] = hardware_specs[f"{class_name}.*"]
+        else:
+            fn_data["hardware_spec"] = hardware_specs[name]
+
+        if name in existing_functions:
+            # update the existing function with the newly parsed metadata
+            for field, value in fn_data.items():
+                setattr(existing_functions[name], field, value)
+        else:
+            new_fn = ModalFunction.from_dict(fn_data)
+            modal_app.modal_functions.append(new_fn)
+
+    await db.commit()
