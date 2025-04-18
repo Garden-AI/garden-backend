@@ -10,9 +10,10 @@ from structlog import get_logger
 
 from src.api.schemas.entrypoint import EntrypointPatchRequest
 from src.api.schemas.garden import GardenPatchRequest
+from src.api.schemas.modal.modal_app import ModalAppPatchRequest
 from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
 from src.config import Settings, get_settings
-from src.models import Entrypoint, Garden, ModalFunction, User
+from src.models import Entrypoint, Garden, ModalApp, ModalFunction, User
 from src.models._associations import gardens_entrypoints
 
 logger = get_logger(__name__)
@@ -45,9 +46,12 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
 
 
 def assert_editable_by_user(
-    obj: Garden | Entrypoint | ModalFunction,
+    obj: Garden | Entrypoint | ModalFunction | ModalApp,
     patch_request: (
-        GardenPatchRequest | EntrypointPatchRequest | ModalFunctionPatchRequest
+        GardenPatchRequest
+        | EntrypointPatchRequest
+        | ModalFunctionPatchRequest
+        | ModalAppPatchRequest
     ),
     user: User,
 ) -> None:
@@ -64,11 +68,14 @@ def assert_editable_by_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to edit {str(type(obj).__name__).lower()} (not owned by user {user.username})",
         )
-    elif obj.is_archived and patch_request.is_archived is not False:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to edit {str(type(obj).__name__).lower()} (DOI {obj.doi} is archived)",
-        )
+    elif not isinstance(obj, ModalApp) and not isinstance(
+        patch_request, ModalAppPatchRequest
+    ):  # apps don't have a concept of "archived"
+        if obj.is_archived and patch_request.is_archived is not False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to edit {str(type(obj).__name__).lower()} (DOI {obj.doi} is archived)",
+            )
 
     return
 

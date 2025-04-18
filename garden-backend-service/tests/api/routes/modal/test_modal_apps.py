@@ -212,3 +212,254 @@ def test_generate_app_names(mock_auth_state):
 
     # assert there are no duplicates
     assert len(set(generated_names)) == num_to_gen
+
+
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "test-app",
+            "functions": {
+                "hello": {"cpus": 1, "gpus": "A100", "memory": 256},
+                "goodbye": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_modal_app_name_mismatch(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_sandboxed_functions,
+):
+    # First create an app with a known name
+    initial_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+"""
+    # Get metadata for the initial app
+    metadata_response = await client.post(
+        "/modal-file-metadata", json={"file_contents": initial_app}
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()
+
+    # Create the app using the metadata directly
+    create_response = await post_modal_app(client, metadata)
+    app_id = create_response["id"]
+
+    # Try to patch with a different app name in the source code
+    patch_data = {
+        "file_contents": """
+import modal
+
+app = modal.App(name="different-app-name")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+"""
+    }
+    response = await client.patch(f"/modal-apps/async/{app_id}", json=patch_data)
+    assert response.status_code == 400
+    assert "App name mismatch" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "test-app",
+            "functions": {
+                "hello": {"cpus": 1, "gpus": "A100", "memory": 256},
+                "goodbye": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_modal_app_remove_function(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_sandboxed_functions,
+):
+    # First create an app with multiple functions
+    initial_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+
+@app.function()
+def goodbye():
+    return "Goodbye, world!"
+"""
+    # Get metadata for the initial app
+    metadata_response = await client.post(
+        "/modal-file-metadata", json={"file_contents": initial_app}
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()
+
+    # Create the app using the metadata directly
+    create_response = await post_modal_app(client, metadata)
+    app_id = create_response["id"]
+
+    # Try to patch by removing one of the functions
+    patch_data = {
+        "file_contents": """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+"""
+    }
+    response = await client.patch(f"/modal-apps/async/{app_id}", json=patch_data)
+    assert response.status_code == 400
+    assert (
+        "Function names (goodbye) not found in the updated Modal file"
+        in response.json()["detail"]
+    )
+
+
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "test-app",
+            "functions": {
+                "hello": {"cpus": 1, "gpus": "A100", "memory": 256},
+                "goodbye": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_modal_app_add_function(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_sandboxed_functions,
+):
+    # First create an app with one function
+    initial_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+"""
+    # Get metadata for the initial app
+    metadata_response = await client.post(
+        "/modal-file-metadata", json={"file_contents": initial_app}
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()
+
+    # Create the app using the metadata directly
+    create_response = await post_modal_app(client, metadata)
+    app_id = create_response["id"]
+
+    # Patch to add a new function
+    patch_data = {
+        "file_contents": """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+
+@app.function()
+def goodbye():
+    return "Goodbye, world!"
+"""
+    }
+    response = await client.patch(f"/modal-apps/async/{app_id}", json=patch_data)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data["modal_functions"]) == 2
+    assert any(
+        fn["function_name"] == "goodbye" for fn in response_data["modal_functions"]
+    )
+
+
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "test-app",
+            "functions": {
+                "hello": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_modal_app_modify_function(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_sandboxed_functions,
+):
+    # First create an app
+    initial_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+"""
+    # Get metadata for the initial app
+    metadata_response = await client.post(
+        "/modal-file-metadata", json={"file_contents": initial_app}
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()
+
+    # Create the app using the metadata directly
+    create_response = await post_modal_app(client, metadata)
+    app_id = create_response["id"]
+
+    # Patch to modify the function
+    patch_data = {
+        "file_contents": """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, modified world!"
+"""
+    }
+    response = await client.patch(f"/modal-apps/async/{app_id}", json=patch_data)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["deploy_status"] == "pending"

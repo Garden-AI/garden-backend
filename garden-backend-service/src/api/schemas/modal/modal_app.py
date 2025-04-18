@@ -52,3 +52,10 @@ class ModalFileMetadataRequest(BaseSchema):
 class ModalFileMetadataResponse(ModalAppMetadata):
     # successful POST /modal-file-metadata response should have everything needed for the subsequent CreateRequest
     pass
+
+
+class ModalAppPatchRequest(BaseSchema):
+    base_image_name: str | None = None
+    requirements: list[str] | None = None
+    conda_requirements: list[str] | None = None
+    file_contents: str | None = None
