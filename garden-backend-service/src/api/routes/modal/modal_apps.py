@@ -30,7 +30,8 @@ from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_deployment
-from src.models import ModalApp, User
+from src.models import Garden, ModalApp, User
+from src.models._associations import gardens_modal_functions
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/modal-apps")
@@ -260,7 +261,7 @@ async def delete_modal_app(
 
     app_name = modal_app.app_name
     app_id = modal_app.modal_app_id
-    _raise_if_undeletable(modal_app, user, log)
+    await _raise_if_undeletable(modal_app, user, log, db)
     try:
         await db.delete(modal_app)
         log.info("Deleted Modal App from database")
@@ -276,12 +277,33 @@ async def delete_modal_app(
     return {"detail": f"Successfully deleted modal app with id {id}."}
 
 
-def _raise_if_undeletable(modal_app, user, log):
+async def _raise_if_undeletable(modal_app, user, log, db):
     if modal_app.owner.identity_id != user.identity_id:
         log.info("Failed to delete Modal App (not owned by user)")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Failed to delete or replace (not owned by user {user.username})",
+        )
+    function_ids = [mf.id for mf in modal_app.modal_functions]
+    in_use_functions = await db.scalars(
+        select(gardens_modal_functions).where(
+            gardens_modal_functions.c.modal_function_id.in_(function_ids)
+        )
+    )
+    if in_use_functions:
+        log.info("Failed to delete Modal App (functions in use by at least one garden)")
+        garden_dois = await db.scalars(
+            select(Garden.doi)
+            .distinct()
+            .join(
+                gardens_modal_functions,
+                Garden.id == gardens_modal_functions.c.garden_id,
+            )
+            .where(gardens_modal_functions.c.modal_function_id.in_(function_ids))
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to delete Modal App {modal_app.original_app_name}. It has functions that are used by Gardens with DOIs {garden_dois.all()}",
         )
     published_children = [mf for mf in modal_app.modal_functions if mf.doi]
     if len(published_children) > 0:
