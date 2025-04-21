@@ -332,11 +332,11 @@ def hello():
 """
     }
     response = await client.patch(f"/modal-apps/async/{app_id}", json=patch_data)
-    assert response.status_code == 400
-    assert (
-        "Function names (goodbye) not found in the updated Modal file"
-        in response.json()["detail"]
-    )
+    assert response.status_code == 200
+    response_data = response.json()
+    names = {fn["function_name"] for fn in response_data["modal_functions"]}
+    assert "hello" in names
+    assert "goodbye" not in names
 
 
 @pytest.mark.parametrize(
@@ -463,3 +463,96 @@ def hello():
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["deploy_status"] == "pending"
+
+
+@pytest.mark.parametrize(
+    "mock_validate_modal_file_provider",
+    [
+        {
+            "app_name": "test-app",
+            "functions": {
+                "hello": {"cpus": 1, "gpus": "A100", "memory": 256},
+                "goodbye": {"cpus": 1, "gpus": "A100", "memory": 256},
+            },
+        },
+    ],
+    indirect=True,
+)
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_modal_app_cannot_remove_function_in_garden(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    override_sandboxed_functions,
+):
+    # First create an app with multiple functions
+    initial_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def hello():
+    return "Hello, world!"
+
+@app.function()
+def goodbye():
+    return "Goodbye, world!"
+"""
+    # Get metadata for the initial app
+    metadata_response = await client.post(
+        "/modal-file-metadata", json={"file_contents": initial_app}
+    )
+    assert metadata_response.status_code == 200
+    metadata = metadata_response.json()
+
+    # Create the app using the metadata directly
+    create_response = await post_modal_app(client, metadata)
+    app_id = create_response["id"]
+    function_ids = [fn["id"] for fn in create_response["modal_functions"]]
+
+    # Create a garden that references the 'hello' function
+    garden_data = {
+        "title": "Test Garden",
+        "doi": "10.1234/test",
+        "authors": ["Test Author"],
+        "contributors": [],
+        "tags": ["test"],
+        "description": "Test garden",
+        "publisher": "Test Publisher",
+        "year": "2024",
+        "language": "en",
+        "version": "1.0.0",
+        "entrypoint_aliases": {},
+        "modal_function_ids": function_ids,
+    }
+    garden_response = await client.post("/gardens", json=garden_data)
+    assert garden_response.status_code == 200
+
+    # Now try to patch the app by removing the 'hello' function
+    updated_app = """
+import modal
+
+app = modal.App(name="test-app")
+
+@app.function()
+def goodbye():
+    return "Goodbye, world!"
+"""
+    patch_request = {
+        "file_contents": updated_app,
+    }
+    patch_response = await client.patch(
+        f"/modal-apps/async/{app_id}", json=patch_request
+    )
+    assert patch_response.status_code == 400
+    error_data = patch_response.json()
+    assert (
+        "Functions that are currently in use by Gardens must be included"
+        in error_data["detail"]
+    )
+    assert "hello" in error_data["detail"]
+    assert "Test Garden" in error_data["detail"]
+    assert "10.1234/test" in error_data["detail"]
+    assert "goodbye" not in error_data["detail"]
