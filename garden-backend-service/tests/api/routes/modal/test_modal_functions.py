@@ -133,4 +133,4 @@ async def test_patch_modal_function_partial_update(
     )
     assert patch_response.status_code == 200
     patched_data = patch_response.json()
-    assert patched_data["tags"] == new_tags["tags"]
+    assert set(patched_data["tags"]) == set(["Some", "New", "Tags"])

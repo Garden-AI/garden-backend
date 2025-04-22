@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
@@ -16,6 +17,12 @@ else:
     Entrypoint = "Entrypoint"
     ModalFunction = "ModalFunction"
     User = "User"
+
+
+class GardenState(str, Enum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    ARCHIVED = "ARCHIVED"
 
 
 class Garden(Base):
@@ -52,3 +59,5 @@ class Garden(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
+
+    state: Mapped[GardenState] = mapped_column(default=GardenState.DRAFT)

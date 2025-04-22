@@ -431,14 +431,6 @@ def mock_modal_app_create_request_with_class() -> dict:
         return json.load(f_in)
 
 
-@pytest.fixture(autouse=True)
-def mock_is_doi_registered(mocker):
-    mock_garden = mocker.patch("src.api.routes.gardens.is_doi_registered")
-    mock_garden.return_value = False
-
-    return mock_garden
-
-
 @pytest.fixture
 def mock_modal_function() -> MagicMock:
     """Fixture for mocking a Modal function"""
@@ -509,4 +501,34 @@ def modal_deployment_environment(
     return {
         **modal_test_environment,
         "app_request": mock_modal_app_create_request_one_function,
+    }
+
+
+@pytest.fixture(autouse=True)
+def mock_doi_utils(mocker):
+    """Mock the DOI utility functions to prevent outbound network calls."""
+    doi_counter = 0
+
+    def get_next_doi():
+        nonlocal doi_counter
+        doi_counter += 1
+        return f"10.fake/doi-{doi_counter}"
+
+    mock_mint = mocker.patch("src.api.routes.gardens.mint_draft_doi")
+    mock_mint.side_effect = lambda *args, **kwargs: get_next_doi()
+
+    mock_update = mocker.patch("src.api.routes.gardens.update_doi_metadata")
+    mock_update.return_value = None
+
+    mock_publish = mocker.patch("src.api.routes.gardens.publish_doi")
+    mock_publish.return_value = None
+
+    mock_archive = mocker.patch("src.api.routes.gardens.archive_doi")
+    mock_archive.return_value = None
+
+    return {
+        "mint_draft_doi": mock_mint,
+        "update_doi_metadata": mock_update,
+        "publish_doi": mock_publish,
+        "archive_doi": mock_archive,
     }

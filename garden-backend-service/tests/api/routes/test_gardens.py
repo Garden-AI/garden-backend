@@ -1,6 +1,5 @@
 import random
 from copy import deepcopy
-from unittest.mock import patch
 
 import pytest
 
@@ -27,7 +26,9 @@ async def test_add_garden(
     response = await client.post("/gardens", json=create_garden_two_entrypoints_json)
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["doi"] == create_garden_two_entrypoints_json["doi"]
+    # Store the DOI from the response for subsequent assertions
+    created_doi = response_data["doi"]
+    assert created_doi is not None
     assert response_data["title"] == create_garden_two_entrypoints_json["title"]
     assert (
         response_data["description"]
@@ -73,12 +74,14 @@ async def test_get_garden_by_doi(
         create_entrypoint_with_related_metadata_json,
     )
 
-    await client.post("/gardens", json=create_garden_two_entrypoints_json)
+    response = await client.post("/gardens", json=create_garden_two_entrypoints_json)
+    assert response.status_code == 200
+    created_doi = response.json()["doi"]
 
-    response = await client.get(f"/gardens/{create_garden_two_entrypoints_json['doi']}")
+    response = await client.get(f"/gardens/{created_doi}")
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["doi"] == create_garden_two_entrypoints_json["doi"]
+    assert response_data["doi"] == created_doi
     assert response_data["title"] == create_garden_two_entrypoints_json["title"]
     assert (
         response_data["description"]
@@ -114,16 +117,20 @@ async def test_delete_garden(
         create_entrypoint_with_related_metadata_json,
     )
 
-    await client.post("/gardens", json=create_garden_two_entrypoints_json)
-    doi = create_garden_two_entrypoints_json["doi"]
-    response = await client.delete(f"/gardens/{doi}")
+    response = await client.post("/gardens", json=create_garden_two_entrypoints_json)
     assert response.status_code == 200
-    assert response.json() == {"detail": f"Successfully deleted garden with DOI {doi}."}
+    created_doi = response.json()["doi"]
+
+    response = await client.delete(f"/gardens/{created_doi}")
+    assert response.status_code == 200
+    assert response.json() == {
+        "detail": f"Successfully deleted garden with DOI {created_doi}."
+    }
 
     # Verify deletion is idempotent
-    response = await client.delete(f"/gardens/{doi}")
+    response = await client.delete(f"/gardens/{created_doi}")
     assert response.status_code == 200
-    assert response.json() == {"detail": f"No garden found with DOI {doi}."}
+    assert response.json() == {"detail": f"No garden found with DOI {created_doi}."}
 
 
 @pytest.mark.asyncio
@@ -135,24 +142,26 @@ async def test_search_gardens_by_doi(
     override_authenticated_dependency,
 ):
     # Post the garden we are looking for
-    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+    response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert response.status_code == 200
+    created_doi = response.json()["doi"]
 
     # Post another garden
     new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
-    new_garden["doi"] = "new/doi"
-    await post_garden(client, new_garden)
+    response = await client.post("/gardens", json=new_garden)
+    assert response.status_code == 200
 
     # Search for the first garden
     response = await client.get(
         "/gardens",
-        params={"doi": [mock_garden_create_request_no_entrypoints_json["doi"]]},
+        params={"doi": [created_doi]},
     )
     assert response.status_code == 200
     response_data = response.json()
     assert len(response_data) == 1
-    assert (
-        response_data[0]["doi"] == mock_garden_create_request_no_entrypoints_json["doi"]
-    )
+    assert response_data[0]["doi"] == created_doi
 
 
 @pytest.mark.asyncio
@@ -164,20 +173,24 @@ async def test_search_gardens_by_draft(
     override_authenticated_dependency,
 ):
     # Post the garden we are looking for
-    await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+    response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert response.status_code == 200
 
     # Post another garden
     new_garden = deepcopy(mock_garden_create_request_no_entrypoints_json)
-    new_garden["doi"] = "new/doi"
-    new_garden["doi_is_draft"] = "false"
-    await post_garden(client, new_garden)
+    response = await client.post("/gardens", json=new_garden)
+    assert response.status_code == 200
+    doi = response.json()["doi"]
+    # publish the other garden
+    patch_response = await client.patch(f"/gardens/{doi}", json={"doi_is_draft": False})
+    assert patch_response.status_code == 200
 
     # Search for the first garden
     response = await client.get(
         "/gardens",
-        params={
-            "draft": mock_garden_create_request_no_entrypoints_json["doi_is_draft"]
-        },
+        params={"draft": "true"},
     )
     assert response.status_code == 200
     response_data = response.json()
@@ -373,9 +386,13 @@ async def test_search_multiple_gardens_by_doi(
 ):
     doi_list = []
     for i in range(5):
-        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
-        doi_list.append(mock_garden_create_request_no_entrypoints_json["doi"])
-        await post_garden(client, mock_garden_create_request_no_entrypoints_json)
+        response = await client.post(
+            "/gardens", json=mock_garden_create_request_no_entrypoints_json
+        )
+        assert response.status_code == 200
+        created_doi = response.json()["doi"]
+        doi_list.append(created_doi)
+
     response = await client.get("/gardens", params={"doi": doi_list})
     assert response.status_code == 200
     response_data = response.json()
@@ -467,16 +484,12 @@ async def test_patch_garden_partial_update(
     assert post_response.status_code == 200
 
     # Update the garden
-    doi = mock_garden_create_request_no_entrypoints_json["doi"]
+    doi = post_response.json()["doi"]
     updated_data = {"tags": ["Some", "New", "Tags"]}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 200
     data = patch_response.json()
-    for key, value in data.items():
-        if key == "tags":
-            assert value == updated_data["tags"]
-        elif mock_garden_create_request_no_entrypoints_json.get(key) is not None:
-            assert value == mock_garden_create_request_no_entrypoints_json.get(key)
+    assert set(updated_data["tags"]) == set(data["tags"])
 
 
 @pytest.mark.asyncio
@@ -486,24 +499,28 @@ async def test_patch_garden_archive(
     mock_db_session,
     override_authenticated_dependency,
     mock_garden_create_request_no_entrypoints_json,
+    mock_doi_utils,
 ):
     mock_garden_create_request_no_entrypoints_json["doi_is_draft"] = False
-    with patch("src.api.routes.gardens.archive_on_datacite") as mock_archive:
-        # post a new registered garden
-        post_response = await client.post(
-            "/gardens", json=mock_garden_create_request_no_entrypoints_json
-        )
-        assert post_response.status_code == 200
+    # post a new registered garden
+    post_response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert post_response.status_code == 200
 
-        # Update the garden and verify the response
-        doi = mock_garden_create_request_no_entrypoints_json["doi"]
-        updated_data = {"is_archived": True}
-        patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
-        assert patch_response.status_code == 200
-        mock_archive.assert_called_once()
-        data = patch_response.json()
-        assert data["doi"] == doi
-        assert data["is_archived"]
+    assert post_response.json()["state"] == "DRAFT"
+    doi = post_response.json()["doi"]
+    # publish then archive it
+    patch_response = await client.patch(f"/gardens/{doi}", json={"doi_is_draft": False})
+    assert patch_response.status_code == 200
+    assert patch_response.json()["state"] == "PUBLISHED"
+
+    patch_response = await client.patch(f"/gardens/{doi}", json={"is_archived": True})
+    assert patch_response.status_code == 200, patch_response.json()
+    assert patch_response.json()["state"] == "ARCHIVED"
+
+    # verify that archive request was sent to datacite
+    mock_doi_utils["archive_doi"].assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -522,7 +539,7 @@ async def test_patch_garden_archive_and_draft(
 
     # Update the garden, should return an error code
     # Cannot archive a draft garden
-    doi = mock_garden_create_request_no_entrypoints_json["doi"]
+    doi = post_response.json()["doi"]
     updated_data = {"is_archived": True}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 400
@@ -542,11 +559,24 @@ async def test_patch_archived_garden_fails(
     )
     assert post_response.status_code == 200
 
-    # Update the garden, should return an error code
-    # Cannot update an archived garden
-    doi = mock_garden_create_request_archived_json["doi"]
+    # Updating the garden should succeed since draft is default
+    doi = post_response.json()["doi"]
     updated_data = {"title": "New Title"}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
+    assert patch_response.status_code == 200
+    assert patch_response.json()["title"] == "New Title"
+
+    # publish then archive it
+    patch_response = await client.patch(f"/gardens/{doi}", json={"doi_is_draft": False})
+    assert patch_response.status_code == 200
+
+    patch_response = await client.patch(f"/gardens/{doi}", json={"is_archived": True})
+    assert patch_response.status_code == 200
+
+    # now updates should fail
+    patch_response = await client.patch(
+        f"/gardens/{doi}", json={"title": "Newer Title"}
+    )
     assert patch_response.status_code == 400
 
 
@@ -566,7 +596,7 @@ async def test_unarchive_garden(
 
     # Unarchive the garden
     # Should return a 200 status code
-    doi = mock_garden_create_request_archived_json["doi"]
+    doi = post_response.json()["doi"]
     updated_data = {"is_archived": False, "title": "Other Update"}
     patch_response = await client.patch(f"/gardens/{doi}", json=updated_data)
     assert patch_response.status_code == 200

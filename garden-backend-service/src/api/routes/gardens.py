@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Annotated
 from uuid import UUID
 
@@ -11,10 +12,8 @@ from structlog import get_logger
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
-    archive_on_datacite,
     assert_deletable_by_user,
     assert_editable_by_user,
-    is_doi_registered,
 )
 from src.api.schemas.garden import (
     GardenCreateRequest,
@@ -22,13 +21,25 @@ from src.api.schemas.garden import (
     GardenPatchRequest,
     GardenSearchRequest,
     GardenSearchResponse,
+    GardenState,
 )
 from src.api.search.utils import apply_filters, calculate_facets, sort_results
 from src.config import Settings, get_settings
+from src.datacite.doi_utils import (
+    archive_doi,
+    mint_draft_doi,
+    publish_doi,
+    update_doi_metadata,
+)
 from src.models import Entrypoint, Garden, ModalFunction, User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
+
+
+class StateTransition(str, Enum):
+    PUBLISH = "PUBLISH"
+    ARCHIVE = "ARCHIVE"
 
 
 @router.post("", response_model=GardenMetadataResponse)
@@ -36,8 +47,13 @@ async def add_garden(
     garden: GardenCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
 ):
-    new_garden = await _create_new_garden(garden, db, user)
+    # If the user has provided a DOI, too bad. We're ignoring it.
+    # We need to guarantee that we're using our own DOIs so we
+    # can update them at will.
+    doi = await mint_draft_doi(settings)
+    new_garden = await _create_new_garden(garden, doi, db, user)
     return new_garden
 
 
@@ -194,10 +210,49 @@ async def delete_garden(
         return {"detail": f"No garden found with DOI {doi}."}
 
 
+def _determine_state_change(
+    current_garden: Garden, requested_change: GardenPatchRequest
+) -> StateTransition | None:
+    """Determine if a valid state transition is being requested.
+
+    Args:
+        current_garden: The current garden state
+        requested_change: The requested changes
+
+    Returns:
+        StateTransition if a valid transition is requested, None otherwise
+
+    Raises:
+        HTTPException: If an invalid state transition is requested
+    """
+    current_state = current_garden.state
+    target_state = requested_change.target_state
+    if current_state is target_state or target_state is None:
+        # no transition required
+        return None
+
+    match (current_state, target_state):
+        case (GardenState.DRAFT, GardenState.PUBLISHED):
+            return StateTransition.PUBLISH
+        case (GardenState.PUBLISHED, GardenState.ARCHIVED):
+            return StateTransition.ARCHIVE
+        case (GardenState.DRAFT, GardenState.ARCHIVED):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This Garden is in a DRAFT state, so it can simply be deleted instead of archived.",
+            )
+        case _:
+            # otherwise, this is requesting a "backwards" transition, which is not allowed
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot transition Garden from {current_state.value} back to {target_state.value} state.",
+            )
+
+
 @router.patch("/{doi:path}", response_model=GardenMetadataResponse)
 async def update_garden(
     doi: str,
-    garden_data: GardenPatchRequest,
+    garden_patch_data: GardenPatchRequest,
     user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
@@ -210,38 +265,51 @@ async def update_garden(
             detail=f"No Garden with DOI {doi} found.",
         )
 
-    assert_editable_by_user(garden, garden_data, user)
+    if garden.state is GardenState.ARCHIVED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Garden with DOI {doi} is archived and cannot be edited.",
+        )
 
-    garden_patch_dict = garden_data.model_dump(exclude_none=True)
+    assert_editable_by_user(garden, garden_patch_data, user)
 
-    # Prevent updating entrypoints on published gardens
+    # Determine if a state transition is being requested
+    state_transition = _determine_state_change(garden, garden_patch_data)
+
+    garden_patch_dict = garden_patch_data.model_dump(
+        exclude_none=True, exclude={"target_state"}
+    )
+
     if "entrypoint_ids" in garden_patch_dict:
         # collect entrypoints by DOI
         garden.entrypoints = await _collect_entrypoints(
-            garden_data.entrypoint_ids or [], db
+            garden_patch_dict["entrypoint_ids"] or [], db
         )
 
-    # Prevent updating modal functions on published gardens
     if "modal_function_ids" in garden_patch_dict:
-        # collect entrypoints by DOI
         garden.modal_functions = await _collect_modal_functions(
-            garden_data.modal_function_ids or [], db
+            garden_patch_dict["modal_function_ids"] or [], db
         )
 
     for key, value in garden_patch_dict.items():
         setattr(garden, key, value)
 
-    if garden.is_archived and garden.doi_is_draft:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot archive a garden in draft state.",
-        )
-
     try:
+        # Make sure DataCite change goes through before committing DB.
+        match state_transition:
+            case StateTransition.ARCHIVE:
+                await archive_doi(garden, settings)
+                log.info("Archived garden DOI on datacite")
+                garden.state = GardenState.ARCHIVED
+            case StateTransition.PUBLISH:
+                await publish_doi(garden, settings)
+                log.info("Published garden DOI on datacite")
+                garden.state = GardenState.PUBLISHED
+            case _:
+                await update_doi_metadata(garden, settings)
+                log.info("Updated garden metadata on datacite")
+
         await db.commit()
-        if garden.is_archived:
-            await archive_on_datacite(doi, settings)
-            log.info("Archived garden on datacite")
 
     except Exception as e:
         log.exception("Failed to update garden")
@@ -286,14 +354,14 @@ async def _collect_modal_functions(
 
 async def _create_new_garden(
     garden_data: GardenCreateRequest,
+    doi: str,
     db: AsyncSession,
     user: User,
 ):
-    log = logger.bind(doi=garden_data.doi)
-    # if not specified, check draft status with the real world (doi.org)
-    if garden_data.doi_is_draft is None:
-        registered = await is_doi_registered(garden_data.doi)
-        garden_data.doi_is_draft = not registered
+    log = logger.bind(doi=doi)
+    garden_data.doi = doi
+    garden_data.doi_is_draft = True
+    garden_data.is_archived = False
 
     # collect entrypoints by DOI
     entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
@@ -324,6 +392,7 @@ async def _create_new_garden(
             exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"}
         )
     )
+
     new_garden.owner = owner
     new_garden.entrypoints = entrypoints
     new_garden.modal_functions = modal_functions
