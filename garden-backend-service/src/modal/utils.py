@@ -3,6 +3,7 @@ from typing import Awaitable, Callable, Mapping
 
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
 
 import modal
 import modal._functions
@@ -16,6 +17,8 @@ from src.models.modal.modal_function import ModalFunction
 
 from .status import AsyncModalJobStatus
 from .usage import estimate_usage
+
+log = get_logger(__name__)
 
 
 async def cancel_modal_invocation(result: ModalInvocationResult, client: modal.Client):
@@ -93,18 +96,36 @@ async def monitor_modal_deployment(
     app_id: int,
     settings: Settings,
 ):
+    """Background task to monitor the deployment of a modal app.
+
+    Args:
+        deploy_func: The function to deploy the app
+        deploy_config: The config for the deployment
+        app_id: The id (our database id) of the app to deploy
+        settings: application settings so we can get a db session outside of the request lifecycle
+    """
     session_maker = await get_db_session_maker(settings=settings)
 
+    deploy_status = AsyncModalJobStatus.PENDING
+    deploy_error = None
+    modal_app_id = None
     try:
+        # attempt to deploy the app
         result = await deploy_func(deploy_config)
-        async with session_maker() as session:
-            if modal_app := await ModalApp.get(session, id=app_id):
-                modal_app.deploy_status = AsyncModalJobStatus.DONE
-                modal_app.modal_app_id = result["app_id"]
-                await session.commit()
+        modal_app_id = result["app_id"]
+        deploy_status = AsyncModalJobStatus.DONE
+        deploy_error = None
     except Exception as e:
+        deploy_status = AsyncModalJobStatus.ERROR
+        deploy_error = str(e)
+    finally:
+        # update the db record with the final status
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=app_id):
-                modal_app.deploy_error = str(e)
-                modal_app.deploy_status = AsyncModalJobStatus.ERROR
+                log.info(
+                    f"Updating modal app {app_id} with status {deploy_status} and error {deploy_error}"
+                )
+                modal_app.deploy_status = deploy_status
+                modal_app.deploy_error = deploy_error
+                modal_app.modal_app_id = str(modal_app_id)
                 await session.commit()
