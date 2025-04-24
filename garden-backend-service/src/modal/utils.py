@@ -154,7 +154,9 @@ async def monitor_modal_deployment(
             if "image build" in error_str or "failed with the exception" in error_str:
                 suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
             elif "timeout" in error_str:
-                suggested_fix = "The deployment took too long. Try simplifying your container setup or breaking it into smaller parts."
+                suggested_fix = (
+                    "The deployment is taking a long time. Wait a minute and try again."
+                )
             else:
                 suggested_fix = "Check your Modal file for errors and try again."
     finally:
