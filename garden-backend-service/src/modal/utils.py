@@ -3,6 +3,7 @@ from typing import Awaitable, Callable, Mapping
 
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog import get_logger
 
 import modal
 import modal._functions
@@ -16,6 +17,8 @@ from src.models.modal.modal_function import ModalFunction
 
 from .status import AsyncModalJobStatus
 from .usage import estimate_usage
+
+log = get_logger(__name__)
 
 
 async def cancel_modal_invocation(result: ModalInvocationResult, client: modal.Client):
@@ -93,18 +96,81 @@ async def monitor_modal_deployment(
     app_id: int,
     settings: Settings,
 ):
+    """Background task to monitor the deployment of a modal app.
+
+    Args:
+        deploy_func: The function to deploy the app
+        deploy_config: The config for the deployment
+        app_id: The id (our database id) of the app to deploy
+        settings: application settings so we can get a db session outside of the request lifecycle
+    """
     session_maker = await get_db_session_maker(settings=settings)
 
+    deploy_status = AsyncModalJobStatus.PENDING
+    deploy_error = None
+    modal_app_id = None
+    suggested_fix = None
+    deployment_output = None
+
     try:
+        # Attempt to deploy the app
         result = await deploy_func(deploy_config)
-        async with session_maker() as session:
-            if modal_app := await ModalApp.get(session, id=app_id):
-                modal_app.deploy_status = AsyncModalJobStatus.DONE
-                modal_app.modal_app_id = result["app_id"]
-                await session.commit()
+
+        # Handle success case
+        if "app_id" in result:
+            modal_app_id = result["app_id"]
+            deployment_output = result.get("deployment_output")
+            deploy_status = AsyncModalJobStatus.DONE
+        # Handle error case when result contains ModalException
+        elif "ModalException" in result:
+            exception_data = result["ModalException"]
+            deploy_status = AsyncModalJobStatus.ERROR
+            deploy_error = exception_data.get("detail", "Unknown error")
+            suggested_fix = exception_data.get("suggested_fix")
+            deployment_output = exception_data.get("deployment_output")
+        else:
+            # Unexpected result format
+            deploy_status = AsyncModalJobStatus.ERROR
+            deploy_error = f"Unexpected result format: {result}"
+    except ModalException as e:
+        deploy_status = AsyncModalJobStatus.ERROR
+        deploy_error = e.detail
+        suggested_fix = e.suggested_fix
+        # Extract deployment output if available
+        if hasattr(e, "deployment_output"):
+            deployment_output = e.deployment_output
     except Exception as e:
+        deploy_status = AsyncModalJobStatus.ERROR
+        deploy_error = str(e)
+
+        # Check if the exception is actually a dict with ModalException info
+        if isinstance(e, dict) and "ModalException" in e:
+            exception_data = e["ModalException"]
+            suggested_fix = exception_data.get("suggested_fix")
+            deployment_output = exception_data.get("deployment_output")
+        else:
+            # Add suggested_fix based on error message
+            error_str = str(e).lower()
+            if "image build" in error_str or "failed with the exception" in error_str:
+                suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
+            elif "timeout" in error_str:
+                suggested_fix = (
+                    "The deployment is taking a long time. Wait a minute and try again."
+                )
+            else:
+                suggested_fix = "Check your Modal file for errors and try again."
+    finally:
+        # update the db record with the final status
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=app_id):
-                modal_app.deploy_error = str(e)
-                modal_app.deploy_status = AsyncModalJobStatus.ERROR
+                log.info(f"Updating modal app {app_id} with status {deploy_status}")
+                modal_app.deploy_status = deploy_status
+                modal_app.deploy_error = deploy_error
+                modal_app.modal_app_id = str(modal_app_id) if modal_app_id else None
+                modal_app.suggested_fix = suggested_fix
+                modal_app.deployment_output = deployment_output
                 await session.commit()
+            else:
+                log.error(
+                    f"Could not find ModalApp with id {app_id} to update deployment status"
+                )

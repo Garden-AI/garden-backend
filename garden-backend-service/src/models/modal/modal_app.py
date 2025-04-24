@@ -28,6 +28,8 @@ class ModalApp(Base):
         default=AsyncModalJobStatus.PENDING
     )
     deploy_error: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    suggested_fix: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    deployment_output: Mapped[str | None] = mapped_column(nullable=True, default=None)
     modal_app_id: Mapped[str | None] = mapped_column(nullable=True)
 
     # The whole Python file the user submitted with the Modal App definition

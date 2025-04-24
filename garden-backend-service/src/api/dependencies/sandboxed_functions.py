@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, Literal
 
 import aioboto3
 from fastapi import Depends
+from structlog import get_logger
 
 from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
@@ -13,6 +14,8 @@ from src.sandboxed_functions.lambda_function import (
     deploy_modal_app,
     validate_modal_file,
 )
+
+log = get_logger(__name__)
 
 # This module handles boilerplate for turning our sandboxed code execution functions into FastAPI dependencies.
 # We want to inject the functions into our route handlers as dependencies,
@@ -31,16 +34,16 @@ from src.sandboxed_functions.lambda_function import (
 def _raise_exception_if_error_in_lambda_response(response_payload: dict):
     if "ModalException" in response_payload:
         details = response_payload["ModalException"]
-        raise ModalException(
+        exception = ModalException(
             detail=details["detail"],
             suggested_fix=details["suggested_fix"],
             status_code=details["status_code"],
+            deployment_output=details.get("deployment_output"),
         )
+        raise exception
     elif "Exception" in response_payload:
         details = response_payload["Exception"]
-        raise Exception(
-            detail=details["detail"],
-        )
+        raise Exception(details["detail"])
 
 
 def make_lambda_invoker(
