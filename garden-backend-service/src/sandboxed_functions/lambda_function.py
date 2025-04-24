@@ -116,9 +116,26 @@ def deploy_modal_app(args: DeployModalAppArgs):
         ensure_env(env)
         app = get_app_from_file_contents(file_contents)
         client = Client.from_credentials(token_id, token_secret)
-        res = deploy_app(app, name=app_name, client=client, environment_name=env)
+        try:
+            res = deploy_app(app, name=app_name, client=client, environment_name=env)
+            return {"app_id": res.app_id}
+        except Exception as e:
+            # Explicitly construct our response here to ensure suggested_fix is included
+            if "image build" in str(e).lower():
+                detail = f"Deployment failed during container build: {e}"
+                suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
+            else:
+                detail = f"Deployment failed for unknown reason: {e}"
+                suggested_fix = "Check your Modal file for errors and try again."
 
-    return {"app_id": res.app_id}
+            # Return a properly formatted error response
+            return {
+                "ModalException": {
+                    "detail": detail,
+                    "suggested_fix": suggested_fix,
+                    "status_code": 400,
+                }
+            }
 
 
 def lambda_handler(event, context):

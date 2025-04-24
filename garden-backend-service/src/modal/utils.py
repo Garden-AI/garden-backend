@@ -109,23 +109,41 @@ async def monitor_modal_deployment(
     deploy_status = AsyncModalJobStatus.PENDING
     deploy_error = None
     modal_app_id = None
+    suggested_fix = None
+
     try:
-        # attempt to deploy the app
+        # Attempt to deploy the app
         result = await deploy_func(deploy_config)
         modal_app_id = result["app_id"]
         deploy_status = AsyncModalJobStatus.DONE
-        deploy_error = None
+    except ModalException as e:
+        log.error("ModalException during deployment", error=str(e), detail=e.detail)
+        deploy_status = AsyncModalJobStatus.ERROR
+        deploy_error = e.detail
+        suggested_fix = e.suggested_fix
     except Exception as e:
+        log.error("Exception during deployment", error=str(e))
         deploy_status = AsyncModalJobStatus.ERROR
         deploy_error = str(e)
+        # Add suggested_fix based on error message
+        if (
+            "image build" in str(e).lower()
+            or "failed with the exception" in str(e).lower()
+        ):
+            suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
+        elif "timeout" in str(e).lower():
+            suggested_fix = "The deployment took too long. Try simplifying your container setup or breaking it into smaller parts."
+        else:
+            suggested_fix = "Check your Modal file for errors and try again."
     finally:
         # update the db record with the final status
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=app_id):
                 log.info(
-                    f"Updating modal app {app_id} with status {deploy_status} and error {deploy_error}"
+                    f"Updating modal app {app_id} with status {deploy_status} and error {deploy_error}, suggested_fix={suggested_fix}"
                 )
                 modal_app.deploy_status = deploy_status
                 modal_app.deploy_error = deploy_error
-                modal_app.modal_app_id = str(modal_app_id)
+                modal_app.modal_app_id = str(modal_app_id) if modal_app_id else None
+                modal_app.suggested_fix = suggested_fix
                 await session.commit()
