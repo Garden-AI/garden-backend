@@ -1,3 +1,5 @@
+import io
+import sys
 from typing import Any, TypedDict
 
 import modal
@@ -112,30 +114,46 @@ def deploy_modal_app(args: DeployModalAppArgs):
         args["token_secret"],
     )
 
-    with enable_output():
-        ensure_env(env)
-        app = get_app_from_file_contents(file_contents)
-        client = Client.from_credentials(token_id, token_secret)
-        try:
-            res = deploy_app(app, name=app_name, client=client, environment_name=env)
-            return {"app_id": res.app_id}
-        except Exception as e:
-            # Explicitly construct our response here to ensure suggested_fix is included
-            if "image build" in str(e).lower():
-                detail = f"Deployment failed during container build: {e}"
-                suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
-            else:
-                detail = f"Deployment failed for unknown reason: {e}"
-                suggested_fix = "Check your Modal file for errors and try again."
+    # Create a StringIO object to capture stdout
+    output_capture = io.StringIO()
+    original_stdout = sys.stdout
 
-            # Return a properly formatted error response
-            return {
-                "ModalException": {
-                    "detail": detail,
-                    "suggested_fix": suggested_fix,
-                    "status_code": 400,
+    try:
+        # Redirect stdout to our StringIO object
+        sys.stdout = output_capture
+
+        with enable_output():
+            ensure_env(env)
+            app = get_app_from_file_contents(file_contents)
+            client = Client.from_credentials(token_id, token_secret)
+            try:
+                res = deploy_app(
+                    app, name=app_name, client=client, environment_name=env
+                )
+                captured_output = output_capture.getvalue()
+                return {"app_id": res.app_id, "deployment_output": captured_output}
+            except Exception as e:
+                # Explicitly construct our response here to ensure suggested_fix is included
+                captured_output = output_capture.getvalue()
+                if "image build" in str(e).lower():
+                    detail = f"Deployment failed during container build: {e}"
+                    suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
+                else:
+                    detail = f"Deployment failed for unknown reason: {e}"
+                    suggested_fix = "Check your Modal file for errors and try again."
+
+                # Return a properly formatted error response
+                return {
+                    "ModalException": {
+                        "detail": detail,
+                        "suggested_fix": suggested_fix,
+                        "status_code": 400,
+                        "deployment_output": captured_output,
+                    }
                 }
-            }
+    finally:
+        # Restore original stdout
+        sys.stdout = original_stdout
 
 
 def lambda_handler(event, context):

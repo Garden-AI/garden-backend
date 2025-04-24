@@ -44,6 +44,7 @@ class AsyncModalAppMetadataResponse(ModalAppMetadataResponse):
     deploy_status: AsyncModalJobStatus | None = None
     deploy_error: str | None = None
     suggested_fix: str | None = None
+    deployment_output: str | None = None
 
 
 class ModalFileMetadataRequest(BaseSchema):

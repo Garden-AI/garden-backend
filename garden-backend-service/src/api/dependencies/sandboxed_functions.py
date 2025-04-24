@@ -33,16 +33,14 @@ log = get_logger(__name__)
 
 def _raise_exception_if_error_in_lambda_response(response_payload: dict):
     if "ModalException" in response_payload:
-        log.error(
-            "ModalException in lambda response",
-            response_payload=response_payload,
-        )
         details = response_payload["ModalException"]
-        raise ModalException(
+        exception = ModalException(
             detail=details["detail"],
             suggested_fix=details["suggested_fix"],
             status_code=details["status_code"],
+            deployment_output=details.get("deployment_output"),
         )
+        raise exception
     elif "Exception" in response_payload:
         details = response_payload["Exception"]
         raise Exception(details["detail"])

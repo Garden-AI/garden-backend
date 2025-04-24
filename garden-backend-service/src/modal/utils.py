@@ -110,40 +110,65 @@ async def monitor_modal_deployment(
     deploy_error = None
     modal_app_id = None
     suggested_fix = None
+    deployment_output = None
 
     try:
         # Attempt to deploy the app
         result = await deploy_func(deploy_config)
-        modal_app_id = result["app_id"]
-        deploy_status = AsyncModalJobStatus.DONE
+
+        # Handle success case
+        if "app_id" in result:
+            modal_app_id = result["app_id"]
+            deployment_output = result.get("deployment_output")
+            deploy_status = AsyncModalJobStatus.DONE
+        # Handle error case when result contains ModalException
+        elif "ModalException" in result:
+            exception_data = result["ModalException"]
+            deploy_status = AsyncModalJobStatus.ERROR
+            deploy_error = exception_data.get("detail", "Unknown error")
+            suggested_fix = exception_data.get("suggested_fix")
+            deployment_output = exception_data.get("deployment_output")
+        else:
+            # Unexpected result format
+            deploy_status = AsyncModalJobStatus.ERROR
+            deploy_error = f"Unexpected result format: {result}"
     except ModalException as e:
-        log.error("ModalException during deployment", error=str(e), detail=e.detail)
         deploy_status = AsyncModalJobStatus.ERROR
         deploy_error = e.detail
         suggested_fix = e.suggested_fix
+        # Extract deployment output if available
+        if hasattr(e, "deployment_output"):
+            deployment_output = e.deployment_output
     except Exception as e:
-        log.error("Exception during deployment", error=str(e))
         deploy_status = AsyncModalJobStatus.ERROR
         deploy_error = str(e)
-        # Add suggested_fix based on error message
-        if (
-            "image build" in str(e).lower()
-            or "failed with the exception" in str(e).lower()
-        ):
-            suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
-        elif "timeout" in str(e).lower():
-            suggested_fix = "The deployment took too long. Try simplifying your container setup or breaking it into smaller parts."
+
+        # Check if the exception is actually a dict with ModalException info
+        if isinstance(e, dict) and "ModalException" in e:
+            exception_data = e["ModalException"]
+            suggested_fix = exception_data.get("suggested_fix")
+            deployment_output = exception_data.get("deployment_output")
         else:
-            suggested_fix = "Check your Modal file for errors and try again."
+            # Add suggested_fix based on error message
+            error_str = str(e).lower()
+            if "image build" in error_str or "failed with the exception" in error_str:
+                suggested_fix = "Try running the file locally with `modal run <filename>.py` to debug the issue."
+            elif "timeout" in error_str:
+                suggested_fix = "The deployment took too long. Try simplifying your container setup or breaking it into smaller parts."
+            else:
+                suggested_fix = "Check your Modal file for errors and try again."
     finally:
         # update the db record with the final status
         async with session_maker() as session:
             if modal_app := await ModalApp.get(session, id=app_id):
-                log.info(
-                    f"Updating modal app {app_id} with status {deploy_status} and error {deploy_error}, suggested_fix={suggested_fix}"
-                )
+                log.info(f"Updating modal app {app_id} with status {deploy_status}")
                 modal_app.deploy_status = deploy_status
                 modal_app.deploy_error = deploy_error
                 modal_app.modal_app_id = str(modal_app_id) if modal_app_id else None
                 modal_app.suggested_fix = suggested_fix
+                modal_app.deployment_output = deployment_output
                 await session.commit()
+            else:
+                log.error(
+                    f"Could not find ModalApp with id {app_id} to update deployment status"
+                )
