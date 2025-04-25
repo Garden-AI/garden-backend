@@ -31,7 +31,6 @@ async def load_test_task(settings: Settings, sleep_seconds: int):
                 description="Created during load test",
                 doi=f"10.load-test-{random.randint(1, 1000000)}",
                 doi_is_draft=True,
-                is_test=True,
                 authors=["Test Author"],
                 contributors=[],
                 tags=["load-test"],
