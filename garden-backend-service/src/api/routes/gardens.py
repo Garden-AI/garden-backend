@@ -300,11 +300,9 @@ async def update_garden(
             case StateTransition.ARCHIVE:
                 await archive_doi(garden, settings)
                 log.info("Archived garden DOI on datacite")
-                garden.state = GardenState.ARCHIVED
             case StateTransition.PUBLISH:
                 await publish_doi(garden, settings)
                 log.info("Published garden DOI on datacite")
-                garden.state = GardenState.PUBLISHED
             case _:
                 await update_doi_metadata(garden, settings)
                 log.info("Updated garden metadata on datacite")
@@ -389,7 +387,12 @@ async def _create_new_garden(
 
     new_garden: Garden = Garden.from_dict(
         garden_data.model_dump(
-            exclude={"entrypoint_ids", "modal_function_ids", "owner_identity_id"}
+            exclude={
+                "entrypoint_ids",
+                "modal_function_ids",
+                "owner_identity_id",
+                "state",
+            }
         )
     )
 
