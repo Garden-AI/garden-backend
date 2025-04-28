@@ -12,7 +12,7 @@ from src.api.schemas.entrypoint import EntrypointPatchRequest
 from src.api.schemas.garden import GardenPatchRequest
 from src.api.schemas.modal.modal_app import ModalAppPatchRequest
 from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
-from src.config import Settings, get_settings
+from src.config import get_settings
 from src.models import Entrypoint, Garden, ModalApp, ModalFunction, User
 from src.models._associations import gardens_entrypoints
 
