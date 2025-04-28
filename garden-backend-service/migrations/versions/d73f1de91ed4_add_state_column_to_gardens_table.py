@@ -1,7 +1,7 @@
 """add state column to gardens table
 
 Revision ID: d73f1de91ed4
-Revises: d5ae091961f1
+Revises: 1db34d77bcf0
 Create Date: 2025-04-28 18:50:21.390134
 
 """
