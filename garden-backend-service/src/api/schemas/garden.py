@@ -28,15 +28,7 @@ class GardenMetadata(BaseSchema):
     @computed_field
     @property
     def state(self) -> GardenState:
-        match (self.is_archived, self.doi_is_draft):
-            case (True, _):
-                # We shouldn't hit the case where self.is_archived is True and self.doi_is_draft is True,
-                # but we'll count that "invalid" state as ARCHIVED rather than throwing an error.
-                return GardenState.ARCHIVED
-            case (False, True):
-                return GardenState.DRAFT
-            case (False, False):
-                return GardenState.PUBLISHED
+        return GardenState.determine_state(self)
 
 
 class GardenCreateRequest(GardenMetadata):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -23,6 +25,23 @@ class GardenState(str, Enum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+
+    @classmethod
+    def determine_state(cls, obj) -> GardenState:
+        # helper for db model and schema's respective computed fields
+        assert hasattr(obj, "is_archived") and hasattr(obj, "doi_is_draft")
+        match (obj.is_archived, obj.doi_is_draft):
+            case (True, _):
+                # We shouldn't hit the case where self.is_archived is True and self.doi_is_draft is True,
+                # but we'll count that "invalid" state as ARCHIVED rather than throwing an error.
+                return cls.ARCHIVED
+            case (False, True):
+                return cls.DRAFT
+            case (False, False):
+                return cls.PUBLISHED
+            case _:
+                # unreachable
+                raise ValueError("Could not determine state")
 
 
 class Garden(Base):
@@ -60,4 +79,6 @@ class Garden(Base):
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
 
-    state: Mapped[GardenState] = mapped_column(default=GardenState.DRAFT)
+    @property
+    def state(self) -> GardenState:
+        return GardenState.determine_state(self)
