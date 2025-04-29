@@ -93,9 +93,9 @@ async def _make_request_to_datacite(
 
 
 def _datacite_metadata_from_garden(garden: Garden) -> datacite.Doi:
-    creators = [{"nameType": "Personal", "name": name} for name in garden.authors]
-    contributors = [
-        {"nameType": "Personal", "name": name} for name in garden.contributors
+    creators = [
+        {"nameType": "Personal", "name": name}
+        for name in set(garden.authors + garden.contributors)
     ]
 
     return datacite.Doi(
@@ -113,7 +113,6 @@ def _datacite_metadata_from_garden(garden: Garden) -> datacite.Doi:
                     }
                 ],
                 creators=creators,
-                contributors=contributors,
                 titles=[
                     {
                         "title": garden.title,
