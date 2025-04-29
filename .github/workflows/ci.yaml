@@ -39,7 +39,7 @@ jobs:
       - name: Check for vulnerable libraries with safety
         run: |
           cd ./garden-backend-service
-          uv run safety check
+          uv run safety scan
 
       - name: Lint with Ruff
         run: |

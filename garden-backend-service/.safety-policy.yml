@@ -18,12 +18,15 @@ report:
       vulnerabilities:
         67599: # Vulnerability ID
           reason: this is for an issue in pip 24.0 that only applies if installing from a private index. it's also apparently just the intended behavior.
+          expires: "3000-01-01" # not much has changed, but we live underwater
 
         70612:
           reason: Jinja2 is only a dependency because of safety itself. Also, per the vulnerability description, the maintainer and multiple third parties believe that this vulnerability isn't valid.
+          expires: "3000-01-01"
 
         75976:
           reason: This only affects users that execute un-trusted templates. We don't do that here, so we can safely ignore this for now.
+          expires: "3000-01-01"
 
 fail-scan-with-exit-code:
   dependency-vulnerabilities:
