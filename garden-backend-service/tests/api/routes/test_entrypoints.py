@@ -325,7 +325,7 @@ async def test_patch_entrypoint_partial_update(
     data = patch_response.json()
     for key, value in data.items():
         if key == "tags":
-            assert value == updated_data["tags"]
+            assert set(value) == set(updated_data[key])
         elif mock_entrypoint_create_request_json.get(key) is not None:
             assert value == mock_entrypoint_create_request_json.get(key)
 
@@ -339,7 +339,7 @@ async def test_patch_entrypoint_archive(
     mock_entrypoint_create_request_json,
 ):
     mock_entrypoint_create_request_json["doi_is_draft"] = False
-    with patch("src.api.routes.entrypoints.archive_on_datacite") as mock_archive:
+    with patch("src.api.routes.entrypoints._archive_on_datacite") as mock_archive:
         # post a new registered entrypoint
         post_response = await client.post(
             "/entrypoints", json=mock_entrypoint_create_request_json

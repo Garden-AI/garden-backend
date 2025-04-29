@@ -43,7 +43,7 @@ async def test_update_user_info(
     assert updated_user_data["name"] == "New Name"
     assert updated_user_data["email"] == "new.email@example.com"
     assert updated_user_data["phone_number"] == "tel:+1-234-567-8900"
-    assert updated_user_data["skills"] == ["Python", "FastAPI"]
+    assert set(updated_user_data["skills"]) == set(["Python", "FastAPI"])
     assert updated_user_data["domains"] == ["Web Development"]
     assert updated_user_data["affiliations"] == ["New Affiliation"]
 
@@ -127,15 +127,14 @@ async def test_save_garden(
     mock_garden_create_request_no_entrypoints_json,
 ):
     # Post the garden we will save
-    doi = mock_garden_create_request_no_entrypoints_json["doi"]
     res = await client.post(
         "/gardens", json=mock_garden_create_request_no_entrypoints_json
     )
     assert res.status_code == 200
+    doi = res.json()["doi"]
 
     # Post some other gardens
     for i in range(5):
-        mock_garden_create_request_no_entrypoints_json["doi"] = f"fake/doi-{i}"
         res = await client.post(
             "/gardens", json=mock_garden_create_request_no_entrypoints_json
         )
@@ -205,11 +204,11 @@ async def test_save_garden_unauthorized(
     override_authenticated_dependency,
 ):
     # Post a garden
-    doi = mock_garden_create_request_no_entrypoints_json["doi"]
     res = await client.post(
         "/gardens", json=mock_garden_create_request_no_entrypoints_json
     )
     assert res.status_code == 200
+    doi = res.json()["doi"]
 
     # Try to save it to another users list of saved gardens
     result = await client.put(
@@ -229,11 +228,11 @@ async def test_delete_saved_garden_unauthorized(
     override_authenticated_dependency,
 ):
     # Post a garden
-    doi = mock_garden_create_request_no_entrypoints_json["doi"]
     res = await client.post(
         "/gardens", json=mock_garden_create_request_no_entrypoints_json
     )
     assert res.status_code == 200
+    doi = res.json()["doi"]
 
     # Try and delete another users list of saved gardens
     result = await client.delete(

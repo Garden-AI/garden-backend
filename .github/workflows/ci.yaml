@@ -37,9 +37,9 @@ jobs:
           uv sync --locked --group develop
 
       - name: Check for vulnerable libraries with safety
-        run: |
-          cd ./garden-backend-service
-          uv run safety check
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
 
       - name: Lint with Ruff
         run: |

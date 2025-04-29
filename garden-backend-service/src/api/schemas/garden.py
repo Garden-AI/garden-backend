@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import AliasPath, Field, computed_field
 
+from src.models.garden import GardenState
+
 from .base import BaseSchema, UniqueList
 from .entrypoint import EntrypointMetadataResponse
 from .modal.modal_function import ModalFunctionMetadataResponse
@@ -13,7 +15,7 @@ class GardenMetadata(BaseSchema):
     authors: UniqueList[str] = Field(default_factory=list)
     contributors: UniqueList[str] = Field(default_factory=list)
     doi: str
-    doi_is_draft: bool | None = None
+    doi_is_draft: bool = True
     description: str | None
     publisher: str = "Garden-AI"
     year: str = Field(default_factory=lambda: str(datetime.now().year))
@@ -23,11 +25,17 @@ class GardenMetadata(BaseSchema):
     entrypoint_aliases: dict[str, str] = Field(default_factory=dict)
     is_archived: bool = False
 
+    @computed_field
+    @property
+    def state(self) -> GardenState:
+        return GardenState.determine_state(self)
+
 
 class GardenCreateRequest(GardenMetadata):
     entrypoint_ids: UniqueList[str] = Field(default_factory=list)
     modal_function_ids: UniqueList[int] = Field(default_factory=list)
     owner_identity_id: UUID | None = None
+    doi: str | None = None
 
 
 class GardenMetadataResponse(GardenMetadata):
@@ -63,6 +71,40 @@ class GardenPatchRequest(BaseSchema):
     is_archived: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
     modal_function_ids: UniqueList[int] | None = None
+
+    @computed_field
+    @property
+    def target_state(self) -> GardenState | None:
+        """
+        Determine the desired state change (if any) entailed by the request, or
+        None if no state change is requested.
+
+        Note that this is only responsible for determining the desired state
+        change, not for validating that the transition is legal.
+        """
+        if self.is_archived is None and self.doi_is_draft is None:
+            # no state change requested
+            return None
+        wants_archived = self.is_archived is True
+        wants_published = self.doi_is_draft is False
+
+        match (wants_archived, wants_published):
+            case (True, True):
+                # treat this as requesting an ARCHIVE transition since
+                # is_archived=True and doi_is_draft=False is the final state of
+                # an archived garden
+                return GardenState.ARCHIVED
+            case (True, False):
+                # treat this as requesting a transition to ARCHIVED
+                # since we can't return to a draft state
+                return GardenState.ARCHIVED
+            case (False, True):
+                # unambiguously requesting a transition to PUBLISHED
+                return GardenState.PUBLISHED
+            case (False, False):
+                # unlikely case: explicitly requesting a DRAFT state,
+                # which is the default
+                return GardenState.DRAFT
 
 
 class GardenSearchFilter(BaseSchema):

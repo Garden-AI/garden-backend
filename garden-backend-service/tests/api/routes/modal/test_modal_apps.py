@@ -515,7 +515,6 @@ def goodbye():
     # Create a garden that references the 'hello' function
     garden_data = {
         "title": "Test Garden",
-        "doi": "10.1234/test",
         "authors": ["Test Author"],
         "contributors": [],
         "tags": ["test"],
@@ -554,5 +553,4 @@ def goodbye():
     )
     assert "hello" in error_data["detail"]
     assert "Test Garden" in error_data["detail"]
-    assert "10.1234/test" in error_data["detail"]
     assert "goodbye" not in error_data["detail"]

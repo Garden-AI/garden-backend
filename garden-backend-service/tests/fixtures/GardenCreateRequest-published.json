@@ -1,8 +1,13 @@
 {
   "title": "Garden that is published",
-  "authors": ["Shane"],
-  "contributors": ["Shane J", "Et", "Al"],
-  "doi": "10.23677/garden-published",
+  "authors": [
+    "Shane"
+  ],
+  "contributors": [
+    "Shane J",
+    "Et",
+    "Al"
+  ],
   "description": "",
   "publisher": "Garden-AI",
   "year": "2023",

@@ -1,6 +1,7 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, exceptions, status
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
@@ -10,7 +11,6 @@ from structlog import get_logger
 from src.api.dependencies.auth import authed_user, get_auth_client
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
-    archive_on_datacite,
     assert_deletable_by_user,
     assert_editable_by_user,
 )
@@ -219,7 +219,7 @@ async def update_entrypoint(
     await db.commit()
     log.info("Updated entrypoint")
     if entrypoint.is_archived:
-        await archive_on_datacite(doi, settings)
+        await _archive_on_datacite(doi, settings)
 
     return entrypoint
 
@@ -265,3 +265,25 @@ async def _create_new_entrypoint(
         ) from e
     log.info("Saved new entrypoint")
     return new_entrypoint
+
+
+async def _archive_on_datacite(doi: str, settings: Settings):
+    """DEPRECATED: Hide a published doi on datacite.
+    See: https://support.datacite.org/docs/updating-metadata-with-the-rest-api
+    """
+    body = {"data": {"type": "dois", "attributes": {"event": "hide"}}}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.put(
+            f"{settings.DATACITE_ENDPOINT}/{doi}",
+            headers={"Content-Type": "application/vnd.api+json"},
+            auth=(settings.DATACITE_REPO_ID, settings.DATACITE_PASSWORD),
+            json=body,
+        )
+        logger.info("Sent request to archive DOI on datacite", doi=doi)
+
+    if response.status_code != 200:
+        raise exceptions.HTTPException(
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update DOI {doi} on Datacite: {response.json()}",
+        )
