@@ -196,6 +196,14 @@ async def test_invoke_modal_fn_async(
     mock_function.object_id = "mock_function_id"
     mock_invocation = AsyncMock()
     mock_invocation.function_call_id = "mock_call_id"
+    mock_invocation.pop_function_call_outputs.return_value = MagicMock(
+        outputs=[
+            api_pb2.FunctionGetOutputsItem(
+                result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
+                data_format=api_pb2.DATA_FORMAT_PICKLE,
+            )
+        ]
+    )
 
     mocker.patch(
         "src.api.routes.modal.invocations._fetch_modal_function",
