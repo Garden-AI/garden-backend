@@ -7,13 +7,14 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
+import pytest_asyncio
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from httpx import ASGITransport, AsyncClient
 from modal_proto import api_pb2
 from sqlalchemy import NullPool, text
 from sqlalchemy.engine import create_engine
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
 
@@ -24,7 +25,7 @@ from src.api.dependencies.auth import (
     in_modal_publishers_group,
     under_modal_usage_limit,
 )
-from src.api.dependencies.database import init
+from src.api.dependencies.database import async_init, init
 from src.api.dependencies.modal import get_modal_client
 from src.api.dependencies.sandboxed_functions import (
     DeployModalAppProvider,
@@ -102,6 +103,13 @@ def _sync_engine(mock_settings):
     engine.dispose()
 
 
+# NullPool fixes an issue where the engine connections are reused between tests
+# and the tests interfere with each other. This doesn't happen in the real app,
+#  I think it has something to do with pytest's async setup
+def _create_async_engine(settings):
+    return create_async_engine(settings.SQLALCHEMY_DATABASE_URL, poolclass=NullPool)
+
+
 @pytest.fixture
 def mock_db_session(
     mock_settings,
@@ -119,15 +127,6 @@ def mock_db_session(
     with Session(_sync_engine) as db:
         init(db, Path(mock_settings.GARDEN_SEARCH_SQL_DIR))
 
-    # NullPool fixes an issue where the engine connections are reused between tests
-    # and the tests interfere with each other. This doesn't happen in the real app,
-    #  I think it has something to do with pytest's async setup
-    def _create_async_engine(a, b):
-        # a and b are ignored, they are just placeholders for the arguments
-        return create_async_engine(
-            mock_settings.SQLALCHEMY_DATABASE_URL, poolclass=NullPool
-        )  # null pool is needed to avoid connections being reused
-
     mocker.patch(
         "src.api.dependencies.database.DatabaseEngine.get_engine", _create_async_engine
     )
@@ -142,6 +141,28 @@ def mock_db_session(
         db.execute(text("DROP MATERIALIZED VIEW modal_function_documents;"))
         db.commit()
     Base.metadata.drop_all(_sync_engine)
+
+
+@pytest_asyncio.fixture
+async def async_db_session(mock_settings, _sync_engine, mocker):
+    async_engine = create_async_engine(mock_settings.SQLALCHEMY_DATABASE_URL)
+    session_maker = async_sessionmaker(async_engine, expire_on_commit=False)
+    Base.metadata.create_all(_sync_engine)
+    async with AsyncSession(async_engine) as db:
+        await async_init(session_maker, sql_path=mock_settings.GARDEN_SEARCH_SQL_DIR)
+
+    mocker.patch(
+        "src.api.dependencies.database.DatabaseEngine.get_engine", _create_async_engine
+    )
+
+    yield session_maker
+    with Session(_sync_engine) as db:
+        db.execute(text("DROP MATERIALIZED VIEW garden_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW entrypoint_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW modal_function_documents;"))
+        db.commit()
+    Base.metadata.drop_all(_sync_engine)
+    await async_engine.dispose()
 
 
 @pytest.fixture

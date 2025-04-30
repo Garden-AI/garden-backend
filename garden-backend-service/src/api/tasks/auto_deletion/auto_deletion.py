@@ -39,7 +39,7 @@ async def auto_deletion_background_task(
         log.info("Entities marked for deletion")
 
         logger.info(
-            f"Deleting marked entities that were marked more than {deletion_age_limit.days} {"days" if deletion_age_limit.days > 1 else "day"} ago"
+            f"Deleting marked entities that were marked more than {deletion_age_limit.days} {'days' if deletion_age_limit.days > 1 else 'day'} ago"
         )
         num_gardens_deleted = await delete_marked_entity(
             ModalApp, session_maker, deletion_age_limit
