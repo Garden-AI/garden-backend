@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import AliasPath, Field, computed_field
@@ -33,6 +34,7 @@ class ModalAppMetadataResponse(ModalAppMetadata):
     owner_identity_id: UUID = Field(alias=AliasPath("owner", "identity_id"))
     id: int = Field(..., description="The unique identifier for the modal app")
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
+    marked_for_deletion: datetime | None
 
     @computed_field
     @property

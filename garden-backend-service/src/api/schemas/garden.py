@@ -44,6 +44,7 @@ class GardenMetadataResponse(GardenMetadata):
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
+    marked_for_deletion: datetime | None
 
     @computed_field
     @property
