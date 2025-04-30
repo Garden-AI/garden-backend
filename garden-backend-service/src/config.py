@@ -78,6 +78,9 @@ class Settings(BaseSettings):
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 
+    # TODO: set this to a more reasonable default
+    AUTO_DELETION_INTERVAL_SECONDS: int = 5
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:

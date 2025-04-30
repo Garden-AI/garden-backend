@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,7 @@ from src.api.routes import (
     users,
 )
 from src.api.routes.mdf import search as mdf_search
+from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
     add_error_handling_middleware,
@@ -47,9 +49,13 @@ async def lifespan(app: FastAPI):
     if settings.GARDEN_ENV in ["dev", "local"]:
         app.include_router(load_test.router)
 
+    # kick off long-running auto-deletion task
+    # dont await it, we want it to keep running while we move on
+    asyncio.create_task(auto_deletion_background_task(settings, session_maker))
+
     # Everything before this yield happens on startup
     yield
-    # Eveything below the yield happens on shutdown
+    # Eveything after the yield happens on shutdown
 
 
 app = FastAPI(lifespan=lifespan)
