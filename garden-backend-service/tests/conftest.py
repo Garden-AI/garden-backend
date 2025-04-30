@@ -127,6 +127,14 @@ def mock_db_session(
     with Session(_sync_engine) as db:
         init(db, Path(mock_settings.GARDEN_SEARCH_SQL_DIR))
 
+    # NullPool fixes an issue where the engine connections are reused between tests
+    # and the tests interfere with each other. This doesn't happen in the real app,
+    #  I think it has something to do with pytest's async setup
+    def _create_async_engine(a, b):
+        return create_async_engine(
+            mock_settings.SQLALCHEMY_DATABASE_URL, poolclass=NullPool
+        )
+
     mocker.patch(
         "src.api.dependencies.database.DatabaseEngine.get_engine", _create_async_engine
     )
@@ -144,18 +152,16 @@ def mock_db_session(
 
 
 @pytest_asyncio.fixture
-async def async_db_session(mock_settings, _sync_engine, mocker):
+async def async_db_session(mock_settings, _sync_engine):
+    Base.metadata.create_all(_sync_engine)
+
     async_engine = create_async_engine(mock_settings.SQLALCHEMY_DATABASE_URL)
     session_maker = async_sessionmaker(async_engine, expire_on_commit=False)
-    Base.metadata.create_all(_sync_engine)
     async with AsyncSession(async_engine) as db:
         await async_init(session_maker, sql_path=mock_settings.GARDEN_SEARCH_SQL_DIR)
 
-    mocker.patch(
-        "src.api.dependencies.database.DatabaseEngine.get_engine", _create_async_engine
-    )
-
     yield session_maker
+
     with Session(_sync_engine) as db:
         db.execute(text("DROP MATERIALIZED VIEW garden_documents;"))
         db.execute(text("DROP MATERIALIZED VIEW entrypoint_documents;"))

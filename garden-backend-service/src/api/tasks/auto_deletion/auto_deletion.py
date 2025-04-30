@@ -24,10 +24,12 @@ async def auto_deletion_background_task(
     while True:
         logger.info("Auto-deletion task starting sweep...")
         num_marked_gardens = await mark_entity_for_deletion(
-            Garden, session_maker, deletion_age_limit
+            Garden,
+            session_maker,
         )
         num_makred_modal_apps = await mark_entity_for_deletion(
-            ModalApp, session_maker, deletion_age_limit
+            ModalApp,
+            session_maker,
         )
         # TODO: remove sleep, here for development
         await asyncio.sleep(1)
