@@ -306,6 +306,8 @@ def mock_settings(db_url):
         "76024960-c68b-4fec-8cb8-b65b096f18da",  # Owen
         "e9a17e09-657b-4087-a719-241ab72b1d9b",  # Hayden
     ]
+    mock_settings.AUTO_DELETION_INTERVAL_SECONDS = 1
+    mock_settings.AUTO_DELETION_AGE_LIMIT_DAYS = 1
     return mock_settings
 
 
