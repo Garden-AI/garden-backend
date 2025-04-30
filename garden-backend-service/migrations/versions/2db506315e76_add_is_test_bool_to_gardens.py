@@ -27,10 +27,7 @@ def upgrade() -> None:
     )
 
     # Init is_test to have the same value as doi_is_draft
-    connection = op.get_bind()
-    connection.execute(
-        Garden.__table__.update().values(is_test=Garden.__table__.c.doi_is_draft)
-    )
+    sa.update(Garden).values(is_test=Garden.doi_is_draft)
 
 
 def downgrade() -> None:

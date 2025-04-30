@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Sequence, String, text
@@ -50,3 +51,5 @@ class ModalApp(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
+
+    marked_for_deletion: Mapped[datetime | None] = mapped_column(default=None)
