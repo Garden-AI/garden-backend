@@ -160,3 +160,26 @@ async def test_mark_entities_for_deletion_ignores_in_use_modal_apps(
 
         assert unused_modal_app.marked_for_deletion is not None
         assert used_modal_app.marked_for_deletion is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mark_entities_for_deletion_is_idempotent(async_db_session):
+    async with async_db_session() as db:
+        garden = await create_empty_garden(db)
+
+        num_marked = await mark_entity_for_deletion(Garden, async_db_session)
+        assert num_marked == 1
+
+        await db.refresh(garden)
+        assert garden.marked_for_deletion is not None
+        marked_time = garden.marked_for_deletion
+
+        num_marked_second_time = await mark_entity_for_deletion(
+            Garden, async_db_session
+        )
+        assert num_marked_second_time == 0
+        await db.refresh(garden)
+        assert (
+            garden.marked_for_deletion == marked_time
+        )  # marked time should not have changed, or been removed

@@ -1,8 +1,8 @@
 import asyncio
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy import Select, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.models import Base, Garden, ModalApp, ModalFunction
 from src.models._associations import gardens_modal_functions
@@ -28,16 +28,24 @@ async def delete_marked_entity(
     return 0
 
 
+async def _update_db_records_with_mark(db: AsyncSession, query: Select):
+    results = await db.scalars(query)
+    entities_to_mark = results.all()
+    now = datetime.now()
+    count = 0
+    for e in entities_to_mark:
+        # only update the time stamp if
+        if e.marked_for_deletion is None:
+            e.marked_for_deletion = now
+            count += 1
+    await db.commit()
+    return count
+
+
 async def mark_gardens_for_deletion(session_maker):
     stmt = select(Garden).where(Garden.doi_is_draft)
     async with session_maker() as db:
-        results = await db.scalars(stmt)
-        gardens_to_mark = results.all()
-        now = datetime.now()
-        for g in gardens_to_mark:
-            g.marked_for_deletion = now
-        await db.commit()
-    return len(gardens_to_mark)
+        return await _update_db_records_with_mark(db, stmt)
 
 
 async def mark_modal_apps_for_deletion(session_maker) -> int:
@@ -50,10 +58,4 @@ async def mark_modal_apps_for_deletion(session_maker) -> int:
     )
 
     async with session_maker() as db:
-        results = await db.scalars(stmt)
-        apps_to_mark = results.all()
-        now = datetime.now()
-        for app in apps_to_mark:
-            app.marked_for_deletion = now
-        await db.commit()
-    return len(apps_to_mark)
+        return await _update_db_records_with_mark(db, stmt)
