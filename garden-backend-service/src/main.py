@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -29,18 +30,9 @@ from src.middleware.logging import (
     add_request_id_middleware,
 )
 
-app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     settings = get_settings()
     session_maker = await get_db_session_maker(settings=settings)
 
@@ -54,6 +46,20 @@ async def startup_event():
     # Include load test routes only in development environments
     if settings.GARDEN_ENV in ["dev", "local"]:
         app.include_router(load_test.router)
+
+    # Everything before this yield happens on startup
+    yield
+    # Eveything below the yield happens on shutdown
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Add our custom middleware
