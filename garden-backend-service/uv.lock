@@ -696,11 +696,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-dev = [
-    { name = "faker" },
-]
 develop = [
     { name = "aiosqlite" },
+    { name = "faker" },
     { name = "flake8-pytest-style" },
     { name = "httpx" },
     { name = "ipython" },
@@ -744,9 +742,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "faker", specifier = ">=37.1.0" }]
+dev = []
 develop = [
     { name = "aiosqlite", specifier = ">=0.20.0" },
+    { name = "faker", specifier = ">=37.1.0" },
     { name = "flake8-pytest-style", specifier = ">=2.0.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "ipython", specifier = ">=8.25.0" },

@@ -78,9 +78,8 @@ class Settings(BaseSettings):
 
     GARDEN_SEARCH_SQL_DIR: str = "src/api/search/sql.sql"
 
-    # TODO: set to more reasonable defaults
-    AUTO_DELETION_INTERVAL_SECONDS: int = 5
-    AUTO_DELETION_AGE_LIMIT_DAYS: int = 1
+    AUTO_DELETION_INTERVAL_SECONDS: int = 60 * 60  # 1 hour
+    AUTO_DELETION_AGE_LIMIT_DAYS: int = 14  # two weeks
 
     @computed_field
     @property

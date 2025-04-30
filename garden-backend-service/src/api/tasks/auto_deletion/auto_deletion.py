@@ -31,8 +31,6 @@ async def auto_deletion_background_task(
             ModalApp,
             session_maker,
         )
-        # TODO: remove sleep, here for development
-        await asyncio.sleep(1)
 
         log = logger.bind(
             num_marked_gardens=num_marked_gardens,
@@ -49,8 +47,6 @@ async def auto_deletion_background_task(
         num_modal_apps_deleted = await delete_marked_entity(
             Garden, session_maker, deletion_age_limit
         )
-        # TODO: remove sleep, here for development
-        await asyncio.sleep(1)
 
         log = logger.bind(
             num_gardens_deleted=num_gardens_deleted,
