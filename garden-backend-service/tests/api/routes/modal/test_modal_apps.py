@@ -180,7 +180,7 @@ async def test_delete_modal_app(
 
     app_id = post_response["id"]
 
-    mock_stop_app = mocker.patch("src.api.routes.modal.modal_apps._stop_modal_app")
+    mock_stop_app = mocker.patch("src.api.routes.modal.modal_apps.stop_modal_app")
 
     delete_response = await client.delete(f"/modal-apps/{app_id}")
     assert delete_response.status_code == 200

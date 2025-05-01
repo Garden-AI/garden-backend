@@ -2,9 +2,14 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from structlog import get_logger
 
+from src.config import get_settings
+from src.modal.utils import stop_modal_app
 from src.models import Base, Garden, ModalApp, ModalFunction
 from src.models._associations import gardens_modal_functions
+
+logger = get_logger(__name__)
 
 
 async def mark_entity_for_deletion(
@@ -24,6 +29,7 @@ async def delete_marked_entity(
     entity: type[Garden | ModalApp],
     session_maker: async_sessionmaker,
     interval: timedelta,
+    modal_client=None,
 ) -> int:
     stmt = select(entity).where(entity.marked_for_deletion.isnot(None))
 
@@ -35,6 +41,28 @@ async def delete_marked_entity(
         now = datetime.now()
         for e in marked_entities:
             if now - e.marked_for_deletion > interval:
+                if entity.__tablename__ == "modal_apps":
+                    # Stop the modal app before deleting it
+                    settings = get_settings()
+                    try:
+                        # Use provided client or skip this step if no client available
+                        if modal_client is not None:
+                            await stop_modal_app(
+                                e.app_name, modal_client, settings, e.modal_app_id
+                            )
+                            logger.info(
+                                f"Stopped modal app {e.app_name} before deletion"
+                            )
+                        else:
+                            logger.warning(
+                                f"No modal client provided, skipping stop for app {e.app_name}"
+                            )
+                            continue
+                    except Exception as ex:
+                        logger.error(
+                            f"Error stopping modal app {e.app_name}: {str(ex)}"
+                        )
+                        continue
                 await db.delete(e)
                 count += 1
         await db.commit()

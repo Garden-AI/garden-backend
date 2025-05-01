@@ -18,7 +18,9 @@ logger = get_logger(__name__)
 
 
 async def auto_deletion_background_task(
-    settings: Settings, session_maker: async_sessionmaker
+    settings: Settings,
+    session_maker: async_sessionmaker,
+    modal_client=None,
 ):
     task_interval: timedelta = timedelta(
         seconds=settings.AUTO_DELETION_INTERVAL_SECONDS
@@ -26,6 +28,7 @@ async def auto_deletion_background_task(
     deletion_age_limit: timedelta = timedelta(
         days=settings.AUTO_DELETION_AGE_LIMIT_DAYS
     )
+
     while True:
         logger.info("Auto-deletion task starting sweep...")
         num_marked_gardens = await mark_entity_for_deletion(
@@ -56,10 +59,10 @@ async def auto_deletion_background_task(
             f"Deleting marked entities that were marked more than {deletion_age_limit.days} {'days' if deletion_age_limit.days > 1 else 'day'} ago"
         )
         num_gardens_deleted = await delete_marked_entity(
-            ModalApp, session_maker, deletion_age_limit
+            Garden, session_maker, deletion_age_limit
         )
         num_modal_apps_deleted = await delete_marked_entity(
-            Garden, session_maker, deletion_age_limit
+            ModalApp, session_maker, deletion_age_limit, modal_client
         )
 
         log = logger.bind(

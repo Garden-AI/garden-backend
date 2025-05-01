@@ -268,15 +268,21 @@ async def test_unmark_marked_modal_apps_unmarks_used_apps(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
-    async_db_session,
+    async_db_session, override_get_modal_client_dependency, mocker
 ):
+    # Directly mock the stop_modal_app function to succeed
+    mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
+
     async with async_db_session() as db:
         garden = await create_empty_garden(db)
         garden.marked_for_deletion = datetime.now()
         unmarked_garden = await create_empty_garden(db)
 
         modal_app = await create_modal_app_with_functions(db)
+        modal_app.app_name = "test-app"
+        modal_app.modal_app_id = "test-app-id"
         modal_app.marked_for_deletion = datetime.now()
+
         unmarked_modal_app = await create_modal_app_with_functions(db)
         await db.commit()
 
@@ -288,11 +294,13 @@ async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
             Garden, async_db_session, interval
         )
         num_apps_deleted = await delete_marked_entity(
-            ModalApp, async_db_session, interval
+            ModalApp, async_db_session, interval, override_get_modal_client_dependency
         )
 
         assert num_gardens_deleted == 1
         assert num_apps_deleted == 1
+        # Verify the stop_modal_app function was called
+        assert mock_stop_app.called
 
         # Query for deleted garden and modal_app by id
         deleted_garden_result = await db.execute(
@@ -322,11 +330,19 @@ async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_delete_marked_entities_skips_if_not_past_interval(async_db_session):
+async def test_delete_marked_entities_skips_if_not_past_interval(
+    async_db_session, override_get_modal_client_dependency, mocker
+):
+    # Directly mock the stop_modal_app function again
+    mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
+
     async with async_db_session() as db:
         garden = await create_empty_garden(db)
         garden.marked_for_deletion = datetime.now()
+
         modal_app = await create_modal_app_with_functions(db)
+        modal_app.app_name = "test-app"
+        modal_app.modal_app_id = "test-app-id"
         modal_app.marked_for_deletion = datetime.now()
         await db.commit()
 
@@ -336,11 +352,13 @@ async def test_delete_marked_entities_skips_if_not_past_interval(async_db_sessio
             Garden, async_db_session, interval
         )
         num_apps_deleted = await delete_marked_entity(
-            ModalApp, async_db_session, interval
+            ModalApp, async_db_session, interval, override_get_modal_client_dependency
         )
 
         assert num_gardens_deleted == 0
         assert num_apps_deleted == 0
+        # The stop app function should not be called in this case
+        assert not mock_stop_app.called
 
         # Confirm both objects still exist
         garden_result = await db.execute(select(Garden).where(Garden.id == garden.id))
