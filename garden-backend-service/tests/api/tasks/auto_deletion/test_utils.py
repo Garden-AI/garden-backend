@@ -1,10 +1,13 @@
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.tasks.auto_deletion.utils import (
+    delete_marked_entity,
     mark_entity_for_deletion,
     unmark_marked_gardens,
     unmark_marked_modal_apps,
@@ -260,3 +263,91 @@ async def test_unmark_marked_modal_apps_unmarks_used_apps(
         await db.refresh(unused_app)
         assert modal_app.marked_for_deletion is None  # should have been unmarked
         assert unused_app.marked_for_deletion is not None  # should have stayed marked
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
+    async_db_session,
+):
+    async with async_db_session() as db:
+        garden = await create_empty_garden(db)
+        garden.marked_for_deletion = datetime.now()
+        unmarked_garden = await create_empty_garden(db)
+
+        modal_app = await create_modal_app_with_functions(db)
+        modal_app.marked_for_deletion = datetime.now()
+        unmarked_modal_app = await create_modal_app_with_functions(db)
+        await db.commit()
+
+        # set the deletion interval to something short
+        interval = timedelta(milliseconds=100)
+        # wait a bit longer than the interval to make sure the marked obejcts will be deleted
+        await asyncio.sleep(0.2)
+        num_gardens_deleted = await delete_marked_entity(
+            Garden, async_db_session, interval
+        )
+        num_apps_deleted = await delete_marked_entity(
+            ModalApp, async_db_session, interval
+        )
+
+        assert num_gardens_deleted == 1
+        assert num_apps_deleted == 1
+
+        # Query for deleted garden and modal_app by id
+        deleted_garden_result = await db.execute(
+            select(Garden).where(Garden.id == garden.id)
+        )
+        deleted_garden = deleted_garden_result.scalar_one_or_none()
+        deleted_modal_app_result = await db.execute(
+            select(ModalApp).where(ModalApp.id == modal_app.id)
+        )
+        deleted_modal_app = deleted_modal_app_result.scalar_one_or_none()
+
+        # Query for unmarked (should still exist)
+        unmarked_garden_result = await db.execute(
+            select(Garden).where(Garden.id == unmarked_garden.id)
+        )
+        unmarked_garden_db = unmarked_garden_result.scalar_one_or_none()
+        unmarked_modal_app_result = await db.execute(
+            select(ModalApp).where(ModalApp.id == unmarked_modal_app.id)
+        )
+        unmarked_modal_app_db = unmarked_modal_app_result.scalar_one_or_none()
+
+        assert deleted_garden is None
+        assert deleted_modal_app is None
+        assert unmarked_garden_db is not None
+        assert unmarked_modal_app_db is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_marked_entities_skips_if_not_past_interval(async_db_session):
+    async with async_db_session() as db:
+        garden = await create_empty_garden(db)
+        garden.marked_for_deletion = datetime.now()
+        modal_app = await create_modal_app_with_functions(db)
+        modal_app.marked_for_deletion = datetime.now()
+        await db.commit()
+
+        # Use a large interval so the entities are not old enough to be deleted
+        interval = timedelta(hours=1)
+        num_gardens_deleted = await delete_marked_entity(
+            Garden, async_db_session, interval
+        )
+        num_apps_deleted = await delete_marked_entity(
+            ModalApp, async_db_session, interval
+        )
+
+        assert num_gardens_deleted == 0
+        assert num_apps_deleted == 0
+
+        # Confirm both objects still exist
+        garden_result = await db.execute(select(Garden).where(Garden.id == garden.id))
+        garden_db = garden_result.scalar_one_or_none()
+        modal_app_result = await db.execute(
+            select(ModalApp).where(ModalApp.id == modal_app.id)
+        )
+        modal_app_db = modal_app_result.scalar_one_or_none()
+        assert garden_db is not None
+        assert modal_app_db is not None

@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta
 
 from sqlalchemy import Select, select
@@ -22,10 +21,25 @@ async def mark_entity_for_deletion(
 
 
 async def delete_marked_entity(
-    entity: type[Base], session_maker: async_sessionmaker, interval: timedelta
+    entity: type[Garden | ModalApp],
+    session_maker: async_sessionmaker,
+    interval: timedelta,
 ) -> int:
-    await asyncio.sleep(1)
-    return 0
+    stmt = select(entity).where(entity.marked_for_deletion.isnot(None))
+
+    count = 0
+    async with session_maker() as db:
+        results = await db.scalars(stmt)
+        marked_entities = results.all()
+        count = 0
+        now = datetime.now()
+        for e in marked_entities:
+            if now - e.marked_for_deletion > interval:
+                await db.delete(e)
+                count += 1
+        await db.commit()
+
+    return count
 
 
 async def _update_db_records_with_mark(db: AsyncSession, query: Select):
