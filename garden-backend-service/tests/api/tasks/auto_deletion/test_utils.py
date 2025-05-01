@@ -268,7 +268,10 @@ async def test_unmark_marked_modal_apps_unmarks_used_apps(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
-    async_db_session, override_get_modal_client_dependency, mocker
+    async_db_session,
+    override_get_modal_client_dependency,
+    mocker,
+    override_get_settings_dependency,
 ):
     # Directly mock the stop_modal_app function to succeed
     mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
@@ -331,7 +334,10 @@ async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_delete_marked_entities_skips_if_not_past_interval(
-    async_db_session, override_get_modal_client_dependency, mocker
+    async_db_session,
+    override_get_modal_client_dependency,
+    mocker,
+    override_get_settings_dependency,
 ):
     # Directly mock the stop_modal_app function again
     mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
