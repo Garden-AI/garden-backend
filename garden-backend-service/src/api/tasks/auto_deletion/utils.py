@@ -74,3 +74,22 @@ async def unmark_marked_gardens(session_maker) -> int:
                 count += 1
         await db.commit()
     return count
+
+
+async def unmark_marked_modal_apps(session_maker) -> int:
+    # Subquery for all used modal function IDs
+    used_function_ids = select(gardens_modal_functions.c.modal_function_id)
+    # ModalApps where marked_for_deletion is not None and any of their functions are in use
+    stmt = select(ModalApp).where(
+        ModalApp.marked_for_deletion.isnot(None),
+        ModalApp.modal_functions.any(ModalFunction.id.in_(used_function_ids)),
+    )
+    count = 0
+    async with session_maker() as db:
+        results = await db.scalars(stmt)
+        marked_apps = results.all()
+        for app in marked_apps:
+            app.marked_for_deletion = None
+            count += 1
+        await db.commit()
+    return count

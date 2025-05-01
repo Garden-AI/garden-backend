@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.tasks.auto_deletion.utils import (
     mark_entity_for_deletion,
     unmark_marked_gardens,
+    unmark_marked_modal_apps,
 )
 from src.modal.status import AsyncModalJobStatus
 from src.models import Garden, ModalApp, ModalFunction, User
@@ -227,4 +228,35 @@ async def test_unmark_marked_gardens_ignores_unpublished_gardens(
         assert num_unmarked == 0
 
         await db.refresh(garden)
+        # make sure the garden is still marked
         assert garden.marked_for_deletion is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_unmark_marked_modal_apps_unmarks_used_apps(
+    async_db_session,
+):
+    async with async_db_session() as db:
+        # create a published garden
+        garden = await create_empty_garden(db, draft=False)
+        # create a modal app
+        modal_app = await create_modal_app_with_functions(db)
+        # simulate that it was marked for deletion at some point
+        modal_app.marked_for_deletion = datetime.now()
+        # it is now in-use by the garden:
+        garden.modal_functions = modal_app.modal_functions
+
+        # create an unused modal app, this one should stay marked
+        unused_app = await create_modal_app_with_functions(db)
+        unused_app.marked_for_deletion = datetime.now()
+        await db.commit()
+
+        # run the unmarking function
+        num_unmarked = await unmark_marked_modal_apps(async_db_session)
+        assert num_unmarked == 1
+
+        await db.refresh(modal_app)
+        await db.refresh(unused_app)
+        assert modal_app.marked_for_deletion is None  # should have been unmarked
+        assert unused_app.marked_for_deletion is not None  # should have stayed marked
