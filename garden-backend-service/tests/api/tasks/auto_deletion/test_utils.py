@@ -1,8 +1,13 @@
+from datetime import datetime
+
 import pytest
 from faker import Faker
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.tasks.auto_deletion.utils import mark_entity_for_deletion
+from src.api.tasks.auto_deletion.utils import (
+    mark_entity_for_deletion,
+    unmark_marked_gardens,
+)
 from src.modal.status import AsyncModalJobStatus
 from src.models import Garden, ModalApp, ModalFunction, User
 
@@ -183,3 +188,43 @@ async def test_mark_entities_for_deletion_is_idempotent(async_db_session):
         assert (
             garden.marked_for_deletion == marked_time
         )  # marked time should not have changed, or been removed
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_unmark_marked_gardens_unmarks_published_gardens(
+    async_db_session,
+):
+    async with async_db_session() as db:
+        # create a published garden
+        garden = await create_empty_garden(db, draft=False)
+        # simulate that it was previously marked for deltion
+        garden.marked_for_deletion = datetime.now()
+        await db.commit()
+
+        # run the unmarking function
+        num_unmarked = await unmark_marked_gardens(async_db_session)
+        assert num_unmarked == 1
+
+        await db.refresh(garden)
+        assert garden.marked_for_deletion is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_unmark_marked_gardens_ignores_unpublished_gardens(
+    async_db_session,
+):
+    async with async_db_session() as db:
+        # create an unpublished garden
+        garden = await create_empty_garden(db)
+        # simulate that it was previously marked for deltion
+        garden.marked_for_deletion = datetime.now()
+        await db.commit()
+
+        # run the unmarking function
+        num_unmarked = await unmark_marked_gardens(async_db_session)
+        assert num_unmarked == 0
+
+        await db.refresh(garden)
+        assert garden.marked_for_deletion is not None

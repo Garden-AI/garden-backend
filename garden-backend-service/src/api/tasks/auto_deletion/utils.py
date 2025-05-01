@@ -34,7 +34,7 @@ async def _update_db_records_with_mark(db: AsyncSession, query: Select):
     now = datetime.now()
     count = 0
     for e in entities_to_mark:
-        # only update the time stamp if
+        # only update the time stamp if there isn't one already
         if e.marked_for_deletion is None:
             e.marked_for_deletion = now
             count += 1
@@ -59,3 +59,18 @@ async def mark_modal_apps_for_deletion(session_maker) -> int:
 
     async with session_maker() as db:
         return await _update_db_records_with_mark(db, stmt)
+
+
+async def unmark_marked_gardens(session_maker) -> int:
+    stmt = select(Garden).where(Garden.marked_for_deletion.isnot(None))
+    count = 0
+    async with session_maker() as db:
+        results = await db.scalars(stmt)
+        marked_gardens = results.all()
+        for g in marked_gardens:
+            # unmark marked gardens that have been published since they were marked
+            if not g.doi_is_draft:
+                g.marked_for_deletion = None
+                count += 1
+        await db.commit()
+    return count
