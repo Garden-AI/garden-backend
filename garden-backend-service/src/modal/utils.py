@@ -174,3 +174,58 @@ async def monitor_modal_deployment(
                 log.error(
                     f"Could not find ModalApp with id {app_id} to update deployment status"
                 )
+
+
+async def lookup_app_id(
+    app_name: str, modal_client: modal.client._Client, settings: Settings
+) -> str | None:
+    """Look up an app ID from Modal using AppListRequest.
+
+    This is more reliable than AppGetByDeploymentNameRequest as it searches
+    through all apps in the environment.
+
+    Args:
+        app_name: Name of the app in Modal
+        modal_client: The Modal client instance
+        settings: Application settings
+
+    Returns:
+        The app ID if found, None otherwise
+    """
+    request = api_pb2.AppListRequest(
+        environment_name=settings.MODAL_ENV,
+    )
+    response = await retry_transient_errors(modal_client.stub.AppList, request)
+
+    for app in response.apps:
+        if app.name == app_name:
+            return app.app_id
+    return None
+
+
+async def stop_modal_app(
+    app_name: str,
+    modal_client: modal.client._Client,
+    settings: Settings,
+    app_id: str | None = None,
+):
+    """Stop a running Modal app.
+
+    Args:
+        app_name: Name of the app in Modal
+        modal_client: The Modal client instance
+        settings: Application settings
+        app_id: Optional app ID (will be looked up if not provided)
+    """
+    if app_id is None:
+        app_id = await lookup_app_id(app_name, modal_client, settings)
+        if app_id is None:
+            log.warning(f"Could not find app ID for {app_name}, skipping stop request")
+            return
+
+    # Stop the app
+    stop_request = api_pb2.AppStopRequest(
+        app_id=app_id,
+        source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
+    )
+    await retry_transient_errors(modal_client.stub.AppStop, stop_request)

@@ -2,13 +2,10 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from modal_proto import api_pb2
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
-import modal
-from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.auth import (
     authed_user,
     in_modal_publishers_group,
@@ -32,7 +29,7 @@ from src.config import Settings, get_settings
 from src.exceptions.modal import ModalException
 from src.modal import parse_modal_file
 from src.modal.status import AsyncModalJobStatus
-from src.modal.utils import monitor_modal_deployment
+from src.modal.utils import monitor_modal_deployment, stop_modal_app
 from src.models import Garden, ModalApp, ModalFunction, User
 from src.models._associations import gardens_modal_functions
 
@@ -360,7 +357,7 @@ async def delete_modal_app(
     try:
         await db.delete(modal_app)
         log.info("Deleted Modal App from database")
-        await _stop_modal_app(app_name, modal_client, settings, app_id)
+        await stop_modal_app(app_name, modal_client, settings, app_id)
         log.info("stopped app on modal")
     except Exception as e:
         await db.rollback()
@@ -509,47 +506,6 @@ async def _deploy_modal_app_helper(
         }
     )
     return result["app_id"]
-
-
-async def _lookup_app_id(
-    app_name: str, modal_client: modal.client._Client, settings: Settings
-) -> str | None:
-    """Look up an app ID from Modal using AppListRequest.
-
-    This is more reliable than AppGetByDeploymentNameRequest as it searches
-    through all apps in the environment.
-    """
-    request = api_pb2.AppListRequest(
-        environment_name=settings.MODAL_ENV,
-    )
-    response = await retry_transient_errors(modal_client.stub.AppList, request)
-
-    for app in response.apps:
-        if app.name == app_name:
-            return app.app_id
-    return None
-
-
-async def _stop_modal_app(
-    app_name: str,
-    modal_client: modal.client._Client,
-    settings: Settings,
-    app_id: str | None = None,
-):
-    if app_id is None:
-        app_id = await _lookup_app_id(app_name, modal_client, settings)
-        if app_id is None:
-            logger.warning(
-                f"Could not find app ID for {app_name}, skipping stop request"
-            )
-            return
-
-    # Stop the app
-    stop_request = api_pb2.AppStopRequest(
-        app_id=app_id,
-        source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
-    )
-    await retry_transient_errors(modal_client.stub.AppStop, stop_request)
 
 
 async def _handle_omitted_functions(
