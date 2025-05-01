@@ -155,20 +155,37 @@ async def test_mark_entities_for_deletion_ignores_in_use_modal_apps(
         # create a couple of modal apps and a garden using one of them
         unused_modal_app = await create_modal_app_with_functions(db)
         used_modal_app = await create_modal_app_with_functions(db)
-        garden = await create_empty_garden(db)
-        garden.modal_functions = used_modal_app.modal_functions
+        unpublished_garden = await create_empty_garden(db)
+        # since the garden is not published, this modal app should get marked
+        unpublished_garden.modal_functions = used_modal_app.modal_functions
+
+        # create a second garden that is publised
+        published_garden = await create_empty_garden(db, draft=False)
+        # add another modal app that is used by the published garden, this one should not get marked
+        pub_modal_app = await create_modal_app_with_functions(db)
+        published_garden.modal_functions = pub_modal_app.modal_functions
+
         await db.commit()
+        await db.refresh(published_garden)
+        await db.refresh(unpublished_garden)
         await db.refresh(used_modal_app)
+        await db.refresh(pub_modal_app)
 
         # run the marking task
         num_marked = await mark_entity_for_deletion(ModalApp, async_db_session)
-        assert num_marked == 1
+        assert num_marked == 2
 
         await db.refresh(unused_modal_app)
         await db.refresh(used_modal_app)
+        await db.refresh(pub_modal_app)
 
         assert unused_modal_app.marked_for_deletion is not None
-        assert used_modal_app.marked_for_deletion is None
+        assert (
+            used_modal_app.marked_for_deletion is not None
+        )  # this one should be marked since it is only used by unpublished gardens
+        assert (
+            pub_modal_app.marked_for_deletion is None
+        )  # we shouldn't mark apps that are used by published gardens
 
 
 @pytest.mark.asyncio

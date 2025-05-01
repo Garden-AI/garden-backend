@@ -91,10 +91,14 @@ async def mark_gardens_for_deletion(session_maker):
 
 
 async def mark_modal_apps_for_deletion(session_maker) -> int:
-    # First get all modal function IDs that are used in gardens
-    used_function_ids = select(gardens_modal_functions.c.modal_function_id)
+    # First get all modal function IDs that are used in published gardens
+    used_function_ids = (
+        select(gardens_modal_functions.c.modal_function_id)
+        .join(Garden, Garden.id == gardens_modal_functions.c.garden_id)
+        .where(Garden.doi_is_draft.isnot(True))
+    )
 
-    # Then find modal apps where none of their functions are used
+    # Then find modal apps where none of their functions are used in the publised gardens
     stmt = select(ModalApp).where(
         ~ModalApp.modal_functions.any(ModalFunction.id.in_(used_function_ids))
     )
