@@ -7,7 +7,12 @@ from structlog import get_logger
 from src.config import Settings
 from src.models import Garden, ModalApp
 
-from .utils import delete_marked_entity, mark_entity_for_deletion
+from .utils import (
+    delete_marked_entity,
+    mark_entity_for_deletion,
+    unmark_marked_gardens,
+    unmark_marked_modal_apps,
+)
 
 logger = get_logger(__name__)
 
@@ -37,6 +42,15 @@ async def auto_deletion_background_task(
             num_makred_modal_apps=num_makred_modal_apps,
         )
         log.info("Entities marked for deletion")
+
+        logger.info("Unmarking entities that are no longer deletion candidates...")
+        num_gardens_unmarked = await unmark_marked_gardens(session_maker)
+        num_modal_apps_unmarked = await unmark_marked_modal_apps(session_maker)
+        log = logger.bind(
+            num_gardens_unmarked=num_gardens_unmarked,
+            num_modal_apps_unmarked=num_modal_apps_unmarked,
+        )
+        log.info("Unmarked entites")
 
         logger.info(
             f"Deleting marked entities that were marked more than {deletion_age_limit.days} {'days' if deletion_age_limit.days > 1 else 'day'} ago"
