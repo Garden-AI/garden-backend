@@ -271,8 +271,13 @@ async def test_delete_marked_entites_deletes_marked_objects_when_past_limit(
     async_db_session,
     override_get_modal_client_dependency,
     mocker,
-    override_get_settings_dependency,
+    mock_settings,
 ):
+    # Patch the get_settings function to return our mock settings
+    mocker.patch(
+        "src.api.tasks.auto_deletion.utils.get_settings", return_value=mock_settings
+    )
+
     # Directly mock the stop_modal_app function to succeed
     mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
 
@@ -337,8 +342,13 @@ async def test_delete_marked_entities_skips_if_not_past_interval(
     async_db_session,
     override_get_modal_client_dependency,
     mocker,
-    override_get_settings_dependency,
+    mock_settings,
 ):
+    # Patch the get_settings function to return our mock settings
+    mocker.patch(
+        "src.api.tasks.auto_deletion.utils.get_settings", return_value=mock_settings
+    )
+
     # Directly mock the stop_modal_app function again
     mock_stop_app = mocker.patch("src.api.tasks.auto_deletion.utils.stop_modal_app")
 
