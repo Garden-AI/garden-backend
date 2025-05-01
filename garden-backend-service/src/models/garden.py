@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -78,6 +79,8 @@ class Garden(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped[User] = relationship(lazy="selectin")
     owner: Mapped[User] = synonym("user")
+
+    marked_for_deletion: Mapped[datetime | None] = mapped_column(default=None)
 
     @property
     def state(self) -> GardenState:

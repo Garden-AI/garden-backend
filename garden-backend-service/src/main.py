@@ -1,4 +1,6 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -22,6 +24,7 @@ from src.api.routes import (
     users,
 )
 from src.api.routes.mdf import search as mdf_search
+from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
     add_error_handling_middleware,
@@ -29,18 +32,9 @@ from src.middleware.logging import (
     add_request_id_middleware,
 )
 
-app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     settings = get_settings()
     session_maker = await get_db_session_maker(settings=settings)
 
@@ -54,6 +48,24 @@ async def startup_event():
     # Include load test routes only in development environments
     if settings.GARDEN_ENV in ["dev", "local"]:
         app.include_router(load_test.router)
+
+    # kick off long-running auto-deletion task
+    # dont await it, we want it to keep running while we move on
+    asyncio.create_task(auto_deletion_background_task(settings, session_maker))
+
+    # Everything before this yield happens on startup
+    yield
+    # Eveything after the yield happens on shutdown
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Add our custom middleware

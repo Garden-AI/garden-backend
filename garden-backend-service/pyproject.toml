@@ -36,6 +36,7 @@ dependencies = [
 ]
 
 [dependency-groups]
+dev = []
 develop = [
   "pytest>=7.2.0",
   "pytest-mock>=3.10.0",
@@ -53,6 +54,7 @@ develop = [
   "flake8-pytest-style>=2.0.0",
   "pytest-random-order>=1.1.1",
   "ruff>=0.6.9",
+  "faker>=37.1.0",
 ]
 
 
