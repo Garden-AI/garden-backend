@@ -402,3 +402,64 @@ async def test_delete_marked_entities_skips_if_not_past_interval(
         modal_app_db = modal_app_result.scalar_one_or_none()
         assert garden_db is not None
         assert modal_app_db is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_mark_entities_for_deletion_deletes_apps_in_archived_gardens(
+    async_db_session,
+):
+    async with async_db_session() as db:
+        archived_garden = await create_empty_garden(db, draft=False)
+        archived_garden.is_archived = True
+        modal_app = await create_modal_app_with_functions(db)
+        archived_garden.modal_functions = modal_app.modal_functions
+        await db.commit()
+
+        await db.refresh(archived_garden)
+        await db.refresh(modal_app)
+
+        num_marked_apps = await mark_entity_for_deletion(ModalApp, async_db_session)
+        assert num_marked_apps == 1
+
+        await db.refresh(archived_garden)
+        await db.refresh(modal_app)
+        assert modal_app.marked_for_deletion is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_garden_unmarking_function_doesnt_undo_marking_function(
+    async_db_session,
+):
+    """Tests that the garden unmarking function doens't immediately undo the marking function"""
+    async with async_db_session() as db:
+        garden = await create_empty_garden(db)
+
+        num_marked = await mark_entity_for_deletion(Garden, async_db_session)
+        assert num_marked == 1
+
+        num_unmarked = await unmark_marked_gardens(async_db_session)
+        assert num_unmarked == 0
+
+        await db.refresh(garden)
+        assert garden.marked_for_deletion is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_app_unmarking_function_doesnt_undo_marking_function(
+    async_db_session,
+):
+    """Tests that the modal app unmarking function doens't immediately undo the marking function"""
+    async with async_db_session() as db:
+        modal_app = await create_modal_app_with_functions(db)
+
+        num_marked = await mark_entity_for_deletion(ModalApp, async_db_session)
+        assert num_marked == 1
+
+        num_unmarked = await unmark_marked_modal_apps(async_db_session)
+        assert num_unmarked == 0
+
+        await db.refresh(modal_app)
+        assert modal_app.marked_for_deletion is not None

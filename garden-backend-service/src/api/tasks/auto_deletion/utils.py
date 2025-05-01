@@ -91,14 +91,9 @@ async def mark_gardens_for_deletion(session_maker):
 
 
 async def mark_modal_apps_for_deletion(session_maker) -> int:
-    # First get all modal function IDs that are used in published gardens
-    used_function_ids = (
-        select(gardens_modal_functions.c.modal_function_id)
-        .join(Garden, Garden.id == gardens_modal_functions.c.garden_id)
-        .where(Garden.doi_is_draft.isnot(True))
-    )
+    used_function_ids = await get_function_ids_used_in_published_gardens(session_maker)
 
-    # Then find modal apps where none of their functions are used in the publised gardens
+    # find modal apps where none of their functions are used in the publised gardens
     stmt = select(ModalApp).where(
         ~ModalApp.modal_functions.any(ModalFunction.id.in_(used_function_ids))
     )
@@ -123,9 +118,9 @@ async def unmark_marked_gardens(session_maker) -> int:
 
 
 async def unmark_marked_modal_apps(session_maker) -> int:
-    # Subquery for all used modal function IDs
-    used_function_ids = select(gardens_modal_functions.c.modal_function_id)
-    # ModalApps where marked_for_deletion is not None and any of their functions are in use
+    used_function_ids = await get_function_ids_used_in_published_gardens(session_maker)
+
+    # ModalApps that are marked for deltion and any of their functions are in use by published gardens
     stmt = select(ModalApp).where(
         ModalApp.marked_for_deletion.isnot(None),
         ModalApp.modal_functions.any(ModalFunction.id.in_(used_function_ids)),
@@ -139,3 +134,16 @@ async def unmark_marked_modal_apps(session_maker) -> int:
             count += 1
         await db.commit()
     return count
+
+
+async def get_function_ids_used_in_published_gardens(
+    session_maker: async_sessionmaker,
+) -> list[int]:
+    stmt = (
+        select(gardens_modal_functions.c.modal_function_id)
+        .join(Garden, Garden.id == gardens_modal_functions.c.garden_id)
+        .where(Garden.doi_is_draft.isnot(True), Garden.is_archived.is_(False))
+    )
+    async with session_maker() as db:
+        results = await db.scalars(stmt)
+        return list(results.all())
