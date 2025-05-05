@@ -1,7 +1,7 @@
 """fix modal_invocation_logs sequence
 
 Revision ID: fix_modal_invocation_logs_sequence
-Revises: d5ae091961f1
+Revises: e5b089c87930
 Create Date: 2024-04-15 10:00:00.000000
 
 """
