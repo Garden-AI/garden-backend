@@ -11,8 +11,8 @@ from typing import Sequence, Union
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "fix_modal_invocation_logs_sequence"
-down_revision: Union[str, None] = "d5ae091961f1"
+revision: str = "b5b389c87931"
+down_revision: Union[str, None] = "e5b089c87930"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
