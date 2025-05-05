@@ -133,17 +133,15 @@ async def invoke_modal_fn_async(
         user_id=user.id,
         function_id=modal_fn.id,
     )
-    db.add(db_log)
-    await db.commit()  # Commit to get the log ID
-    await db.refresh(db_log)  # Refresh to get the ID
-
     db_result = ModalInvocationResult(
         function_id=modal_fn.id,
         function_call_id=invocation.function_call_id,
         status=AsyncModalJobStatus.PENDING,
-        log_id=db_log.id,
     )
-    db.add(db_result)
+    # establish log-result relationship
+    db_log.result = db_result
+    db_result.log = db_log
+    db.add_all([db_log, db_result])
     await db.commit()
 
     # Add monitoring to background tasks
