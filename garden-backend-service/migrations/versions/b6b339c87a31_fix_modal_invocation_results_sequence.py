@@ -18,10 +18,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create sequence for modal_invocation_results
-    op.execute("CREATE SEQUENCE modal_invocation_results_id_seq")
+    # Create sequence for modal_invocation_results if it doesn't exist
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'modal_invocation_results_id_seq') THEN
+                CREATE SEQUENCE modal_invocation_results_id_seq;
+            END IF;
+        END $$;
+    """)
 
-    # Get the current maximum ID
+    # Get the current maximum ID and set the sequence value
     op.execute("""
         SELECT setval('modal_invocation_results_id_seq',
             COALESCE((SELECT MAX(id) FROM modal_invocation_results), 0) + 1,
@@ -36,11 +43,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Remove the sequence
-    op.execute("DROP SEQUENCE modal_invocation_results_id_seq")
-
     # Remove the default value
     op.execute("""
         ALTER TABLE modal_invocation_results
         ALTER COLUMN id DROP DEFAULT
+    """)
+
+    # Remove the sequence if it exists
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_sequences WHERE sequencename = 'modal_invocation_results_id_seq') THEN
+                DROP SEQUENCE modal_invocation_results_id_seq;
+            END IF;
+        END $$;
     """)
