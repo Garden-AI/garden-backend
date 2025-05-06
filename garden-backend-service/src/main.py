@@ -12,6 +12,7 @@ from src.api.dependencies.database import (
     get_db_session_maker,
 )
 from src.api.routes import (
+    benchmarks,
     docker_push_token,
     doi,
     entrypoints,
@@ -81,6 +82,7 @@ app.include_router(hello_database.router)
 app.include_router(entrypoints.router)
 app.include_router(gardens.router)
 app.include_router(users.router)
+app.include_router(benchmarks.router)
 
 app.include_router(modal.invocations.router)
 app.include_router(modal.modal_apps.router)
