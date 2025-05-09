@@ -1,6 +1,5 @@
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 from modal_proto import api_pb2
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -164,8 +163,8 @@ async def get_modal_invocation_output(
 ):
     inv = await ModalInvocationResult.get(db, id=id)
     if inv is None:
-        return JSONResponse(
-            status_code=404, content=f"Invocation with id: {id} not found."
+        raise HTTPException(
+            status_code=404, detail=f"Invocation with id: {id} not found."
         )
 
     response_data = {
