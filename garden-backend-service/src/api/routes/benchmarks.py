@@ -81,9 +81,9 @@ async def run_benchmark(
 
     # Convert the invocation response to a dictionary
     invocation_data = invocation.model_dump()
+    # remove the id before destructuting so we don't conflict with the BenchmarkRun id
     del invocation_data["id"]
 
-    # Return the response with both benchmark and function IDs
     response = BenchmarkResult(
         id=benchmark_run.id,
         benchmark_id=benchmark_request.benchmark_id,
@@ -93,9 +93,9 @@ async def run_benchmark(
     return response
 
 
-@router.get("/{id}", response_model=BenchmarkResult)
+@router.get("/results/{id}", response_model=BenchmarkResult)
 async def get_benchmark_result(
-    id: int,  # benchmark run id, not function id
+    id: int,  # benchmark id, not function id
     modal_client: Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -133,6 +133,48 @@ async def get_benchmark_result(
         result=invocation_result,
     )
     return response
+
+
+@router.get("/{id}", response_model=list[BenchmarkResult])
+async def get_results_for_benchmarks(
+    id: int,
+    modal_client: Client = Depends(get_modal_client),
+    db: AsyncSession = Depends(get_db_session),
+):
+    query = select(BenchmarkRun).where(BenchmarkRun.benchmark_id == id)
+    results = await db.scalars(query)
+    benchmark_runs = results.all()
+
+    benchmark_results = []
+
+    for benchmark_run in benchmark_runs:
+        # Get the invocation result
+        invocation_output = await get_modal_invocation_output(
+            benchmark_run.invocation_id, modal_client, db
+        )
+        if not invocation_output:
+            # Skip runs with missing invocation output
+            logger.warning(
+                "Invocation output not found",
+                benchmark_run_id=benchmark_run.id,
+                invocation_id=benchmark_run.invocation_id,
+            )
+            continue
+
+        # Deserialize modal result
+        invocation_result = deserialize(invocation_output["result"].data, modal_client)
+
+        # Create the benchmark result
+        result = BenchmarkResult(
+            id=benchmark_run.id,
+            benchmark_id=benchmark_run.benchmark_id,
+            function_id=benchmark_run.function_id,
+            status=invocation_output["status"],
+            result=invocation_result,
+        )
+        benchmark_results.append(result)
+
+    return benchmark_results
 
 
 async def _function_compatible_with_benchmark(
