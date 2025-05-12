@@ -6,6 +6,14 @@ from src.models.modal.invocations import ModalInvocationResult
 from src.models.modal.modal_function import ModalFunction
 
 
+class Benchmark(Base):
+    """Keeps track of available benchmarks"""
+
+    __tablename__ = "benchmarks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    function_id: Mapped[int]
+
+
 class BenchmarkRun(Base):
     """Stores information about benchmark runs"""
 
@@ -14,9 +22,9 @@ class BenchmarkRun(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # The benchmark function that was executed
-    benchmark_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
-    benchmark: Mapped[ModalFunction] = relationship(
-        "ModalFunction", foreign_keys=[benchmark_id]
+    benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
+    benchmark: Mapped[Benchmark] = relationship(
+        "Benchmark", foreign_keys=[benchmark_id]
     )
 
     # The function that was benchmarked
