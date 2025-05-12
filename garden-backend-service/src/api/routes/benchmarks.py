@@ -15,6 +15,7 @@ from src.api.routes.modal.invocations import (
     invoke_modal_fn_async,
 )
 from src.api.schemas.benchmark import (
+    BenchmarkCreateRequest,
     BenchmarkMetadata,
     BenchmarkRequest,
     BenchmarkResult,
@@ -41,6 +42,44 @@ async def get_benchmark_metadata(
     )
     results = await db.scalars(query)
     return results.all()
+
+
+@router.post(
+    "/create",
+    response_model=BenchmarkMetadata,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_benchmark(
+    create_request: BenchmarkCreateRequest,
+    user: User = Depends(authed_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if existing_benchmark := await Benchmark.get(
+        db, function_id=create_request.function_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Benchmark {existing_benchmark.function_id} already exists!",
+        )
+
+    function = await ModalFunction.get(db, id=create_request.function_id)
+    if function is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Function {create_request.function_id} does not exist!",
+        )
+
+    # Create the benchmark record
+    benchmark = Benchmark(
+        function_id=function.id,
+    )
+    db.add(benchmark)
+    await db.commit()
+    await db.refresh(benchmark)
+
+    log = logger.bind(benchmark_id=benchmark.id, function_id=function.id)
+    log.info("Benchmark created")
+    return function
 
 
 @router.post("/{id}", response_model=BenchmarkResult)

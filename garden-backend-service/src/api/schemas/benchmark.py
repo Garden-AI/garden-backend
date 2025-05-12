@@ -41,3 +41,8 @@ class BenchmarkResult(BaseSchema):
 class BenchmarkMetadata(ModalFunctionMetadataResponse):
     # For now benchmarks are no different from regular modal functions
     pass
+
+
+class BenchmarkCreateRequest(BaseSchema):
+    # The id of the function to register as a benchmark
+    function_id: int
