@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import Base
@@ -7,11 +9,21 @@ from src.models.modal.modal_function import ModalFunction
 
 
 class Benchmark(Base):
-    """Keeps track of available benchmarks"""
+    """Track available benchmarks"""
 
     __tablename__ = "benchmarks"
     id: Mapped[int] = mapped_column(primary_key=True)
-    function_id: Mapped[int]
+    name: Mapped[str] = mapped_column(nullable=False)
+    description: Mapped[str] = mapped_column(nullable=True)
+
+
+class BenchmarkTask(Base):
+    """Track tasks associated with benchmarks"""
+
+    __tablename__ = "benchmark_tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
+    function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
 
 
 class BenchmarkRun(Base):
@@ -21,11 +33,14 @@ class BenchmarkRun(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # The benchmark function that was executed
+    # The benchmark that was run
     benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
     benchmark: Mapped[Benchmark] = relationship(
         "Benchmark", foreign_keys=[benchmark_id]
     )
+
+    # The benchmark task that was run
+    task_id: Mapped[int] = mapped_column(ForeignKey(BenchmarkTask.id))
 
     # The function that was benchmarked
     function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
@@ -33,11 +48,10 @@ class BenchmarkRun(Base):
         "ModalFunction", foreign_keys=[function_id]
     )
 
-    # The invocation result that contains the benchmark output
+    # The invocation result that contains the task output
     invocation_id: Mapped[int] = mapped_column(
         ForeignKey(ModalInvocationResult.id, ondelete="CASCADE")
     )
     invocation: Mapped[ModalInvocationResult] = relationship("ModalInvocationResult")
 
-    # Optional task ID for grouping benchmarks by task
-    task_id: Mapped[int | None] = mapped_column(nullable=True)
+    date: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now())

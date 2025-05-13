@@ -37,6 +37,7 @@ logger = get_logger(__name__)
 async def get_benchmark_metadata(
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Get metadata about available benchmarks"""
     query = select(ModalFunction).join(
         Benchmark, ModalFunction.id == Benchmark.function_id
     )
@@ -54,6 +55,7 @@ async def create_benchmark(
     user: User = Depends(authed_user),
     db: AsyncSession = Depends(get_db_session),
 ):
+    """Register a function as a benchmark"""
     if existing_benchmark := await Benchmark.get(
         db, function_id=create_request.function_id
     ):
@@ -76,9 +78,10 @@ async def create_benchmark(
     db.add(benchmark)
     await db.commit()
     await db.refresh(benchmark)
-
     log = logger.bind(benchmark_id=benchmark.id, function_id=function.id)
     log.info("Benchmark created")
+
+    # Return the function since the benchmark record just points to the function anyway
     return function
 
 
@@ -93,6 +96,7 @@ async def run_benchmark(
     modal_client: Client = Depends(get_modal_client),
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
 ):
+    """Request a new run of the benchmark"""
     compatible = await _function_compatible_with_benchmark(
         function_id=benchmark_request.function_id,
         benchmark_id=id,
@@ -129,7 +133,7 @@ async def run_benchmark(
     logger.info("Recording benchmark run in database")
     # Create a record in the benchmark_runs table
     benchmark_run = BenchmarkRun(
-        benchmark_id=id,
+        benchmark_function_id=id,
         function_id=benchmark_request.function_id,
         invocation_id=invocation.id,
         task_id=benchmark_request.task_id,
@@ -149,14 +153,14 @@ async def run_benchmark(
     return response
 
 
-@router.get("/{id}", response_model=list[BenchmarkResult])
+@router.get("/{benchmark_id}", response_model=list[BenchmarkResult])
 async def get_results_for_benchmark(
-    id: int,
+    benchmark_id: int,
     modal_client: Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
-    # Use a subquery to get the latest benchmark run for each function_id
-    # This is a more SQL-optimal approach than filtering in Python
+    """Return a list of results for the benchmark"""
+    # subquery to get the latest run of given benchmark for each function that has been benchmarked
     latest_runs_subq = (
         select(
             BenchmarkRun.function_id,
@@ -168,12 +172,12 @@ async def get_results_for_benchmark(
             BenchmarkRun.invocation_id == ModalInvocationResult.id,
         )
         .join(ModalInvocationLog, ModalInvocationResult.log_id == ModalInvocationLog.id)
-        .where(BenchmarkRun.benchmark_id == id)
+        .where(BenchmarkRun.benchmark_function_id == benchmark_id)
         .group_by(BenchmarkRun.function_id)
         .subquery()
     )
 
-    # Main query to get the actual benchmark runs with the latest date for each function_id
+    # Main query to get the BenchmarkRun with the latest date for each function, attach the date it was invoked
     query = (
         select(BenchmarkRun, ModalInvocationLog.date_invoked)
         .join(
@@ -186,15 +190,55 @@ async def get_results_for_benchmark(
             (BenchmarkRun.function_id == latest_runs_subq.c.function_id)
             & (ModalInvocationLog.date_invoked == latest_runs_subq.c.latest_date),
         )
-        .where(BenchmarkRun.benchmark_id == id)
+        .where(BenchmarkRun.benchmark_function_id == benchmark_id)
     )
 
     results = await db.execute(query)
-    benchmark_runs_with_dates = results.all()
+    benchmark_runs_with_date = results.all()
 
-    benchmark_results = []
+    benchmark_results = await _get_results_for_runs(
+        benchmark_runs_with_date, db, modal_client, logger
+    )
+    return benchmark_results
 
-    for benchmark_run, date_invoked in benchmark_runs_with_dates:
+
+async def _function_compatible_with_benchmark(
+    function_id: int,
+    benchmark_id: int,
+) -> bool:
+    # TODO: implement me!
+    return True
+
+
+async def _populate_args_kwargs_serialized(request: BenchmarkRequest) -> bytes:
+    """
+    Populate the args_kwargs_serialized field if not provided by the client.
+
+    Args:
+        request: The benchmark request containing optional args_kwargs_serialized
+
+    Returns:
+        The args_kwargs_serialized bytes to use for the invocation
+    """
+    if request.args_kwargs_serialized:
+        # If client provided serialized args, use them as-is
+        return request.args_kwargs_serialized
+
+    # Create a minimal valid pickle for empty args and kwargs
+    # Modal expects the args format to be a tuple of (args, kwargs)
+    # where args is a list and kwargs is a dict
+    return pickle.dumps(([], {}))
+
+
+async def _get_results_for_runs(
+    benchmark_runs,
+    db: AsyncSession,
+    modal_client: Client,
+    logger,
+) -> list[BenchmarkResult]:
+    """"""
+    results = []
+    for benchmark_run, date_invoked in benchmark_runs:
         try:
             # Get the invocation result
             invocation_output = await get_modal_invocation_output(
@@ -241,7 +285,7 @@ async def get_results_for_benchmark(
                 result=invocation_result,
                 date_invoked=date_invoked,
             )
-            benchmark_results.append(result)
+            results.append(result)
         except Exception as e:
             # Catch any other exceptions to prevent entire request from failing
             logger.error(
@@ -251,33 +295,4 @@ async def get_results_for_benchmark(
             )
             # Continue to next benchmark run
             continue
-
-    return benchmark_results
-
-
-async def _function_compatible_with_benchmark(
-    function_id: int,
-    benchmark_id: int,
-) -> bool:
-    # TODO: implement me!
-    return True
-
-
-async def _populate_args_kwargs_serialized(request: BenchmarkRequest) -> bytes:
-    """
-    Populate the args_kwargs_serialized field if not provided by the client.
-
-    Args:
-        request: The benchmark request containing optional args_kwargs_serialized
-
-    Returns:
-        The args_kwargs_serialized bytes to use for the invocation
-    """
-    if request.args_kwargs_serialized:
-        # If client provided serialized args, use them as-is
-        return request.args_kwargs_serialized
-
-    # Create a minimal valid pickle for empty args and kwargs
-    # Modal expects the args format to be a tuple of (args, kwargs)
-    # where args is a list and kwargs is a dict
-    return pickle.dumps(([], {}))
+    return results
