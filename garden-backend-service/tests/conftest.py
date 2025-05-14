@@ -144,9 +144,9 @@ def mock_db_session(
 
     # Clean up after the test
     with Session(_sync_engine) as db:
-        db.execute(text("DROP MATERIALIZED VIEW garden_documents;"))
-        db.execute(text("DROP MATERIALIZED VIEW entrypoint_documents;"))
-        db.execute(text("DROP MATERIALIZED VIEW modal_function_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW IF EXISTS garden_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW IF EXISTS entrypoint_documents;"))
+        db.execute(text("DROP MATERIALIZED VIEW IF EXISTS modal_function_documents;"))
         db.commit()
     Base.metadata.drop_all(_sync_engine)
 

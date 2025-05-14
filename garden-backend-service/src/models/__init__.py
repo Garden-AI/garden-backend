@@ -7,3 +7,4 @@ from .modal.modal_function import ModalFunction  # noqa
 from .modal.modal_app import ModalApp  # noqa
 from .modal.invocations import ModalInvocationLog, ModalInvocationResult  # noqa
 from .user import User  # noqa
+from .benchmark import BenchmarkRun  # noqa
