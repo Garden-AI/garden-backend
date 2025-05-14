@@ -1,3 +1,4 @@
+from copy import deepcopy
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -35,6 +36,7 @@ async def test_run_benchmark(
     override_sandboxed_functions,
     override_get_modal_client_dependency,
     mocker,
+    mock_garden_create_request_no_entrypoints_json,
 ):
     # mock the modal helpers in the invocations routes
     mock_function = MagicMock()
@@ -70,6 +72,11 @@ async def test_run_benchmark(
     assert modal_app_response.status_code == 200
     modal_app = modal_app_response.json()
     function_id = modal_app["modal_function_ids"][0]
+    # create a garden with the function
+    payload = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    payload["modal_function_ids"] = [function_id]
+    garden_response = await client.post("/gardens", json=payload)
+    assert garden_response.status_code == 200
 
     # Create the benchmark
     benchmark_id, task_id = await create_benchmark_and_task(
