@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 import httpx
 from fastapi import exceptions, status
 from structlog import get_logger
@@ -120,7 +122,7 @@ def _datacite_metadata_from_garden(garden: Garden) -> datacite.Doi:
                 ],
                 publisher="thegardens.ai",
                 publicationYear=garden.year,
-                url=f"https://thegardens.ai/{garden.doi}",
+                url=f"https://thegardens.ai/{quote(garden.doi, safe='')}",
             ),
         )
     )
