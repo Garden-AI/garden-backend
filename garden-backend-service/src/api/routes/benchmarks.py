@@ -1,12 +1,10 @@
-import pickle
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
 from modal import Client
-from modal._serialization import deserialize
+from modal._serialization import deserialize, serialize
 from src.api.dependencies.auth import authed_user, under_modal_usage_limit
 from src.api.dependencies.database import get_db_session
 from src.api.dependencies.modal import get_modal_client
@@ -22,7 +20,7 @@ from src.api.schemas.benchmark import (
 from src.api.schemas.modal.invocations import ModalInvocationRequest
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
-from src.models import User
+from src.models import Garden, User
 from src.models.benchmark import Benchmark, BenchmarkRun, BenchmarkTask
 from src.models.modal.modal_function import ModalFunction
 
@@ -85,14 +83,13 @@ async def run_benchmark(
         )
 
     logger.info("Creating invocation request.")
-    # Populate args_kwargs_serialized if not provided
-    args_kwargs_serialized = await _populate_args_kwargs_serialized(benchmark_request)
+    # Populate args_kwargs_serialized with garden doi / function name
+    args_kwargs_serialized = await _make_args_kwargs_serialized(function, db)
 
     # Create the invocation request
     invocation_request = ModalInvocationRequest(
         function_id=task.function_id,  # The benchmark function to run
         args_kwargs_serialized=args_kwargs_serialized,
-        args_blob_id=benchmark_request.args_blob_id,
     )
 
     logger.info("Invoking benchmark function.")
@@ -118,14 +115,11 @@ async def run_benchmark(
     await db.commit()
     await db.refresh(benchmark_run)
 
-    # Convert the invocation response to a dictionary
-    invocation_data = invocation.model_dump()
-
     response = BenchmarkResult(
         benchmark_id=benchmark.id,
         function_id=function.id,
         task_id=task.id,
-        **invocation_data,
+        status=invocation.status,
     )
     return response
 
@@ -179,24 +173,38 @@ async def _function_compatible_with_benchmark_task(
     return True
 
 
-async def _populate_args_kwargs_serialized(request: BenchmarkRequest) -> bytes:
+async def _make_args_kwargs_serialized(
+    function: ModalFunction, db: AsyncSession
+) -> bytes:
     """
-    Populate the args_kwargs_serialized field if not provided by the client.
+    Make the args_kwargs_serialized field for the benchmark request.
+    The only input to a benchmark function is a garden doi and the function name,
+    so the benchmark can call the function through the garden sdk.
 
     Args:
-        request: The benchmark request containing optional args_kwargs_serialized
+        function: The modal function to benchmark
+        db: The database session
 
     Returns:
         The args_kwargs_serialized bytes to use for the invocation
     """
-    if request.args_kwargs_serialized:
-        # If client provided serialized args, use them as-is
-        return request.args_kwargs_serialized
-
-    # Create a minimal valid pickle for empty args and kwargs
-    # Modal expects the args format to be a tuple of (args, kwargs)
-    # where args is a list and kwargs is a dict
-    return pickle.dumps(([], {}))
+    # get the doi of any garden with the function
+    stmt = select(Garden.doi).where(Garden.modal_functions.contains(function))
+    result = await db.scalars(stmt)
+    doi = result.one_or_none()
+    if doi is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Function {function.function_name} is not associated with any garden!",
+        )
+    if "." in function.function_name:
+        cls_name, method_name = function.function_name.split(".")
+    else:
+        cls_name = ""
+        method_name = function.function_name
+    args = [doi]
+    kwargs = {"cls_name": cls_name, "method_name": method_name}
+    return serialize((args, kwargs))
 
 
 async def _get_results_for_runs(

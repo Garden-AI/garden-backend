@@ -11,7 +11,7 @@ from src.modal.utils import AsyncModalJobStatus
 from src.models.benchmark import Benchmark, BenchmarkTask
 
 
-async def create_benchmark_and_task(db_session_maker, function_id) -> (int, int):
+async def create_benchmark_and_task(db_session_maker, function_id) -> tuple[int, int]:
     benchmark = Benchmark(id=1, name="Test Benchmark")
     task = BenchmarkTask(benchmark_id=benchmark.id, function_id=function_id)
     async with db_session_maker() as db:

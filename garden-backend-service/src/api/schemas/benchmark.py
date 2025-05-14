@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict
 
-from pydantic import Base64Bytes
-
 from src.api.schemas.base import BaseSchema
 from src.api.schemas.modal.modal_function import ModalFunctionMetadataResponse
 from src.modal.status import AsyncModalJobStatus
@@ -11,9 +9,6 @@ from src.modal.status import AsyncModalJobStatus
 class BenchmarkRequest(BaseSchema):
     # The id of the function to benchmark
     function_id: int
-
-    args_kwargs_serialized: Base64Bytes | None = None
-    args_blob_id: str | None = None
 
 
 class BenchmarkResult(BaseSchema):
