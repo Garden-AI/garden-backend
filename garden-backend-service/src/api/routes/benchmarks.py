@@ -1,7 +1,7 @@
 import pickle
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
 
@@ -15,7 +15,6 @@ from src.api.routes.modal.invocations import (
     invoke_modal_fn_async,
 )
 from src.api.schemas.benchmark import (
-    BenchmarkCreateRequest,
     BenchmarkMetadata,
     BenchmarkRequest,
     BenchmarkResult,
@@ -24,8 +23,7 @@ from src.api.schemas.modal.invocations import ModalInvocationRequest
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
 from src.models import User
-from src.models.benchmark import Benchmark, BenchmarkRun
-from src.models.modal.invocations import ModalInvocationLog, ModalInvocationResult
+from src.models.benchmark import Benchmark, BenchmarkRun, BenchmarkTask
 from src.models.modal.modal_function import ModalFunction
 
 router = APIRouter(prefix="/benchmarks")
@@ -38,56 +36,15 @@ async def get_benchmark_metadata(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get metadata about available benchmarks"""
-    query = select(ModalFunction).join(
-        Benchmark, ModalFunction.id == Benchmark.function_id
-    )
+    query = select(Benchmark)
     results = await db.scalars(query)
     return results.all()
 
 
-@router.post(
-    "/create",
-    response_model=BenchmarkMetadata,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_benchmark(
-    create_request: BenchmarkCreateRequest,
-    user: User = Depends(authed_user),
-    db: AsyncSession = Depends(get_db_session),
-):
-    """Register a function as a benchmark"""
-    if existing_benchmark := await Benchmark.get(
-        db, function_id=create_request.function_id
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Benchmark {existing_benchmark.function_id} already exists!",
-        )
-
-    function = await ModalFunction.get(db, id=create_request.function_id)
-    if function is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Function {create_request.function_id} does not exist!",
-        )
-
-    # Create the benchmark record
-    benchmark = Benchmark(
-        function_id=function.id,
-    )
-    db.add(benchmark)
-    await db.commit()
-    await db.refresh(benchmark)
-    log = logger.bind(benchmark_id=benchmark.id, function_id=function.id)
-    log.info("Benchmark created")
-
-    # Return the function since the benchmark record just points to the function anyway
-    return function
-
-
-@router.post("/{id}", response_model=BenchmarkResult)
+@router.post("/{benchmark_id}/{task_id}", response_model=BenchmarkResult)
 async def run_benchmark(
-    id: int,
+    benchmark_id: int,
+    task_id: int,
     benchmark_request: BenchmarkRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(authed_user),
@@ -97,9 +54,29 @@ async def run_benchmark(
     under_modal_usage_limit: bool = Depends(under_modal_usage_limit),
 ):
     """Request a new run of the benchmark"""
-    compatible = await _function_compatible_with_benchmark(
+    benchmark = await Benchmark.get(db, id=benchmark_id)
+    if not benchmark:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark {id} does not found!",
+        )
+    task = await BenchmarkTask.get(db, id=task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark {id} does not have a task with id {task_id}!",
+        )
+
+    function = await ModalFunction.get(db, id=benchmark_request.function_id)
+    if not function:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Function {id} does not exist!",
+        )
+
+    compatible = await _function_compatible_with_benchmark_task(
         function_id=benchmark_request.function_id,
-        benchmark_id=id,
+        task_id=task.id,
     )
     if not compatible:
         raise HTTPException(
@@ -113,7 +90,7 @@ async def run_benchmark(
 
     # Create the invocation request
     invocation_request = ModalInvocationRequest(
-        function_id=id,  # The benchmark function to run
+        function_id=task.function_id,  # The benchmark function to run
         args_kwargs_serialized=args_kwargs_serialized,
         args_blob_id=benchmark_request.args_blob_id,
     )
@@ -131,12 +108,11 @@ async def run_benchmark(
     )
 
     logger.info("Recording benchmark run in database")
-    # Create a record in the benchmark_runs table
     benchmark_run = BenchmarkRun(
-        benchmark_function_id=id,
-        function_id=benchmark_request.function_id,
+        benchmark_id=benchmark.id,
+        task_id=task.id,
+        function_id=function.id,
         invocation_id=invocation.id,
-        task_id=benchmark_request.task_id,
     )
     db.add(benchmark_run)
     await db.commit()
@@ -146,54 +122,47 @@ async def run_benchmark(
     invocation_data = invocation.model_dump()
 
     response = BenchmarkResult(
-        benchmark_id=id,
-        function_id=benchmark_request.function_id,
+        benchmark_id=benchmark.id,
+        function_id=function.id,
+        task_id=task.id,
         **invocation_data,
     )
     return response
 
 
-@router.get("/{benchmark_id}", response_model=list[BenchmarkResult])
-async def get_results_for_benchmark(
+@router.get("/{benchmark_id}/{task_id}", response_model=list[BenchmarkResult])
+async def get_results_for_benchmark_task(
     benchmark_id: int,
+    task_id: int,
     modal_client: Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
     """Return a list of results for the benchmark"""
-    # subquery to get the latest run of given benchmark for each function that has been benchmarked
-    latest_runs_subq = (
-        select(
-            BenchmarkRun.function_id,
-            # Using func.max to get the latest invocation per function_id
-            func.max(ModalInvocationLog.date_invoked).label("latest_date"),
+    benchmark = await Benchmark.get(db, id=benchmark_id)
+    if not benchmark:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark {benchmark_id} not found!",
         )
-        .join(
-            ModalInvocationResult,
-            BenchmarkRun.invocation_id == ModalInvocationResult.id,
+
+    task = await BenchmarkTask.get(db, id=task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Benchmark task with id {task_id} not found!",
         )
-        .join(ModalInvocationLog, ModalInvocationResult.log_id == ModalInvocationLog.id)
-        .where(BenchmarkRun.benchmark_function_id == benchmark_id)
-        .group_by(BenchmarkRun.function_id)
-        .subquery()
+
+    # Get the latest run for each function for the specified benchmark and task
+    latest_runs_query = (
+        select(BenchmarkRun, BenchmarkRun.date)
+        .where(
+            BenchmarkRun.benchmark_id == benchmark_id, BenchmarkRun.task_id == task_id
+        )
+        .distinct(BenchmarkRun.function_id)
+        .order_by(BenchmarkRun.function_id, BenchmarkRun.date.desc())
     )
 
-    # Main query to get the BenchmarkRun with the latest date for each function, attach the date it was invoked
-    query = (
-        select(BenchmarkRun, ModalInvocationLog.date_invoked)
-        .join(
-            ModalInvocationResult,
-            BenchmarkRun.invocation_id == ModalInvocationResult.id,
-        )
-        .join(ModalInvocationLog, ModalInvocationResult.log_id == ModalInvocationLog.id)
-        .join(
-            latest_runs_subq,
-            (BenchmarkRun.function_id == latest_runs_subq.c.function_id)
-            & (ModalInvocationLog.date_invoked == latest_runs_subq.c.latest_date),
-        )
-        .where(BenchmarkRun.benchmark_function_id == benchmark_id)
-    )
-
-    results = await db.execute(query)
+    results = await db.execute(latest_runs_query)
     benchmark_runs_with_date = results.all()
 
     benchmark_results = await _get_results_for_runs(
@@ -202,9 +171,9 @@ async def get_results_for_benchmark(
     return benchmark_results
 
 
-async def _function_compatible_with_benchmark(
+async def _function_compatible_with_benchmark_task(
     function_id: int,
-    benchmark_id: int,
+    task_id: int,
 ) -> bool:
     # TODO: implement me!
     return True
@@ -280,6 +249,7 @@ async def _get_results_for_runs(
             # Create the benchmark result
             result = BenchmarkResult(
                 benchmark_id=benchmark_run.benchmark_id,
+                task_id=benchmark_run.task_id,
                 function_id=benchmark_run.function_id,
                 status=status,
                 result=invocation_result,

@@ -1,8 +1,8 @@
 """add benchmark related tables
 
-Revision ID: bf4ad8e27da5
+Revision ID: 852df3ad8ad8
 Revises: b6b339c87a31
-Create Date: 2025-05-13 15:17:44.745706
+Create Date: 2025-05-14 14:24:44.406561
 
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "bf4ad8e27da5"
+revision: str = "852df3ad8ad8"
 down_revision: Union[str, None] = "b6b339c87a31"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

@@ -15,6 +15,9 @@ class Benchmark(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=True)
+    tasks: Mapped[list["BenchmarkTask"]] = relationship(
+        back_populates="benchmark", lazy="selectin"
+    )
 
 
 class BenchmarkTask(Base):
@@ -22,8 +25,14 @@ class BenchmarkTask(Base):
 
     __tablename__ = "benchmark_tasks"
     id: Mapped[int] = mapped_column(primary_key=True)
+
     benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
+    benchmark: Mapped["Benchmark"] = relationship(
+        back_populates="tasks", lazy="selectin"
+    )
+
     function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
+    function: Mapped[ModalFunction] = relationship(lazy="selectin")
 
 
 class BenchmarkRun(Base):
@@ -33,14 +42,13 @@ class BenchmarkRun(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # The benchmark that was run
     benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
     benchmark: Mapped[Benchmark] = relationship(
         "Benchmark", foreign_keys=[benchmark_id]
     )
 
-    # The benchmark task that was run
     task_id: Mapped[int] = mapped_column(ForeignKey(BenchmarkTask.id))
+    task: Mapped[BenchmarkTask] = relationship()
 
     # The function that was benchmarked
     function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))

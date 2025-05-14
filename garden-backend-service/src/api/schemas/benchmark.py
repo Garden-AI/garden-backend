@@ -9,8 +9,6 @@ from src.modal.status import AsyncModalJobStatus
 
 
 class BenchmarkRequest(BaseSchema):
-    # The id of the benchmarking task to run, i.e. Benchmark: MatBecnch Discovery -> Task: IS2RE
-    task_id: int
     # The id of the function to benchmark
     function_id: int
 
@@ -28,6 +26,9 @@ class BenchmarkResult(BaseSchema):
     # The id of the benchmark that was run
     benchmark_id: int
 
+    # The benchmark task
+    task_id: int
+
     # The id of the function benchmarked
     function_id: int
 
@@ -38,11 +39,14 @@ class BenchmarkResult(BaseSchema):
     result: Dict[str, Any] | None = None
 
 
-class BenchmarkMetadata(ModalFunctionMetadataResponse):
-    # For now benchmarks are no different from regular modal functions
-    pass
+class BenchmarkTaskMetadata(BaseSchema):
+    id: int
+    function: ModalFunctionMetadataResponse
 
 
-class BenchmarkCreateRequest(BaseSchema):
-    # The id of the function to register as a benchmark
-    function_id: int
+class BenchmarkMetadata(BaseSchema):
+    id: int
+    name: str
+    description: str | None = None
+    # tasks map to modal functions
+    tasks: list[BenchmarkTaskMetadata]
