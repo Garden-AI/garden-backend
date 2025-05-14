@@ -12,6 +12,7 @@ from structlog import get_logger
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
 from src.api.routes._utils import (
+    assert_citable,
     assert_deletable_by_user,
     assert_editable_by_user,
 )
@@ -272,6 +273,7 @@ async def update_garden(
         )
 
     assert_editable_by_user(garden, garden_patch_data, user)
+    assert_citable(garden, garden_patch_data)
 
     # Determine if a state transition is being requested
     state_transition = _determine_state_change(garden, garden_patch_data)

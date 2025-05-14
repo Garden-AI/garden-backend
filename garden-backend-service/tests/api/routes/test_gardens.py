@@ -864,3 +864,57 @@ async def test_search_gardens_rejects_invalid_sort_order(
     res = await client.post("/gardens/search", json=body)
     assert res.status_code == 400
     assert "Invalid sort order" in res.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_rejets_non_citable_patches(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # create a new garden with 1 author and no contributors
+    garden_data = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    garden_data["authors"] = ["Amy Wong"]
+    del garden_data["contributors"]
+    post_response = await client.post(
+        "/gardens",
+        json=garden_data,
+    )
+    assert post_response.status_code == 200
+    assert post_response.json()["authors"] == ["Amy Wong"]
+    assert post_response.json()["contributors"] == []
+    doi = post_response.json()["doi"]
+
+    # a patch removing the author should fail
+    patch_response = await client.patch(f"/gardens/{doi}", json={"authors": []})
+    assert patch_response.status_code == 409
+
+    # add a contributor
+    patch_response = await client.patch(
+        f"/gardens/{doi}", json={"contributors": ["Wernstrom"]}
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["contributors"] == ["Wernstrom"]
+
+    # we should now be able to remove the author
+    patch_response = await client.patch(f"/gardens/{doi}", json={"authors": []})
+    assert patch_response.status_code == 200
+    assert patch_response.json()["authors"] == []
+
+    # removing the contributor should fail
+    patch_response = await client.patch(f"/gardens/{doi}", json={"contributors": []})
+    assert patch_response.status_code == 409
+
+    # add another author
+    patch_response = await client.patch(
+        f"/gardens/{doi}", json={"authors": ["Amy Wong"]}
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["authors"] == ["Amy Wong"]
+
+    # we should now be able to remove the contributor
+    patch_response = await client.patch(f"/gardens/{doi}", json={"contributors": []})
+    assert patch_response.status_code == 200
+    assert patch_response.json()["contributors"] == []
