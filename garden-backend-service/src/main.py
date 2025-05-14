@@ -14,7 +14,6 @@ from src.api.dependencies.database import (
 from src.api.routes import (
     benchmarks,
     docker_push_token,
-    doi,
     entrypoints,
     gardens,
     greet,
@@ -75,7 +74,6 @@ add_process_time_middleware(app)
 add_request_id_middleware(app)
 
 app.include_router(greet.router)
-app.include_router(doi.router)
 app.include_router(docker_push_token.router)
 app.include_router(notebook.router)
 app.include_router(hello_database.router)
