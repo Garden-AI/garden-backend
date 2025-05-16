@@ -20,7 +20,7 @@ users_saved_gardens = Table(
     "users_saved_gardens",
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id")),
-    Column("garden_id", Integer, ForeignKey("gardens.id")),
+    Column("garden_id", Integer, ForeignKey("gardens.id", ondelete="CASCADE")),
     PrimaryKeyConstraint("user_id", "garden_id"),
 )
 
