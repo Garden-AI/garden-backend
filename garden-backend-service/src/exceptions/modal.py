@@ -29,4 +29,9 @@ def handle_modal_exception(request: Request, error: ModalException):
     return JSONResponse(
         status_code=error.status_code,
         content=content,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
     )
