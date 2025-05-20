@@ -80,6 +80,25 @@ class ModalFileParseResults:
     local_entrypoints: list[ModalLocalEntrypointInfo] = field(default_factory=list)
 
 
+def _validate_module_level_imports(tree: ast.Module) -> None:
+    """Check that there are no module-level imports other than 'import modal'."""
+    for node in tree.body:
+        match node:
+            case ast.Import(names=names):
+                for alias in names:
+                    if alias.name != "modal":
+                        raise ModalException(
+                            detail=f"Module-level import '{alias.name}' is not allowed.",
+                            suggested_fix="Place all imports other than 'import modal' inside function or class scopes.",
+                        )
+            case ast.ImportFrom(module=module_name):
+                if module_name != "modal":
+                    raise ModalException(
+                        detail=f"Module-level import 'from {module_name}' is not allowed.",
+                        suggested_fix="Place all imports other than 'import modal' inside function or class scopes.",
+                    )
+
+
 def parse_modal_file(contents: str) -> ModalFileParseResults:
     """Parse the contents of a user's modal file into image/app/function metadata.
 
@@ -94,6 +113,9 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
             detail=f"Could not parse Modal file: {str(e)}",
             suggested_fix="Make sure the Modal file is valid Python code.",
         )
+
+    # Validate that there are no disallowed module-level imports
+    _validate_module_level_imports(tree)
 
     images = {}
     apps = {}
