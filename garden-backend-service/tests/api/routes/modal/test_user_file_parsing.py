@@ -103,3 +103,53 @@ class MyClass:
     result = parse_modal_file(contents)
     assert len(result.functions) == 1
     assert result.functions[0].function_name == "MyClass.method"
+
+
+def test_parse_modal_file_accepts_stdlib_import():
+    contents = """
+import sys
+import modal
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return sys.version
+    """
+    result = parse_modal_file(contents)
+    assert len(result.functions) == 1
+    assert result.functions[0].function_name == "hello"
+
+
+def test_parse_modal_file_accepts_stdlib_from_import():
+    contents = """
+from os import path
+import modal
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return path.join("a", "b")
+    """
+    result = parse_modal_file(contents)
+    assert len(result.functions) == 1
+    assert result.functions[0].function_name == "hello"
+
+
+def test_parse_modal_file_rejects_nonexistent_module():
+    contents = """
+import modal
+import definitelynotamodule
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return "Hello World"
+    """
+    with pytest.raises(ModalException) as excinfo:
+        parse_modal_file(contents)
+    assert "Module-level import 'definitelynotamodule' is not allowed" in str(
+        excinfo.value.detail
+    )

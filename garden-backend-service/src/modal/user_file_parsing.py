@@ -81,21 +81,26 @@ class ModalFileParseResults:
 
 
 def _validate_module_level_imports(tree: ast.Module) -> None:
-    """Check that there are no module-level imports other than 'import modal'."""
+    from .utils import is_stdlib_module  # moved import here to avoid circular import
+
+    """Check that there are no module-level imports other than 'import modal' or stdlib imports."""
     for node in tree.body:
         match node:
             case ast.Import(names=names):
                 for alias in names:
-                    if alias.name != "modal":
+                    if alias.name != "modal" and not is_stdlib_module(alias.name):
                         raise ModalException(
                             detail=f"Module-level import '{alias.name}' is not allowed.",
-                            suggested_fix="Place all imports other than 'import modal' inside function or class scopes.",
+                            suggested_fix="Place all imports other than 'import modal' or stdlib imports inside function or class scopes.",
                         )
             case ast.ImportFrom(module=module_name):
-                if module_name != "modal":
+                # Only allow if module_name is 'modal' or a valid stdlib module
+                if module_name is None or (
+                    module_name != "modal" and not is_stdlib_module(module_name)
+                ):
                     raise ModalException(
                         detail=f"Module-level import 'from {module_name}' is not allowed.",
-                        suggested_fix="Place all imports other than 'import modal' inside function or class scopes.",
+                        suggested_fix="Place all imports other than 'import modal' or stdlib imports inside function or class scopes.",
                     )
 
 
