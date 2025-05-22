@@ -1,5 +1,3 @@
-import importlib.util
-import sysconfig
 from datetime import datetime
 from typing import Awaitable, Callable, Mapping
 
@@ -231,17 +229,3 @@ async def stop_modal_app(
         source=api_pb2.APP_STOP_SOURCE_PYTHON_CLIENT,
     )
     await retry_transient_errors(modal_client.stub.AppStop, stop_request)
-
-
-def is_stdlib_module(module_name: str) -> bool:
-    """Return True if the given module name is part of the Python standard library."""
-    try:
-        spec = importlib.util.find_spec(module_name)
-        if spec is None or spec.origin is None:
-            return False
-        if spec.origin in ("built-in", "frozen"):
-            return True
-        stdlib_path = sysconfig.get_paths()["stdlib"]
-        return spec.origin.startswith(stdlib_path)
-    except Exception:
-        return False
