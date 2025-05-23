@@ -80,6 +80,34 @@ def assert_editable_by_user(
     return
 
 
+def assert_citable(
+    garden: Garden,
+    garden_patch_request: GardenPatchRequest,
+) -> None:
+    """Check that there will be at least one author or one contributor after updating the garden."""
+    if (
+        garden_patch_request.authors is not None
+        or garden_patch_request.contributors is not None
+    ):
+        # Get the authors and contributors that will be present after the update
+        updated_authors = (
+            garden_patch_request.authors
+            if garden_patch_request.authors is not None
+            else garden.authors
+        )
+        updated_contributors = (
+            garden_patch_request.contributors
+            if garden_patch_request.contributors is not None
+            else garden.contributors
+        )
+
+        if not (updated_authors or updated_contributors):
+            raise HTTPException(
+                status_code=409,
+                detail="Garden must have at least one author or one contributor",
+            )
+
+
 async def is_doi_registered(doi: str) -> bool:
     """
     Check if a DOI is registered in the real world by querying the doi.org resolver.
