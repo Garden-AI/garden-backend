@@ -868,7 +868,7 @@ async def test_search_gardens_rejects_invalid_sort_order(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_patch_garden_rejets_non_citable_patches(
+async def test_patch_garden_rejects_non_citable_patches(
     client,
     mock_db_session,
     override_authenticated_dependency,
