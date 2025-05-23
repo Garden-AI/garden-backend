@@ -86,18 +86,18 @@ def assert_citable(
 ) -> None:
     """Check that there will be at least one author or one contributor after updating the garden."""
     if (
-        garden_pactch_request.authors is not None
-        or garden_pactch_request.contributors is not None
+        garden_patch_request.authors is not None
+        or garden_patch_request.contributors is not None
     ):
         # Get the authors and contributors that will be present after the update
         updated_authors = (
-            garden_pactch_request.authors
-            if garden_pactch_request.authors is not None
+            garden_patch_request.authors
+            if garden_patch_request.authors is not None
             else garden.authors
         )
         updated_contributors = (
-            garden_pactch_request.contributors
-            if garden_pactch_request.contributors is not None
+            garden_patch_request.contributors
+            if garden_patch_request.contributors is not None
             else garden.contributors
         )
 
