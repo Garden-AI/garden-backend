@@ -82,7 +82,7 @@ def assert_editable_by_user(
 
 def assert_citable(
     garden: Garden,
-    garden_pactch_request: GardenPatchRequest,
+    garden_patch_request: GardenPatchRequest,
 ) -> None:
     """Check that there will be at least one author or one contributor after updating the garden."""
     if (
