@@ -79,7 +79,7 @@ async def run_benchmark(
     if not compatible:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Function {body.function_id} is not compatible with requested benchmark {body.benchmark_id}",
+            detail=f"Function {benchmark_request.function_id} is not compatible with requested benchmark {benchmark_id}",
         )
 
     logger.info("Creating invocation request.")
