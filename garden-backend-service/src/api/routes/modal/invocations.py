@@ -145,7 +145,7 @@ async def invoke_modal_fn_async(
 
     # Add monitoring to background tasks
     background_tasks.add_task(
-        monitor_modal_invocation, invocation, db_result, modal_client, settings
+        monitor_modal_invocation, invocation, db_result.id, modal_client, settings
     )
 
     # Return the invocation ID immediately
