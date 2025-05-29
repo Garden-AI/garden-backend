@@ -54,30 +54,34 @@ async def _process_modal_invocation(
 
     Tell modal to cancel the invocation if it has been longer than
     """
-    # Try and get the invocation outputs
+    # create result to hold the parsed output data
+    result = ModalInvocationResult(status=AsyncModalJobStatus.PENDING)
+
+    # poll for the invocation outputs
     outputs_response = await invocation.pop_function_call_outputs(
         timeout=timeout_seconds,
         clear_on_success=True,
     )
-    result = ModalInvocationResult(status=AsyncModalJobStatus.PENDING)
 
-    # If we have outputs, the invocation suceeded
+    # parse the outputs if we got any
     if outputs_response.outputs:
-        log.debug("Modal invocation succeeded")
+        if outputs_response.outputs[0].result.exception:
+            log.info("Modal invocation failed at runtime!")
+            result.status = AsyncModalJobStatus.ERROR
+            result.error = outputs_response.outputs[0].result.exception
+        else:
+            result.status = AsyncModalJobStatus.DONE
         result.output = outputs_response.outputs[0].SerializeToString()
-        result.status = AsyncModalJobStatus.DONE
-
-    # If there are no outputs and unfinished inputs the invocation has timed out, cancel it!
+    # If there are no outputs and unfinished inputs the invocation has timed out
     elif outputs_response.num_unfinished_inputs > 0:
-        log.debug("Modal invocation timed out")
         result.status = AsyncModalJobStatus.TIMED_OUT
         result.error = "Function Timed out!"
 
+    # Something else went wrong if the status is still pending
     if result.status == AsyncModalJobStatus.PENDING:
-        log.debug("Something else went wrong!")
-        # Something else wernt wrong
         result.error = f"{outputs_response}"
         result.status = AsyncModalJobStatus.ERROR
+
     return result
 
 
