@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from structlog import get_logger
@@ -119,7 +119,7 @@ async def run_benchmark(
         benchmark_id=benchmark.id,
         function_id=function.id,
         task_id=task.id,
-        status=invocation.status,
+        status=AsyncModalJobStatus(invocation.status),
     )
     return response
 
@@ -128,6 +128,7 @@ async def run_benchmark(
 async def get_results_for_benchmark_task(
     benchmark_id: int,
     task_id: int,
+    include_failed: bool = Query(default=False),
     modal_client: Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
 ):
@@ -160,7 +161,11 @@ async def get_results_for_benchmark_task(
     benchmark_runs_with_date = results.all()
 
     benchmark_results = await _get_results_for_runs(
-        benchmark_runs_with_date, db, modal_client, logger
+        benchmark_runs_with_date,
+        db,
+        modal_client,
+        logger,
+        include_failed,
     )
     return benchmark_results
 
@@ -212,6 +217,7 @@ async def _get_results_for_runs(
     db: AsyncSession,
     modal_client: Client,
     logger,
+    include_failed: bool,
 ) -> list[BenchmarkResult]:
     """"""
     results = []
@@ -230,15 +236,26 @@ async def _get_results_for_runs(
                 )
                 continue
 
-            # Initialize result to None
-            invocation_result = None
-
             # The status is already an AsyncModalJobStatus enum value
             status = invocation_output.get("status", AsyncModalJobStatus.PENDING)
 
-            # Only try to deserialize if we have a completed run with a result
+            # Filter based on status
+            status_filters = [AsyncModalJobStatus.DONE]
+            if include_failed:
+                status_filters.append(AsyncModalJobStatus.ERROR)
+                status_filters.append(AsyncModalJobStatus.TIMED_OUT)
+
+            # Skip if status doesn't match our filters
+            if status not in status_filters:
+                continue
+
+            # Initialize result and error to None
+            invocation_result = None
+            error = None
+
+            # Handle successful runs with results
             if (
-                status is AsyncModalJobStatus.DONE
+                status == AsyncModalJobStatus.DONE
                 and "result" in invocation_output
                 and invocation_output["result"]
             ):
@@ -246,6 +263,8 @@ async def _get_results_for_runs(
                     invocation_result = deserialize(
                         invocation_output["result"].data, modal_client
                     )
+                    # Get exception from result if it exists
+                    error = invocation_output["result"].exception or None
                 except Exception as e:
                     logger.error(
                         "Failed to deserialize invocation result",
@@ -253,6 +272,12 @@ async def _get_results_for_runs(
                         invocation_id=benchmark_run.invocation_id,
                         error=str(e),
                     )
+                    # For successful runs that failed to deserialize, treat as error
+                    error = f"Failed to deserialize result: {str(e)}"
+
+            # Handle failed runs
+            elif status in [AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT]:
+                error = invocation_output.get("error")
 
             # Create the benchmark result
             result = BenchmarkResult(
@@ -262,6 +287,7 @@ async def _get_results_for_runs(
                 status=status,
                 result=invocation_result,
                 date_invoked=date_invoked,
+                error=error,
             )
             results.append(result)
         except Exception as e:
