@@ -15,8 +15,8 @@ from src.exceptions.modal import ModalException
 from src.modal.user_file_parsing import (
     ModalFileParseResults,
     ModalLocalEntrypointInfo,
+    _image_default,
     parse_modal_file,
-    _image_default
 )
 from src.models import User
 
@@ -64,7 +64,7 @@ async def parse_modal_file_metadata(
     if results.images:
         base_image = results.images[0].base_image
     else:
-        base_image = _image_default().base_image # If no images used resort to default
+        base_image = _image_default().base_image
 
     response = ModalFileMetadataResponse(
         app_name=app_info.app_name,
