@@ -31,6 +31,21 @@ async def auto_deletion_background_task(
 
     while True:
         logger.info("Auto-deletion task starting sweep...")
+
+        # If no modal client was provided at startup, try to create one now
+        current_modal_client = modal_client
+        if current_modal_client is None:
+            try:
+                from src.api.dependencies.modal import get_modal_client
+
+                current_modal_client = await get_modal_client(settings)
+                logger.info("Successfully created modal client for this sweep")
+            except Exception as e:
+                logger.warning(f"Failed to create modal client for this sweep: {e}")
+                logger.warning(
+                    "Will skip stopping and deleting Modal apps, preserving database records for retry on next sweep"
+                )
+
         num_marked_gardens = await mark_entity_for_deletion(
             Garden,
             session_maker,
@@ -62,7 +77,7 @@ async def auto_deletion_background_task(
             Garden, session_maker, deletion_age_limit
         )
         num_modal_apps_deleted = await delete_marked_entity(
-            ModalApp, session_maker, deletion_age_limit, modal_client
+            ModalApp, session_maker, deletion_age_limit, current_modal_client
         )
 
         log = logger.bind(

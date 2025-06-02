@@ -5,12 +5,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from structlog import get_logger
 
 import src.logging  # noqa  # import to ensure logger is configured
 from src.api.dependencies.database import (
     async_init,
     get_db_session_maker,
 )
+from src.api.dependencies.modal import get_modal_client
 from src.api.routes import (
     benchmarks,
     docker_push_token,
@@ -32,6 +34,8 @@ from src.middleware.logging import (
     add_request_id_middleware,
 )
 
+logger = get_logger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,9 +53,20 @@ async def lifespan(app: FastAPI):
     if settings.GARDEN_ENV in ["dev", "local"]:
         app.include_router(load_test.router)
 
+    # Try to create modal client for auto-deletion task
+    # If this fails, the task will retry on each sweep
+    modal_client = None
+    try:
+        modal_client = await get_modal_client(settings)
+    except Exception as e:
+        logger.warning(f"Failed to create modal client at startup: {e}")
+        logger.info("Auto-deletion task will retry creating modal client on each sweep")
+
     # kick off long-running auto-deletion task
     # dont await it, we want it to keep running while we move on
-    asyncio.create_task(auto_deletion_background_task(settings, session_maker))
+    asyncio.create_task(
+        auto_deletion_background_task(settings, session_maker, modal_client)
+    )
 
     # Everything before this yield happens on startup
     yield
