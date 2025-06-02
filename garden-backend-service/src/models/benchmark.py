@@ -31,7 +31,9 @@ class BenchmarkTask(Base):
         back_populates="tasks", lazy="selectin"
     )
 
-    function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
+    function_id: Mapped[int] = mapped_column(
+        ForeignKey(ModalFunction.id, ondelete="CASCADE")
+    )
     function: Mapped[ModalFunction] = relationship(lazy="selectin")
 
 
@@ -47,11 +49,15 @@ class BenchmarkRun(Base):
         "Benchmark", foreign_keys=[benchmark_id]
     )
 
-    task_id: Mapped[int] = mapped_column(ForeignKey(BenchmarkTask.id))
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey(BenchmarkTask.id, ondelete="CASCADE")
+    )
     task: Mapped[BenchmarkTask] = relationship()
 
     # The function that was benchmarked
-    function_id: Mapped[int] = mapped_column(ForeignKey(ModalFunction.id))
+    function_id: Mapped[int] = mapped_column(
+        ForeignKey(ModalFunction.id, ondelete="CASCADE")
+    )
     function: Mapped[ModalFunction] = relationship(
         "ModalFunction", foreign_keys=[function_id]
     )
