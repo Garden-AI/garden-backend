@@ -98,7 +98,9 @@ async def monitor_modal_invocation(
         result = await ModalInvocationResult.get(session, id=db_result_id)
     if result is None:
         # We don't have this result in the db, bail
-        log.info(f"modal invocation result with id {db_result.id} not found in database")
+        log.info(
+            f"modal invocation result with id {db_result_id} not found in database"
+        )
         return
 
     try:
