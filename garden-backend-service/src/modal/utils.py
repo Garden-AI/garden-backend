@@ -46,48 +46,92 @@ async def resolve_modal_invocation(
         raise ValueError(f"No Modal Function with id: {id} found!")
 
 
+async def _process_modal_invocation(
+    invocation: modal._functions._Invocation,
+    timeout_seconds: float,
+) -> ModalInvocationResult:
+    """Parse output and errors from raw modal invocations.
+
+    Tell modal to cancel the invocation if it has been longer than timeout_seconds
+    """
+    # create result to hold the parsed output data
+    result = ModalInvocationResult(status=AsyncModalJobStatus.PENDING)
+
+    # poll for the invocation outputs
+    outputs_response = await invocation.pop_function_call_outputs(
+        timeout=timeout_seconds,
+        clear_on_success=True,
+    )
+
+    # parse the outputs if we got any
+    if outputs_response.outputs:
+        if outputs_response.outputs[0].result.exception:
+            log.info("Modal invocation failed at runtime!")
+            result.status = AsyncModalJobStatus.ERROR
+            result.error = outputs_response.outputs[0].result.exception
+        else:
+            result.status = AsyncModalJobStatus.DONE
+        result.output = outputs_response.outputs[0].SerializeToString()
+    # If there are no outputs and unfinished inputs the invocation has timed out
+    elif outputs_response.num_unfinished_inputs > 0:
+        result.status = AsyncModalJobStatus.TIMED_OUT
+        result.error = "Function Timed out!"
+
+    # Something else went wrong if the status is still pending
+    if result.status == AsyncModalJobStatus.PENDING:
+        result.error = f"{outputs_response}"
+        result.status = AsyncModalJobStatus.ERROR
+
+    return result
+
+
 async def monitor_modal_invocation(
     invocation: modal._functions._Invocation,
-    db_result: ModalInvocationResult,
+    db_result_id: int,
     client: modal.Client,
     settings: Settings,
 ):
+    """Background task for asynchronously polling modal for invocation outputs/errors"""
+
     session_maker = await get_db_session_maker(settings=settings)
     async with session_maker() as session:
-        if result := await ModalInvocationResult.get(session, id=db_result.id):
-            try:
-                # Try and get the invocation outputs
-                outputs_response = await invocation.pop_function_call_outputs(
-                    timeout=settings.MODAL_TIMEOUT_SECONDS,
-                    clear_on_success=True,
-                )
-                # If we have outputs, the invocation suceeded, write the outputs to the DB
-                if outputs_response.outputs:
-                    result.output = outputs_response.outputs[0].SerializeToString()
-                    await resolve_modal_invocation(
-                        result, AsyncModalJobStatus.DONE, session
-                    )
-                    await session.commit()
-                    return
-                # If there are no outputs and unfinished inputs the invocation has timed out, cancel it!
-                if outputs_response.num_unfinished_inputs > 0:
-                    await cancel_modal_invocation(result, client)
-                    result.error = "Timed out!"
-                    await resolve_modal_invocation(
-                        result, AsyncModalJobStatus.TIMED_OUT, session
-                    )
-                    raise ModalException("Modal Invocation Timed out!", status_code=408)
-                else:
-                    raise ValueError(f"{outputs_response}")
-            except ModalException:
-                # Reraise the exception if we already wrapped it in a ModalException
-                raise
-            except Exception as e:
-                # Otherwise, write the error to the DB
-                result.error = str(e)
-                status = AsyncModalJobStatus.ERROR
-                await resolve_modal_invocation(result, status, session)
-                await session.commit()
+        result = await ModalInvocationResult.get(session, id=db_result_id)
+    if result is None:
+        # We don't have this result in the db, bail
+        log.info(
+            f"modal invocation result with id {db_result_id} not found in database"
+        )
+        return
+
+    try:
+        # poll for and parse the outputs from modal,
+        log.info(f"Polling modal for invocation results for invocation {db_result_id}")
+        processed_result = await _process_modal_invocation(
+            invocation, settings.MODAL_TIMEOUT_SECONDS
+        )
+
+        # update the existing record with parsed info
+        result.status = processed_result.status
+        result.output = processed_result.output
+        result.error = processed_result.error
+        result.log.date_resolved = datetime.now()
+
+        if result.status in [AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT]:
+            # send a request to cancel the invocation on modal's end, just to be safe
+            await cancel_modal_invocation(result, client)
+
+    except Exception as e:
+        log.error(f"Getting outputs from modal failed: {e}")
+        result.error = str(e)
+        result.status = AsyncModalJobStatus.ERROR
+
+    try:
+        # write any updates to the db
+        async with session_maker() as session:
+            session.add(result)
+            await session.commit()
+    except Exception as e:
+        log.error(f"Failed to update modal invocation result: {e}")
 
 
 async def monitor_modal_deployment(
