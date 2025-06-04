@@ -15,6 +15,9 @@ class ModalFunctionMetadata(CommonFunctionMetadata):
     # modal supports conda requirements but entrypoints don't
     conda_requirements: list[str] = Field(default_factory=list)
     example_usage: str = ""
+    num_invocations: int = Field(
+        default=0, description="The number of times this function has been invoked"
+    )
 
 
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):

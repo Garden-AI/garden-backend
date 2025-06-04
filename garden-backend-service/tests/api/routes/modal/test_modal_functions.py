@@ -25,6 +25,7 @@ async def test_get_modal_function(
         == mock_modal_app_create_request_one_function["modal_functions"][0]["title"]
     )
     assert get_function_data["hardware_spec"] is not None
+    assert get_function_data["num_invocations"] is not None
 
 
 @pytest.mark.asyncio
