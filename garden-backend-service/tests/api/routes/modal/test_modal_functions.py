@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 
 from tests.utils import post_modal_app
@@ -135,3 +137,55 @@ async def test_patch_modal_function_partial_update(
     assert patch_response.status_code == 200
     patched_data = patch_response.json()
     assert set(patched_data["tags"]) == set(["Some", "New", "Tags"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_modal_function_num_invocations(
+    client,
+    mock_db_session,
+    mock_modal_publisher_auth_state,
+    mock_modal_app_create_request_one_function,
+    override_sandboxed_functions,
+    mocker,
+):
+    # Create a modal app which adds a modal function
+    create_app_response = await post_modal_app(
+        client, mock_modal_app_create_request_one_function
+    )
+    created_function_id = create_app_response["modal_functions"][0]["id"]
+
+    # "Invoke" the function a few times
+    # Mock the parts of the invocation that interact with Modal
+    # to avoid external calls
+    mock_function_obj = mocker.MagicMock()
+    mock_function_obj.object_id = "mock_function_id"
+    mock_invocation_obj = mocker.AsyncMock()
+    mock_invocation_obj.function_call_id = "mock_call_id"
+
+    mocker.patch(
+        "src.api.routes.modal.invocations._fetch_modal_function",
+        return_value=mock_function_obj,
+    )
+    mocker.patch(
+        "src.api.routes.modal.invocations._create_invocation",
+        return_value=mock_invocation_obj,
+    )
+    mocker.patch("src.api.routes.modal.invocations.monitor_modal_invocation")
+
+    num_test_invocations = 3
+    for _ in range(num_test_invocations):
+        invocation_payload = {
+            "function_id": created_function_id,
+            "args_kwargs_serialized": base64.b64encode(b"test_payload").decode("utf-8"),
+        }
+        invoke_response = await client.post(
+            "/modal-invocations/async", json=invocation_payload
+        )
+        assert invoke_response.status_code == 200
+
+    # Get the modal function and check num_invocations
+    get_function_response = await client.get(f"/modal-functions/{created_function_id}")
+    assert get_function_response.status_code == 200
+    get_function_data = get_function_response.json()
+    assert get_function_data["num_invocations"] == num_test_invocations

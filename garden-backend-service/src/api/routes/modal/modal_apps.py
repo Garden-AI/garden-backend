@@ -67,7 +67,7 @@ async def add_modal_app(
     )
     modal_app_db_model.modal_app_id = app_id
     await db.commit()
-
+    await db.refresh(modal_app_db_model)
     return modal_app_db_model
 
 
@@ -105,7 +105,7 @@ async def add_modal_app_async(
         modal_app_db_model.id,
         settings,
     )
-
+    await db.refresh(modal_app_db_model)
     return modal_app_db_model
 
 
@@ -146,7 +146,7 @@ async def redeploy_modal_app(
         modal_app.id,
         settings,
     )
-
+    await db.refresh(modal_app)
     return modal_app
 
 
