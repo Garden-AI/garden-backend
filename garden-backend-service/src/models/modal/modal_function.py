@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base
 
 if TYPE_CHECKING:
+    from src.models.modal.invocations import ModalInvocationLog
     from src.models.modal.modal_app import ModalApp
     from src.models.user import User
 
@@ -53,6 +54,16 @@ class ModalFunction(Base):
     modal_app: Mapped[ModalApp] = relationship(
         ModalApp, back_populates="modal_functions", lazy="selectin"
     )
+
+    invocation_logs: Mapped[list["ModalInvocationLog"]] = relationship(
+        "ModalInvocationLog",
+        back_populates="function",
+        lazy="selectin",
+    )
+
+    @property
+    def num_invocations(self) -> int:
+        return len(self.invocation_logs)
 
     @property
     def owner(self) -> User:

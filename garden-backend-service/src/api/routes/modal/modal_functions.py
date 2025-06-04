@@ -41,7 +41,11 @@ async def get_modal_function(
     return modal_function
 
 
-@router.get("", status_code=status.HTTP_200_OK)
+@router.get(
+    "",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ModalFunctionMetadataResponse],
+)
 async def get_modal_functions(
     db: AsyncSession = Depends(get_db_session),
     *,
@@ -80,7 +84,7 @@ async def get_modal_functions(
         stmt = stmt.where(ModalFunction.year == year)
 
     result = await db.scalars(stmt.limit(limit))
-    return result.all()
+    return list(result.all())
 
 
 @router.patch("/{id}", response_model=ModalFunctionMetadataResponse)
