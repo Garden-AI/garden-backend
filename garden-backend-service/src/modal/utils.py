@@ -50,9 +50,9 @@ async def _process_modal_invocation(
     invocation: modal._functions._Invocation,
     timeout_seconds: float,
 ) -> ModalInvocationResult:
-    """Parse ouptut and errors from raw modal invocations.
+    """Parse output and errors from raw modal invocations.
 
-    Tell modal to cancel the invocation if it has been longer than
+    Tell modal to cancel the invocation if it has been longer than timeout_seconds
     """
     # create result to hold the parsed output data
     result = ModalInvocationResult(status=AsyncModalJobStatus.PENDING)
@@ -98,7 +98,7 @@ async def monitor_modal_invocation(
         result = await ModalInvocationResult.get(session, id=db_result_id)
     if result is None:
         # We don't have this result in the db, bail
-        log.info("modal invocation result with id {db_result.id} not found in database")
+        log.info(f"modal invocation result with id {db_result.id} not found in database")
         return
 
     try:
