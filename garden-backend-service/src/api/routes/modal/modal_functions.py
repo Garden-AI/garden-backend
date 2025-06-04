@@ -57,7 +57,7 @@ async def get_modal_functions(
     draft: bool | None = Query(None),
     year: str | None = Query(None),
     limit: int = Query(50, le=100),
-) -> list[ModalFunction]:
+) -> list[ModalFunctionMetadataResponse]:
     """Fetch multiple modal functions according to query parameters."""
     stmt = select(ModalFunction)
 
