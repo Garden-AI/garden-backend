@@ -54,23 +54,25 @@ async def lifespan(app: FastAPI):
         app.include_router(load_test.router)
 
     # Try to create modal client for auto-deletion task
-    # If this fails, the task will retry on each sweep
     modal_client = None
     try:
         modal_client = await get_modal_client(settings)
     except Exception as e:
         logger.warning(f"Failed to create modal client at startup: {e}")
-        logger.info("Auto-deletion task will retry creating modal client on each sweep")
 
-    # kick off long-running auto-deletion task
-    # dont await it, we want it to keep running while we move on
-    asyncio.create_task(
-        auto_deletion_background_task(settings, session_maker, modal_client)
-    )
+    deletion_task = None
+    if modal_client is not None:
+        # kick off long-running auto-deletion task
+        # dont await it, we want it to keep running while we move on
+        deletion_task = asyncio.create_task(
+            auto_deletion_background_task(settings, session_maker, modal_client)
+        )
 
     # Everything before this yield happens on startup
     yield
     # Eveything after the yield happens on shutdown
+    if deletion_task is not None:
+        deletion_task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
