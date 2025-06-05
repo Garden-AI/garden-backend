@@ -32,7 +32,7 @@ class BenchmarkTask(Base):
     )
 
     function_id: Mapped[int] = mapped_column(
-        ForeignKey(ModalFunction.id, ondelete="CASCADE")
+        ForeignKey(ModalFunction.id, ondelete="SET NULL")
     )
     function: Mapped[ModalFunction] = relationship(lazy="selectin")
 
@@ -50,13 +50,13 @@ class BenchmarkRun(Base):
     )
 
     task_id: Mapped[int] = mapped_column(
-        ForeignKey(BenchmarkTask.id, ondelete="CASCADE")
+        ForeignKey(BenchmarkTask.id, ondelete="SET NULL")
     )
     task: Mapped[BenchmarkTask] = relationship()
 
     # The function that was benchmarked
     function_id: Mapped[int] = mapped_column(
-        ForeignKey(ModalFunction.id, ondelete="CASCADE")
+        ForeignKey(ModalFunction.id, ondelete="SET NULL")
     )
     function: Mapped[ModalFunction] = relationship(
         "ModalFunction", foreign_keys=[function_id]
@@ -64,7 +64,7 @@ class BenchmarkRun(Base):
 
     # The invocation result that contains the task output
     invocation_id: Mapped[int] = mapped_column(
-        ForeignKey(ModalInvocationResult.id, ondelete="CASCADE")
+        ForeignKey(ModalInvocationResult.id, ondelete="SET NULL")
     )
     invocation: Mapped[ModalInvocationResult] = relationship("ModalInvocationResult")
 
