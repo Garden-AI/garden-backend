@@ -49,13 +49,13 @@ class BenchmarkRun(Base):
         "Benchmark", foreign_keys=[benchmark_id]
     )
 
-    task_id: Mapped[int] = mapped_column(
+    task_id: Mapped[int | None] = mapped_column(
         ForeignKey(BenchmarkTask.id, ondelete="SET NULL")
     )
     task: Mapped[BenchmarkTask] = relationship()
 
     # The function that was benchmarked
-    function_id: Mapped[int] = mapped_column(
+    function_id: Mapped[int | None] = mapped_column(
         ForeignKey(ModalFunction.id, ondelete="SET NULL")
     )
     function: Mapped[ModalFunction] = relationship(
@@ -63,7 +63,7 @@ class BenchmarkRun(Base):
     )
 
     # The invocation result that contains the task output
-    invocation_id: Mapped[int] = mapped_column(
+    invocation_id: Mapped[int | None] = mapped_column(
         ForeignKey(ModalInvocationResult.id, ondelete="SET NULL")
     )
     invocation: Mapped[ModalInvocationResult] = relationship("ModalInvocationResult")
