@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from structlog import get_logger
 
+import modal
 from src.config import Settings
 from src.models import Garden, ModalApp
 
@@ -20,7 +21,7 @@ logger = get_logger(__name__)
 async def auto_deletion_background_task(
     settings: Settings,
     session_maker: async_sessionmaker,
-    modal_client=None,
+    modal_client: modal.Client,
 ):
     task_interval: timedelta = timedelta(
         seconds=settings.AUTO_DELETION_INTERVAL_SECONDS
@@ -31,6 +32,7 @@ async def auto_deletion_background_task(
 
     while True:
         logger.info("Auto-deletion task starting sweep...")
+
         num_marked_gardens = await mark_entity_for_deletion(
             Garden,
             session_maker,
@@ -62,7 +64,10 @@ async def auto_deletion_background_task(
             Garden, session_maker, deletion_age_limit
         )
         num_modal_apps_deleted = await delete_marked_entity(
-            ModalApp, session_maker, deletion_age_limit, modal_client
+            ModalApp,
+            session_maker,
+            deletion_age_limit,
+            modal_client=modal_client,
         )
 
         log = logger.bind(

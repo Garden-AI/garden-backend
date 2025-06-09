@@ -13,7 +13,11 @@ gardens_modal_functions = Table(
     "gardens_modal_functions",
     Base.metadata,
     Column("garden_id", ForeignKey("gardens.id"), primary_key=True),
-    Column("modal_function_id", ForeignKey("modal_functions.id"), primary_key=True),
+    Column(
+        "modal_function_id",
+        ForeignKey("modal_functions.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 users_saved_gardens = Table(
