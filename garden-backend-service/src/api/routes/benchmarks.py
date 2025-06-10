@@ -20,7 +20,7 @@ from src.api.schemas.benchmark import (
 from src.api.schemas.modal.invocations import ModalInvocationRequest
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
-from src.models import Garden, User
+from src.models import User
 from src.models.benchmark import Benchmark, BenchmarkRun, BenchmarkTask
 from src.models.modal.modal_function import ModalFunction
 
@@ -79,12 +79,12 @@ async def run_benchmark(
     if not compatible:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Function {body.function_id} is not compatible with requested benchmark {body.benchmark_id}",
+            detail=f"Function {benchmark_request.function_id} is not compatible with requested benchmark {benchmark_id}",
         )
 
     logger.info("Creating invocation request.")
-    # Populate args_kwargs_serialized with garden doi / function name
-    args_kwargs_serialized = await _make_args_kwargs_serialized(function, db)
+    # Populate args_kwargs_serialized with app name / function name
+    args_kwargs_serialized = await _make_args_kwargs_serialized(function)
 
     # Create the invocation request
     invocation_request = ModalInvocationRequest(
@@ -178,9 +178,7 @@ async def _function_compatible_with_benchmark_task(
     return True
 
 
-async def _make_args_kwargs_serialized(
-    function: ModalFunction, db: AsyncSession
-) -> bytes:
+async def _make_args_kwargs_serialized(function: ModalFunction) -> bytes:
     """
     Make the args_kwargs_serialized field for the benchmark request.
     The only input to a benchmark function is a garden doi and the function name,
@@ -194,21 +192,17 @@ async def _make_args_kwargs_serialized(
         The args_kwargs_serialized bytes to use for the invocation
     """
     # get the doi of any garden with the function
-    stmt = select(Garden.doi).where(Garden.modal_functions.contains(function))
-    result = await db.scalars(stmt)
-    doi = result.one_or_none()
-    if doi is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Function {function.function_name} is not associated with any garden!",
-        )
     if "." in function.function_name:
         cls_name, method_name = function.function_name.split(".")
     else:
         cls_name = ""
         method_name = function.function_name
-    args = [doi]
-    kwargs = {"cls_name": cls_name, "method_name": method_name}
+    args = tuple()
+    kwargs = {
+        "app_name": function.modal_app.app_name,
+        "cls_name": cls_name,
+        "method_name": method_name,
+    }
     return serialize((args, kwargs))
 
 
