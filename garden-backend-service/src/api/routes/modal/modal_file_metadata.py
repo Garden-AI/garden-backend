@@ -15,7 +15,6 @@ from src.exceptions.modal import ModalException
 from src.modal.user_file_parsing import (
     ModalFileParseResults,
     ModalLocalEntrypointInfo,
-    _image_default,
     parse_modal_file,
 )
 from src.models import User
@@ -61,14 +60,9 @@ async def parse_modal_file_metadata(
 
     app_info = results.apps[0]
 
-    if results.images:
-        base_image = results.images[0].base_image
-    else:
-        base_image = _image_default().base_image
-
     response = ModalFileMetadataResponse(
         app_name=app_info.app_name,
-        base_image_name=base_image,
+        base_image_name=app_info.image.base_image,
         file_contents=request.file_contents,
         modal_functions=function_metas,
         requirements=app_info.image.pip_requirements,

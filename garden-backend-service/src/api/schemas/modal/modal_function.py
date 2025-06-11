@@ -20,7 +20,7 @@ class ModalFunctionMetadata(CommonFunctionMetadata):
 class ModalFunctionMetadataResponse(ModalFunctionMetadata):
     id: int = Field(..., description="The unique identifier for the modal function")
     modal_app_id: int
-    owner: str = Field(validation_alias=AliasPath("owner", "name"))
+    owner: str = Field("", validation_alias=AliasPath("owner", "name"))
     owner_identity_id: UUID = Field(validation_alias=AliasPath("owner", "identity_id"))
     hardware_spec: dict
     num_invocations: int = Field(

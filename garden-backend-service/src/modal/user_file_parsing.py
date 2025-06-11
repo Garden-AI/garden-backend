@@ -170,6 +170,12 @@ def parse_modal_file(contents: str) -> ModalFileParseResults:
             suggested_fix="Make sure Modal App variable is named 'app'. e.g. 'app =  modal.App(...)'",
         )
 
+    if images:
+        # if we parsed any explicitly defined images, overwrite app's default
+        # with the first one we found
+        image = list(images.values())[0]
+        apps["app"].image = image
+
     return ModalFileParseResults(
         images=list(images.values()),
         apps=list(apps.values()),
