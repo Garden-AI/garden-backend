@@ -109,10 +109,9 @@ app.include_router(modal.modal_file_metadata.router)
 async def greet_world():
     return {"Hello there": "You must be World"}
 
+
 meta_data_operations = FastApiMCP(
-    app,
-    name="Metadata API MCP",
-    include_operations=["search_gardens"]
+    app, name="Metadata API MCP", include_operations=["search_gardens"]
 )
 
 meta_data_operations.mount(mount_path="/mcp/search_gardens")

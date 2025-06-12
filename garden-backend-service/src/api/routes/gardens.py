@@ -58,7 +58,9 @@ async def add_garden(
     return new_garden
 
 
-@router.get("", response_model=list[GardenMetadataResponse], operation_id="search_gardens")
+@router.get(
+    "", response_model=list[GardenMetadataResponse], operation_id="search_gardens"
+)
 async def search_gardens(
     doi: Annotated[list[str] | None, Query()] = None,
     draft: Annotated[bool | None, Query()] = None,
