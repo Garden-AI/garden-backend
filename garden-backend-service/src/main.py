@@ -25,7 +25,6 @@ from src.api.routes import (
     notebook,
     users,
 )
-from src.api.routes.mdf import search as mdf_search
 from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
@@ -103,8 +102,6 @@ app.include_router(modal.invocations.router)
 app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
-
-app.include_router(mdf_search.router)
 
 
 @app.get("/")
