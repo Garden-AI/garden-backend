@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_mcp import FastApiMCP
 from structlog import get_logger
 
 import src.logging  # noqa  # import to ensure logger is configured
@@ -107,3 +108,11 @@ app.include_router(modal.modal_file_metadata.router)
 @app.get("/")
 async def greet_world():
     return {"Hello there": "You must be World"}
+
+meta_data_operations = FastApiMCP(
+    app,
+    name="Metadata API MCP",
+    include_operations=["search_gardens"]
+)
+
+meta_data_operations.mount(mount_path="/mcp/search_gardens")
