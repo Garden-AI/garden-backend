@@ -8,8 +8,11 @@ DEFAULT_MEMORY_MB = 256
 
 # see: https://modal.com/pricing
 MODAL_PRICES = {
+    "B200": 0.001736,
+    "H200": 0.001261,
     "H100": 0.001267,  # per GPU per second
     "A100": 0.000944,  # TODO figure out how to include the cheaper A100 variant
+    "L40S": 0.000542,
     "A10G": 0.000306,
     "L4": 0.000222,
     "T4": 0.000164,
