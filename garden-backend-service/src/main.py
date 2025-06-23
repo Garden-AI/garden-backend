@@ -29,6 +29,7 @@ from src.api.routes import (
 from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
+    MCPBypassMiddleware,
     add_error_handling_middleware,
     add_process_time_middleware,
     add_request_id_middleware,
@@ -90,6 +91,8 @@ add_error_handling_middleware(app)
 add_process_time_middleware(app)
 add_request_id_middleware(app)
 
+app.add_middleware(MCPBypassMiddleware)
+
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
 app.include_router(notebook.router)
@@ -114,4 +117,4 @@ meta_data_operations = FastApiMCP(
     app, name="Metadata API MCP", include_operations=["search_gardens"]
 )
 
-meta_data_operations.mount(mount_path="/mcp/search_gardens")
+meta_data_operations.mount()
