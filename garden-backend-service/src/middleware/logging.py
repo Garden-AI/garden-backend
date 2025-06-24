@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 from typing import Callable
@@ -5,9 +6,96 @@ from typing import Callable
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from src.exceptions.modal import ModalException, handle_modal_exception
 from src.exceptions.utils import format_traceback
+
+
+class MCPBypassMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        self.logger = structlog.get_logger()
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and scope["path"].startswith("/mcp"):
+            self.logger.info(
+                "MCP request bypass", method=scope["method"], path=scope["path"]
+            )
+
+            try:
+                current_app = self.app
+                while hasattr(current_app, "app"):
+                    if "FastAPI" in str(type(current_app)):
+                        break
+                    current_app = current_app.app
+
+                await current_app(scope, receive, send)
+                self.logger.info(
+                    "MCP request completed successfully", path=scope["path"]
+                )
+                return
+            except HTTPException as http_exception:
+                self.logger.info(
+                    "HTTP exception in MCP request",
+                    path=scope["path"],
+                    status_code=http_exception.status_code,
+                )
+
+                # Send the proper HTTP response
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": http_exception.status_code,
+                        "headers": [[b"content-type", b"application/json"]],
+                    }
+                )
+
+                response_body = json.dumps(
+                    {
+                        "detail": http_exception.detail,
+                        "status_code": http_exception.status_code,
+                    }
+                ).encode()
+
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": response_body,
+                    }
+                )
+                return
+            except Exception as e:
+                self.logger.error(
+                    "Unhandled exception in MCP request",
+                    method=scope["method"],
+                    path=scope["path"],
+                    error=str(e),
+                    exc_info=True,
+                )
+
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 500,
+                        "headers": [[b"content-type", b"application/json"]],
+                    }
+                )
+
+                response_body = json.dumps(
+                    {"detail": "Internal server error", "status_code": 500}
+                ).encode()
+
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": response_body,
+                    }
+                )
+                return
+
+        await self.app(scope, receive, send)
 
 
 def add_request_id_middleware(app: FastAPI) -> None:
