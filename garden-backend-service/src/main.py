@@ -5,7 +5,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_mcp import FastApiMCP
 from structlog import get_logger
 
 import src.logging  # noqa  # import to ensure logger is configured
@@ -26,13 +25,13 @@ from src.api.routes import (
     notebook,
     users,
 )
+from src.api.routes.mcp.search import mcp
 from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
-    MCPBypassMiddleware,
-    add_error_handling_middleware,
-    add_process_time_middleware,
-    add_request_id_middleware,
+    AddRequestIDMiddleware,
+    ErrorHandlingMiddleware,
+    ProcessTimeMiddleware,
 )
 
 logger = get_logger(__name__)
@@ -87,11 +86,9 @@ app.add_middleware(
 
 
 # Add our custom middleware
-add_error_handling_middleware(app)
-add_process_time_middleware(app)
-add_request_id_middleware(app)
-
-app.add_middleware(MCPBypassMiddleware)
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(ProcessTimeMiddleware)
+app.add_middleware(AddRequestIDMiddleware)
 
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
@@ -107,14 +104,9 @@ app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
+app.mount("/mcp", mcp.sse_app())
+
 
 @app.get("/")
 async def greet_world():
     return {"Hello there": "You must be World"}
-
-
-meta_data_operations = FastApiMCP(
-    app, name="Metadata API MCP", include_operations=["search_gardens"]
-)
-
-meta_data_operations.mount()

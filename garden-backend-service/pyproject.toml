@@ -32,8 +32,9 @@ dependencies = [
   "phonenumbers>=8.13.40",
   "structlog>=24.4.0",
   "sqlparse>=0.5.1",
-  "modal>=1.0.0,<1.1.0",         # NOTE: remember to bump modal dep in sandboxed lambda functions when this changes
+  "modal>=1.0.0,<1.1.0", # NOTE: remember to bump modal dep in sandboxed lambda functions when this changes
   "fastapi-mcp>=0.3.4",
+  "mcp>=1.10.1",
 ]
 
 [dependency-groups]
