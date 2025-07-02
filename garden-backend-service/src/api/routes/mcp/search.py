@@ -1,17 +1,20 @@
+import json
+from typing import Optional
+from uuid import UUID
+
 import structlog
+from mcp.server.fastmcp import FastMCP
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
-from src.models import Garden, ModalFunction, User
-from typing import Optional
-from src.api.dependencies.database import get_settings, get_db_session_maker
+
+from src.api.dependencies.database import get_db_session_maker, get_settings
 from src.api.schemas.garden import GardenMetadataResponse
-import json
-from uuid import UUID
-from mcp.server.fastmcp import FastMCP
+from src.models import Garden, ModalFunction, User
 
 mcp = FastMCP("Garden-MCP-Server")
 
 logger = structlog.get_logger()
+
 
 @mcp.tool()
 async def search_gardens(
@@ -27,7 +30,7 @@ async def search_gardens(
 ) -> str:
     settings = get_settings()
     session_maker = await get_db_session_maker(settings)
-    
+
     try:
         async with session_maker() as db:
             if function_ids is not None:
@@ -36,10 +39,16 @@ async def search_gardens(
                 )
                 result = await db.scalars(stmt.limit(limit))
                 gardens = result.all()
-                
+
                 # Convert to Pydantic models and serialize properly
-                garden_responses = [GardenMetadataResponse.model_validate(garden) for garden in gardens]
-                return json.dumps([garden.model_dump() for garden in garden_responses], indent=2, default=str)
+                garden_responses = [
+                    GardenMetadataResponse.model_validate(garden) for garden in gardens
+                ]
+                return json.dumps(
+                    [garden.model_dump() for garden in garden_responses],
+                    indent=2,
+                    default=str,
+                )
 
             # Handle general search
             stmt = select(Garden)
@@ -67,11 +76,17 @@ async def search_gardens(
 
             result = await db.scalars(stmt.limit(limit))
             gardens = result.all()
-            
+
             # Convert to Pydantic models and serialize properly
-            garden_responses = [GardenMetadataResponse.model_validate(garden) for garden in gardens]
-            return json.dumps([garden.model_dump() for garden in garden_responses], indent=2, default=str)
-            
+            garden_responses = [
+                GardenMetadataResponse.model_validate(garden) for garden in gardens
+            ]
+            return json.dumps(
+                [garden.model_dump() for garden in garden_responses],
+                indent=2,
+                default=str,
+            )
+
     except Exception as e:
         logger.error(e)
         return f"Error: {str(e)}"

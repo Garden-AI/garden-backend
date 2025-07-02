@@ -25,14 +25,14 @@ from src.api.routes import (
     notebook,
     users,
 )
+from src.api.routes.mcp.search import mcp
 from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
-    AddRequestIDMiddleware, 
-    ProcessTimeMiddleware, 
-    ErrorHandlingMiddleware
+    AddRequestIDMiddleware,
+    ErrorHandlingMiddleware,
+    ProcessTimeMiddleware,
 )
-from src.api.routes.mcp.search import mcp
 
 logger = get_logger(__name__)
 
@@ -105,6 +105,7 @@ app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
 app.mount("/mcp", mcp.sse_app())
+
 
 @app.get("/")
 async def greet_world():
