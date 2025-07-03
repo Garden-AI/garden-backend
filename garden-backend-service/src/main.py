@@ -1,10 +1,12 @@
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from structlog import get_logger
 
 import src.logging  # noqa  # import to ensure logger is configured
@@ -110,3 +112,13 @@ app.mount("/mcp", mcp.sse_app())
 @app.get("/")
 async def greet_world():
     return {"Hello there": "You must be World"}
+
+
+@app.get("/test-sse")
+async def sse_sanity_check():
+    def gen():
+        for i in range(100):
+            yield f"sse test message {i}"
+            time.sleep(1)
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
