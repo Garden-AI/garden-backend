@@ -33,6 +33,7 @@ from src.config import get_settings
 from src.middleware.logging import (
     AddRequestIDMiddleware,
     ErrorHandlingMiddleware,
+    HeaderLoggingMiddleware,
     ProcessTimeMiddleware,
 )
 
@@ -91,6 +92,7 @@ app.add_middleware(
 app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(ProcessTimeMiddleware)
 app.add_middleware(AddRequestIDMiddleware)
+app.add_middleware(HeaderLoggingMiddleware)
 
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
@@ -118,7 +120,27 @@ async def greet_world():
 async def sse_sanity_check():
     def gen():
         for i in range(100):
-            yield f"sse test message {i}"
+            yield f"data: sse test message {i}\n\n"
             time.sleep(1)
 
-    return StreamingResponse(gen(), media_type="text/event-stream")
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@app.get("/test-http-stream")
+async def stream_sanity_check():
+    def gen():
+        for i in range(100):
+            yield f"streaming test message {i}\n"
+            time.sleep(1)
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/plain",
+    )
