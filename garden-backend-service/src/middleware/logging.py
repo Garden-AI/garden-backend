@@ -163,3 +163,29 @@ class HeaderLoggingMiddleware:
         )
 
         await self.app(scope, receive, send)
+
+
+class MCPKeepAliveMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "http" and scope["path"].startswith("/mcp"):
+            # Add keepalive headers for MCP endpoints
+            async def send_wrapper(message):
+                if message["type"] == "http.response.start":
+                    headers = list(message.get("headers", []))
+
+                    headers.extend(
+                        [
+                            [b"connection", b"keep-alive"],
+                            [b"keep-alive", b"timeout=300, max=1000"],
+                            [b"x-accel-buffering", b"no"],  # Disable nginx buffering
+                        ]
+                    )
+                    message = {**message, "headers": headers}
+                await send(message)
+
+            await self.app(scope, receive, send_wrapper)
+        else:
+            await self.app(scope, receive, send)
