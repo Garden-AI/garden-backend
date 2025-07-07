@@ -115,3 +115,51 @@ class ErrorHandlingMiddleware:
         )
 
         await send({"type": "http.response.body", "body": body})
+
+
+class HeaderLoggingMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+
+        decoded_headers = {k.decode(): v.decode() for k, v in headers.items()}
+
+        # Headers of interest for ALB/MCP debugging
+        interesting_headers = {
+            k: v
+            for k, v in decoded_headers.items()
+            if any(
+                prefix in k.lower()
+                for prefix in [
+                    "x-forwarded",
+                    "x-amzn",
+                    "x-real-ip",
+                    "authorization",
+                    "origin",
+                    "connection",
+                    "upgrade",
+                    "accept",
+                    "cache-control",
+                    "user-agent",
+                    "host",
+                ]
+            )
+        }
+
+        logger = structlog.get_logger()
+        logger.info(
+            "Request headers",
+            method=scope["method"],
+            path=scope["path"],
+            client_host=scope.get("client") or "unknown",
+            headers=interesting_headers,
+            total_header_count=len(decoded_headers),
+        )
+
+        await self.app(scope, receive, send)
