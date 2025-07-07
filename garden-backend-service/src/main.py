@@ -34,6 +34,7 @@ from src.middleware.logging import (
     AddRequestIDMiddleware,
     ErrorHandlingMiddleware,
     HeaderLoggingMiddleware,
+    MCPKeepAliveMiddleware,
     ProcessTimeMiddleware,
 )
 
@@ -93,6 +94,7 @@ app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(ProcessTimeMiddleware)
 app.add_middleware(AddRequestIDMiddleware)
 app.add_middleware(HeaderLoggingMiddleware)
+app.add_middleware(MCPKeepAliveMiddleware)
 
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
