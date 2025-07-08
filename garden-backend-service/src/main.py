@@ -110,7 +110,8 @@ app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
-app.mount("/mcp", mcp.sse_app())
+app.mount("/mcp", mcp.streamable_http_app())
+# app.mount("/mcp", mcp.sse_app())
 
 
 @app.get("/")
