@@ -27,7 +27,7 @@ from src.api.routes import (
     notebook,
     users,
 )
-from src.api.routes.mcp.search import mcp
+from src.api.routes.mcp.mcp_server import mcp
 from src.api.tasks.auto_deletion import auto_deletion_background_task
 from src.config import get_settings
 from src.middleware.logging import (
@@ -110,8 +110,11 @@ app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
-app.mount("/mcp", mcp.streamable_http_app())
-# app.mount("/mcp", mcp.sse_app())
+# Necessary for tools/resources to be registered with mcp server
+import src.api.routes.mcp.search
+import src.api.routes.mcp.generate_code
+
+app.mount("/mcp", mcp.sse_app())
 
 
 @app.get("/")
