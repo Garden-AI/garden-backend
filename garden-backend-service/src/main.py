@@ -1,12 +1,10 @@
 import asyncio
 import os
-import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from structlog import get_logger
 
 import src.logging  # noqa  # import to ensure logger is configured
@@ -34,7 +32,6 @@ from src.middleware.logging import (
     AddRequestIDMiddleware,
     ErrorHandlingMiddleware,
     HeaderLoggingMiddleware,
-    MCPKeepAliveMiddleware,
     ProcessTimeMiddleware,
 )
 
@@ -94,7 +91,6 @@ app.add_middleware(ErrorHandlingMiddleware)
 app.add_middleware(ProcessTimeMiddleware)
 app.add_middleware(AddRequestIDMiddleware)
 app.add_middleware(HeaderLoggingMiddleware)
-app.add_middleware(MCPKeepAliveMiddleware)
 
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
@@ -110,40 +106,10 @@ app.include_router(modal.modal_apps.router)
 app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
-app.mount("/mcp", mcp.streamable_http_app())
-# app.mount("/mcp", mcp.sse_app())
+app.mount("/mcp-http", mcp.streamable_http_app())
+app.mount("/mcp-sse", mcp.sse_app())
 
 
 @app.get("/")
 async def greet_world():
     return {"Hello there": "You must be World"}
-
-
-@app.get("/test-sse")
-async def sse_sanity_check():
-    def gen():
-        for i in range(100):
-            yield f"data: sse test message {i}\n\n"
-            time.sleep(1)
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )
-
-
-@app.get("/test-http-stream")
-async def stream_sanity_check():
-    def gen():
-        for i in range(100):
-            yield f"streaming test message {i}\n"
-            time.sleep(1)
-
-    return StreamingResponse(
-        gen(),
-        media_type="text/plain",
-    )
