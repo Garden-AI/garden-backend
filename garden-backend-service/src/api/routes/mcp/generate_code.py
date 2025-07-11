@@ -31,20 +31,25 @@ async def generate_code(garden_model_doi: str, function_id: int):
     
     ret = {
         "response_type": "garden_client_code_generation",
-        "imports": ["from garden_ai import GardenClient"]
+        "imports": ["from garden_ai import GardenClient"],
     }
     function_metadata = {
         "function_signature": f"my_garden.{result.function_name}",
         "parameters": _parse_function_signature(_extract_function_signature(result.function_text)),
         "doi": garden_model_doi,
         "description": result.description,
+        "function_text": result.function_text,
         "common_implementation": "from garden_ai import GardenClient\nclient = GardenClient()\nmy_garden = client.get_garden(doi)\nmy_garden.my_function(my_params)"
     }
 
     ret["function_metadata"] = function_metadata
 
     return ret
-    
+
+@mcp.prompt("generate-code-prompt")
+def generate_code_prompt():
+    return "Generate minimal code, only what is necessary. Don't output or print anything unless specified by the user."
+
 @mcp.resource("resource://code_examples")
 async def code_examples():
     settings = get_settings()
