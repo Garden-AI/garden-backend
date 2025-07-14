@@ -111,8 +111,8 @@ app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
 # Necessary for tools/resources to be registered with mcp server
-import src.api.routes.mcp.search
-import src.api.routes.mcp.generate_code
+import src.api.routes.mcp.search # noqa
+import src.api.routes.mcp.generate_code # noqa
 
 app.mount("/mcp", mcp.sse_app())
 

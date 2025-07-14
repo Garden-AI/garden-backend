@@ -1,14 +1,14 @@
 import ast
-import structlog
 
+import structlog
 from sqlalchemy import select
 
 from src.api.dependencies.database import get_db_session_maker, get_settings
-from src.models import ModalFunction
-from src.models.modal.modal_function import ModalFunction
 from src.api.routes.mcp.mcp_server import mcp
+from src.models import ModalFunction
 
 logger = structlog.get_logger()
+
 
 @mcp.tool()
 async def generate_code(garden_model_doi: str, function_id: int):
@@ -17,9 +17,7 @@ async def generate_code(garden_model_doi: str, function_id: int):
 
     try:
         async with session_maker() as db:
-            stmt = select(ModalFunction).where(
-                ModalFunction.id == function_id
-            )
+            stmt = select(ModalFunction).where(ModalFunction.id == function_id)
 
             result = await db.scalar(stmt)
 
@@ -28,27 +26,31 @@ async def generate_code(garden_model_doi: str, function_id: int):
     except Exception as e:
         logger.error(e)
         return f"Error: {str(e)}"
-    
+
     ret = {
         "response_type": "garden_client_code_generation",
         "imports": ["from garden_ai import GardenClient"],
     }
     function_metadata = {
         "function_signature": f"my_garden.{result.function_name}",
-        "parameters": _parse_function_signature(_extract_function_signature(result.function_text)),
+        "parameters": _parse_function_signature(
+            _extract_function_signature(result.function_text)
+        ),
         "doi": garden_model_doi,
         "description": result.description,
         "function_text": result.function_text,
-        "common_implementation": "from garden_ai import GardenClient\nclient = GardenClient()\nmy_garden = client.get_garden(doi)\nmy_garden.my_function(my_params)"
+        "common_implementation": "from garden_ai import GardenClient\nclient = GardenClient()\nmy_garden = client.get_garden(doi)\nmy_garden.my_function(my_params)",
     }
 
     ret["function_metadata"] = function_metadata
 
     return ret
 
+
 @mcp.prompt("generate-code-prompt")
 def generate_code_prompt():
     return "Generate minimal code, only what is necessary. Don't output or print anything unless specified by the user."
+
 
 @mcp.resource("resource://code_examples")
 async def code_examples():
@@ -69,10 +71,11 @@ async def code_examples():
                     examples[func.function_name] = func.example_usage
 
             return examples
-        
+
     except Exception as e:
         logger.error(e)
         return f"Error: {str(e)}"
+
 
 def _extract_function_signature(code: str):
     lines = code.splitlines()
@@ -91,6 +94,7 @@ def _extract_function_signature(code: str):
 
     return " ".join(signature_lines).strip()
 
+
 def _parse_function_signature(func_dec: str):
     if func_dec.endswith(":"):
         func_dec += "\n\tpass"
@@ -99,7 +103,7 @@ def _parse_function_signature(func_dec: str):
 
     function_params = []
     for node in ast.walk(tree):
-         if isinstance(node, ast.FunctionDef):
+        if isinstance(node, ast.FunctionDef):
             args = node.args.args
             defaults = node.args.defaults
             # Fill missing defaults with None
@@ -111,7 +115,7 @@ def _parse_function_signature(func_dec: str):
                 param_info = {
                     "name": arg.arg,
                     "type": ast.unparse(arg.annotation) if arg.annotation else None,
-                    "default": ast.unparse(default) if default else None
+                    "default": ast.unparse(default) if default else None,
                 }
                 param_list.append(param_info)
 

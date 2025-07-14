@@ -7,10 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array
 
 from src.api.dependencies.database import get_db_session_maker, get_settings
+from src.api.routes.mcp.mcp_server import mcp
 from src.api.schemas.garden import GardenMetadataResponse
 from src.models import Garden, ModalFunction, User
-from src.models.modal.modal_function import ModalFunction
-from src.api.routes.mcp.mcp_server import mcp
 
 logger = structlog.get_logger()
 
