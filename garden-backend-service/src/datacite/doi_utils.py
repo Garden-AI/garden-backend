@@ -122,7 +122,7 @@ def _datacite_metadata_from_garden(garden: Garden) -> datacite.Doi:
                 ],
                 publisher="thegardens.ai",
                 publicationYear=garden.year,
-                url=f"https://thegardens.ai/{quote(garden.doi, safe='')}",
+                url=f"https://thegardens.ai/#/garden/{quote(garden.doi, safe='')}",
             ),
         )
     )
