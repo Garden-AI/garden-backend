@@ -169,6 +169,13 @@ async def search(
     )
 
 
+@router.get("/tags", response_model=list[str])
+async def get_unique_tags(db: AsyncSession = Depends(get_db_session)) -> list[str]:
+    stmt = select(func.unnest(Garden.tags).label("tag")).distinct()
+    result = await db.scalars(stmt)
+    return result.all()
+
+
 @router.get(
     "/{doi:path}",
     status_code=status.HTTP_200_OK,
