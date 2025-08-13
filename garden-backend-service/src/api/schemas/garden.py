@@ -112,7 +112,7 @@ class GardenPatchRequest(BaseSchema):
 class GardenSearchFilter(BaseSchema):
     field_name: str
     values: list[str]
-    operation: Literal["AND", "OR"] = Field(default="AND")
+    operation: Literal["AND", "OR"] | None = Field(default="AND")
 
 
 class GardenSearchFacets(BaseSchema):
