@@ -700,6 +700,48 @@ async def test_search_gardens_applies_filters_correctly(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_search_gardens_filters_by_doi(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+    mock_auth_state,
+):
+    g1 = mock_garden_create_request_no_entrypoints_json
+
+    g2 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g2["authors"] = ["Phillip J. Fry"]
+
+    g3 = deepcopy(mock_garden_create_request_no_entrypoints_json)
+    g3["tags"] = ["testing"]
+    g3["description"] = "a garden for testing"
+
+    _ = await post_garden(client, g1)
+    created_g2 = await post_garden(client, g2)
+    created_g3 = await post_garden(client, g3)
+
+    body = {
+        "q": "",
+        "filters": [
+            {
+                "field_name": "doi",
+                "values": [created_g2["doi"], created_g3["doi"]],
+                "operation": "OR",
+            },
+        ],
+    }
+    response = await client.post("gardens/search", json=body)
+    assert response.status_code == 200
+
+    search_result = response.json()
+    assert len(search_result["garden_meta"]) == 2
+    dois = [g.get("doi") for g in search_result["garden_meta"]]
+    assert created_g2["doi"] in dois
+    assert created_g3["doi"] in dois
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_search_gardens_returns_empty_list_when_no_matches(
     client,
     mock_db_session,
