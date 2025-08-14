@@ -1,4 +1,4 @@
-from sqlalchemy import asc, column, desc, func, select
+from sqlalchemy import asc, column, desc, func, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import Select
@@ -19,9 +19,7 @@ def apply_filters(
     Construct a new SQLAlchemy `Select` statement with applied filters.
 
     This function takes an existing SQLAlchemy `Select` statement and applies additional
-    `WHERE` clauses based on the provided `filters`. Each filter in the `filters` list is
-    ANDed together, meaning that all conditions must be satisfied for a row to be included
-    in the result.
+    `WHERE` clauses based on the provided `filters`.
 
     Args:
         model (Base): The SQLAlchemy model to which the filters should be applied.
@@ -51,24 +49,46 @@ def apply_filters(
         This will generate a query with `WHERE` clauses matching the title and tags.
     """
     for filter in filters:
+        or_conditions = []
         if not hasattr(model, filter.field_name):
             raise ValueError(f"Invalid filter field_name: {filter.field_name}")
         for value in filter.values:
             if filter.field_name == "owner":
-                stmt = stmt.join(getattr(model, filter.field_name)).where(
-                    User.name == value
-                )
-                continue
-            if type(getattr(model, filter.field_name)) is ARRAY:
-                stmt = stmt.where(
-                    func.array_to_string(getattr(model, filter.field_name), " ").match(
-                        value
+                if filter.operation == "OR":
+                    or_conditions.append(User.name == value)
+                else:
+                    stmt = stmt.join(getattr(model, filter.field_name)).where(
+                        User.name == value
                     )
-                )
+            elif type(getattr(model, filter.field_name)) is ARRAY:
+                if filter.operation == "OR":
+                    or_conditions.append(
+                        func.array_to_string(
+                            getattr(model, filter.field_name), " "
+                        ).match(value)
+                    )
+                else:
+                    stmt = stmt.where(
+                        func.array_to_string(
+                            getattr(model, filter.field_name), " "
+                        ).match(value)
+                    )
+            elif filter.field_name == "doi":
+                if filter.operation == "OR":
+                    or_conditions.append(getattr(model, filter.field_name) == value)
+                else:
+                    stmt = stmt.where(getattr(model, filter.field_name) == value)
             else:
-                stmt = stmt.where(
-                    func.cast(getattr(model, filter.field_name), TEXT).match(value)
-                )
+                if filter.operation == "OR":
+                    or_conditions.append(
+                        func.cast(getattr(model, filter.field_name), TEXT).match(value)
+                    )
+                else:
+                    stmt = stmt.where(
+                        func.cast(getattr(model, filter.field_name), TEXT).match(value)
+                    )
+        if or_conditions:
+            stmt = stmt.where(or_(*or_conditions))
     return stmt
 
 

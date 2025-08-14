@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AliasPath, Field, computed_field
@@ -111,6 +112,7 @@ class GardenPatchRequest(BaseSchema):
 class GardenSearchFilter(BaseSchema):
     field_name: str
     values: list[str]
+    operation: Literal["AND", "OR"] | None = Field(default="AND")
 
 
 class GardenSearchFacets(BaseSchema):
