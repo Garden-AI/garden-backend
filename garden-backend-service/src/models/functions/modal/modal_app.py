@@ -9,7 +9,7 @@ from src.modal.status import AsyncModalJobStatus
 from src.models.base import Base
 
 if TYPE_CHECKING:
-    from src.models.modal.modal_function import ModalFunction
+    from src.models.functions.modal.modal_function import ModalFunction
     from src.models.user import User
 
 else:

@@ -13,7 +13,7 @@ from src.api.dependencies.database import get_db_session
 from src.auth.auth_state import AuthenticationState
 from src.auth.globus_groups import add_user_to_group
 from src.config import Settings, get_settings
-from src.models.modal.invocations import ModalInvocationLog
+from src.models.functions.modal.invocations import ModalInvocationLog
 from src.models.user import User
 
 log = get_logger(__name__)

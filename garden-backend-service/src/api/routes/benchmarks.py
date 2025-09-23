@@ -22,7 +22,7 @@ from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
 from src.models import User
 from src.models.benchmark import Benchmark, BenchmarkRun, BenchmarkTask
-from src.models.modal.modal_function import ModalFunction
+from src.models.functions.modal.modal_function import ModalFunction
 
 router = APIRouter(prefix="/benchmarks")
 
