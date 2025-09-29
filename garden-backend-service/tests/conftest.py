@@ -533,6 +533,33 @@ def modal_deployment_environment(
     }
 
 
+@pytest.fixture
+def create_hpc_endpoint_json() -> dict:
+    return {
+        "name": "Test HPC Endpoint",
+        "gcmu_id": "550e8400-e29b-41d4-a716-446655440000",
+    }
+
+
+@pytest.fixture
+def create_hpc_deployment_json() -> dict:
+    return {
+        "name": "Test Conda Environment",
+        "description": "Test deployment for HPC functions",
+        "deployment_type": "conda",
+        "conda_env_name": "test_env",
+        "conda_requirements": {"numpy": "1.24.0"},
+        "python_dependencies": [],
+    }
+
+
+@pytest.fixture
+def create_hpc_function_json() -> dict:
+    path = Path(__file__).parent / "fixtures" / "HpcFunctionCreateRequest.json"
+    with open(path, "r") as f_in:
+        return json.load(f_in)
+
+
 @pytest.fixture(autouse=True)
 def mock_doi_utils(mocker):
     """Mock the DOI utility functions to prevent outbound network calls."""

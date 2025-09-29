@@ -8,6 +8,7 @@ from src.models.garden import GardenState
 
 from .base import BaseSchema, UniqueList
 from .entrypoint import EntrypointMetadataResponse
+from .hpc import HpcFunctionMetadataResponse
 from .modal.modal_function import ModalFunctionMetadataResponse
 
 
@@ -35,6 +36,7 @@ class GardenMetadata(BaseSchema):
 class GardenCreateRequest(GardenMetadata):
     entrypoint_ids: UniqueList[str] = Field(default_factory=list)
     modal_function_ids: UniqueList[int] = Field(default_factory=list)
+    hpc_function_ids: UniqueList[int] = Field(default_factory=list)
     owner_identity_id: UUID | None = None
     doi: str | None = None
 
@@ -45,6 +47,7 @@ class GardenMetadataResponse(GardenMetadata):
     id: int
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
+    hpc_functions: list[HpcFunctionMetadataResponse] = Field(default_factory=list)
     marked_for_deletion: datetime | None
 
     @computed_field
@@ -56,6 +59,11 @@ class GardenMetadataResponse(GardenMetadata):
     @property
     def modal_function_ids(self) -> list[int]:
         return [mf.id for mf in self.modal_functions]
+
+    @computed_field
+    @property
+    def hpc_function_ids(self) -> list[int]:
+        return [hpcf.id for hpcf in self.hpc_functions]
 
 
 class GardenPatchRequest(BaseSchema):
@@ -73,6 +81,7 @@ class GardenPatchRequest(BaseSchema):
     is_archived: bool | None = None
     entrypoint_ids: UniqueList[str] | None = None
     modal_function_ids: UniqueList[int] | None = None
+    hpc_function_ids: UniqueList[int] | None = None
 
     @computed_field
     @property

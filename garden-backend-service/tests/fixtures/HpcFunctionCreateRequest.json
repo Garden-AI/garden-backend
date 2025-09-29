@@ -1,0 +1,18 @@
+{
+  "is_archived": false,
+  "function_text": "def compute_fibonacci(n):\n    if n <= 1:\n        return n\n    return compute_fibonacci(n-1) + compute_fibonacci(n-2)",
+  "description": "Computes the nth Fibonacci number using recursion",
+  "title": "Fibonacci Computer",
+  "year": "2024",
+  "authors": ["HPC Researcher"],
+  "tags": ["mathematics", "algorithms", "hpc"],
+  "test_functions": [],
+  "requirements": [],
+  "models": [],
+  "repositories": [],
+  "papers": [],
+  "datasets": [],
+  "notebooks": [],
+  "function_name": "compute_fibonacci",
+  "deployment_id": 1
+}
