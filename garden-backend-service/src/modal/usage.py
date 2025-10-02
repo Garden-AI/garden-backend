@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 import modal.gpu
-from src.models.modal.modal_function import ModalFunction
+from src.models.functions.modal.modal_function import ModalFunction
 
 DEFAULT_CPUS = 0.125
 DEFAULT_MEMORY_MB = 256

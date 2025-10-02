@@ -33,6 +33,7 @@ from src.datacite.doi_utils import (
     update_doi_metadata,
 )
 from src.models import Entrypoint, Garden, ModalFunction, User
+from src.models.functions.hpc.hpc_functions import HpcFunction
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
@@ -84,7 +85,8 @@ async def search_gardens(
             Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
         )
         result = await db.scalars(stmt.limit(limit))
-        gardens = result.all()
+        gardens = list(result.all())
+
         return gardens
 
     # Handle general search
@@ -112,7 +114,9 @@ async def search_gardens(
         stmt = stmt.where(Garden.year == year)
 
     result = await db.scalars(stmt.limit(limit))
-    return result.all()
+    gardens = list(result.all())
+
+    return gardens
 
 
 @router.post(
@@ -158,7 +162,7 @@ async def search(
 
     # Run the search query
     result = await db.scalars(stmt)
-    gardens = result.all()
+    gardens = list(result.all())
 
     return GardenSearchResponse(
         count=len(gardens),
@@ -184,6 +188,7 @@ async def get_garden_by_doi(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Garden not found with DOI {doi}",
         )
+
     return garden
 
 
@@ -295,6 +300,11 @@ async def update_garden(
             garden_patch_dict["modal_function_ids"] or [], db
         )
 
+    if "hpc_function_ids" in garden_patch_dict:
+        garden.hpc_functions = await _collect_hpc_functions(
+            garden_patch_dict["hpc_function_ids"] or [], db
+        )
+
     for key, value in garden_patch_dict.items():
         setattr(garden, key, value)
 
@@ -321,6 +331,7 @@ async def update_garden(
             detail=f"Integrity error occurred: {str(e)}",
         ) from e
     log.info("Successfully updated garden")
+
     return garden
 
 
@@ -354,6 +365,22 @@ async def _collect_modal_functions(
     return modal_functions
 
 
+async def _collect_hpc_functions(ids: list[int], db: AsyncSession) -> list[HpcFunction]:
+    if not ids:
+        return []
+    stmt = select(HpcFunction).where(HpcFunction.id.in_(ids))
+    result = await db.execute(stmt)
+    hpc_functions: list[HpcFunction] = result.scalars().all()
+
+    if len(hpc_functions) != len(ids):
+        missing_ids = [hf.id for hf in hpc_functions if hf.id not in ids]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not find HPC function(s) with IDs: {missing_ids}",
+        )
+    return hpc_functions
+
+
 async def _create_new_garden(
     garden_data: GardenCreateRequest,
     doi: str,
@@ -369,6 +396,8 @@ async def _create_new_garden(
     entrypoints = await _collect_entrypoints(garden_data.entrypoint_ids, db)
     # collect modal functions by ID
     modal_functions = await _collect_modal_functions(garden_data.modal_function_ids, db)
+    # collect hpc functions by ID
+    hpc_functions = await _collect_hpc_functions(garden_data.hpc_function_ids, db)
 
     # default owner is authed_user unless owner_identity_id is explicitly provided
     owner: User = user
@@ -394,6 +423,7 @@ async def _create_new_garden(
             exclude={
                 "entrypoint_ids",
                 "modal_function_ids",
+                "hpc_function_ids",
                 "owner_identity_id",
                 "state",
             }
@@ -403,6 +433,7 @@ async def _create_new_garden(
     new_garden.owner = owner
     new_garden.entrypoints = entrypoints
     new_garden.modal_functions = modal_functions
+    new_garden.hpc_functions = hpc_functions
 
     db.add(new_garden)
     try:

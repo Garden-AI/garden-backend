@@ -8,16 +8,22 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
-from src.models._associations import gardens_entrypoints, gardens_modal_functions
+from src.models._associations import (
+    gardens_entrypoints,
+    gardens_hpc_functions,
+    gardens_modal_functions,
+)
 from src.models.base import Base
 
 if TYPE_CHECKING:
     from src.models.entrypoint import Entrypoint
-    from src.models.modal.modal_function import ModalFunction
+    from src.models.functions.hpc.hpc_functions import HpcFunction
+    from src.models.functions.modal.modal_function import ModalFunction
     from src.models.user import User
 
 else:
     Entrypoint = "Entrypoint"
+    HpcFunction = "HpcFunction"
     ModalFunction = "ModalFunction"
     User = "User"
 
@@ -73,6 +79,12 @@ class Garden(Base):
     modal_functions: Mapped[list[ModalFunction]] = relationship(
         ModalFunction,
         secondary=gardens_modal_functions,
+        lazy="selectin",
+    )
+
+    hpc_functions: Mapped[list[HpcFunction]] = relationship(
+        HpcFunction,
+        secondary=gardens_hpc_functions,
         lazy="selectin",
     )
 

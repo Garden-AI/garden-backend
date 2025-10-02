@@ -26,8 +26,11 @@ from src.api.schemas.modal.invocations import (
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
 from src.modal.utils import monitor_modal_invocation
-from src.models.modal.invocations import ModalInvocationLog, ModalInvocationResult
-from src.models.modal.modal_function import ModalFunction
+from src.models.functions.modal.invocations import (
+    ModalInvocationLog,
+    ModalInvocationResult,
+)
+from src.models.functions.modal.modal_function import ModalFunction
 from src.models.user import User
 
 logger = structlog.get_logger(__name__)

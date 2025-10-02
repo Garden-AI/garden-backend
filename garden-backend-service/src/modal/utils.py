@@ -11,9 +11,9 @@ from modal._utils.grpc_utils import retry_transient_errors
 from src.api.dependencies.database import get_db_session_maker
 from src.config import Settings
 from src.exceptions.modal import ModalException
-from src.models.modal.invocations import ModalInvocationResult
-from src.models.modal.modal_app import ModalApp
-from src.models.modal.modal_function import ModalFunction
+from src.models.functions.modal.invocations import ModalInvocationResult
+from src.models.functions.modal.modal_app import ModalApp
+from src.models.functions.modal.modal_function import ModalFunction
 
 from .status import AsyncModalJobStatus
 from .usage import estimate_usage

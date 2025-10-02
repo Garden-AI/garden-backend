@@ -27,3 +27,13 @@ async def post_modal_app(client, modal_app_data):
     print(response.json())
     assert response.status_code == 200
     return response.json()
+
+
+async def post_hpc_function(client, hpc_function_data):
+    """POST HPC function data to populate mock DB session.
+
+    NB: this is not a fixture!
+    """
+    response = await client.post("/hpc/functions", json=hpc_function_data)
+    assert response.status_code == 200
+    return response.json()

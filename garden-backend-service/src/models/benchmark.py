@@ -4,8 +4,8 @@ from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import Base
-from src.models.modal.invocations import ModalInvocationResult
-from src.models.modal.modal_function import ModalFunction
+from src.models.functions.modal.invocations import ModalInvocationResult
+from src.models.functions.modal.modal_function import ModalFunction
 
 
 class Benchmark(Base):

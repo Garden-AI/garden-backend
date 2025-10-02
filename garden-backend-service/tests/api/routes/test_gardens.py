@@ -960,3 +960,159 @@ async def test_patch_garden_rejects_non_citable_patches(
     patch_response = await client.patch(f"/gardens/{doi}", json={"contributors": []})
     assert patch_response.status_code == 200
     assert patch_response.json()["contributors"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_add_garden_with_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+    create_hpc_function_json,
+    create_hpc_deployment_json,
+):
+    # Create a deployment first
+    deployment_response = await client.post(
+        "/hpc/deployments", json=create_hpc_deployment_json
+    )
+    assert deployment_response.status_code == 200
+    deployment_id = deployment_response.json()["id"]
+    create_hpc_function_json["deployment_id"] = deployment_id
+
+    # Create an HPC function first
+    hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
+    assert hpc_response.status_code == 200
+    hpc_function_id = hpc_response.json()["id"]
+
+    # Create a garden with the HPC function
+    garden_data = mock_garden_create_request_no_entrypoints_json.copy()
+    garden_data["hpc_function_ids"] = [hpc_function_id]
+
+    garden_response = await client.post("/gardens", json=garden_data)
+    assert garden_response.status_code == 200
+    garden_data_response = garden_response.json()
+
+    assert len(garden_data_response["hpc_functions"]) == 1
+    assert garden_data_response["hpc_functions"][0]["id"] == hpc_function_id
+    assert garden_data_response["hpc_function_ids"] == [hpc_function_id]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_add_garden_with_nonexistent_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # Try to create a garden with non-existent HPC function
+    garden_data = mock_garden_create_request_no_entrypoints_json.copy()
+    garden_data["hpc_function_ids"] = [99999]
+
+    response = await client.post("/gardens", json=garden_data)
+    assert response.status_code == 404
+    assert "Could not find HPC function(s) with IDs" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_add_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+    create_hpc_function_json,
+    create_hpc_deployment_json,
+):
+    # Create a garden without HPC functions
+    garden_response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert garden_response.status_code == 200
+    garden_doi = garden_response.json()["doi"]
+
+    # Create a deployment first
+    deployment_response = await client.post(
+        "/hpc/deployments", json=create_hpc_deployment_json
+    )
+    assert deployment_response.status_code == 200
+    deployment_id = deployment_response.json()["id"]
+    create_hpc_function_json["deployment_id"] = deployment_id
+
+    # Create an HPC function
+    hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
+    assert hpc_response.status_code == 200
+    hpc_function_id = hpc_response.json()["id"]
+
+    # Add the HPC function to the garden via PATCH
+    patch_data = {"hpc_function_ids": [hpc_function_id]}
+    patch_response = await client.patch(f"/gardens/{garden_doi}", json=patch_data)
+    assert patch_response.status_code == 200
+    patched_garden = patch_response.json()
+
+    assert len(patched_garden["hpc_functions"]) == 1
+    assert patched_garden["hpc_functions"][0]["id"] == hpc_function_id
+    assert patched_garden["hpc_function_ids"] == [hpc_function_id]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_remove_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+    create_hpc_function_json,
+    create_hpc_deployment_json,
+):
+    # Create a deployment first
+    deployment_response = await client.post(
+        "/hpc/deployments", json=create_hpc_deployment_json
+    )
+    assert deployment_response.status_code == 200
+    deployment_id = deployment_response.json()["id"]
+    create_hpc_function_json["deployment_ids"] = [deployment_id]
+
+    # Create an HPC function first
+    hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
+    assert hpc_response.status_code == 200
+    hpc_function_id = hpc_response.json()["id"]
+
+    # Create a garden with the HPC function
+    garden_data = mock_garden_create_request_no_entrypoints_json.copy()
+    garden_data["hpc_function_ids"] = [hpc_function_id]
+    garden_response = await client.post("/gardens", json=garden_data)
+    assert garden_response.status_code == 200
+    garden_doi = garden_response.json()["doi"]
+
+    # Remove the HPC function via PATCH
+    patch_data = {"hpc_function_ids": []}
+    patch_response = await client.patch(f"/gardens/{garden_doi}", json=patch_data)
+    assert patch_response.status_code == 200
+    patched_garden = patch_response.json()
+
+    assert len(patched_garden["hpc_functions"]) == 0
+    assert patched_garden["hpc_function_ids"] == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_patch_garden_with_nonexistent_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    mock_garden_create_request_no_entrypoints_json,
+):
+    # Create a garden without HPC functions
+    garden_response = await client.post(
+        "/gardens", json=mock_garden_create_request_no_entrypoints_json
+    )
+    assert garden_response.status_code == 200
+    garden_doi = garden_response.json()["doi"]
+
+    # Try to add non-existent HPC function
+    patch_data = {"hpc_function_ids": [99999]}
+    patch_response = await client.patch(f"/gardens/{garden_doi}", json=patch_data)
+    assert patch_response.status_code == 404
+    assert "Could not find HPC function(s) with IDs" in patch_response.json()["detail"]
