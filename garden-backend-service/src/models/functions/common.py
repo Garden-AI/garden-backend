@@ -30,6 +30,6 @@ class FunctionMetadataMixin:
     function_name: Mapped[str]
     function_text: Mapped[str]
     example_usage: Mapped[str | None]
-    test_functions: Mapped[list[str]] = mapped_column(ARRAY(String))
+    test_functions: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))
     conda_requirements: Mapped[list[str] | None] = mapped_column(ARRAY(String))

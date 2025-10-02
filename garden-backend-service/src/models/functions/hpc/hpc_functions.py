@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.models._associations import hpc_functions_hpc_deployments
 from src.models.base import Base
 from src.models.functions.common import (
     AssociatedMaterialsMixin,
@@ -31,9 +32,10 @@ class HpcFunction(Base, DoiMixin, AssociatedMaterialsMixin, FunctionMetadataMixi
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship()
 
-    deployment_id: Mapped[int] = mapped_column(ForeignKey("hpc_deployments.id"))
-    deployment: Mapped["HpcDeployment"] = relationship(
-        lazy="selectin", back_populates="functions"
+    deployments: Mapped[list["HpcDeployment"]] = relationship(
+        secondary=hpc_functions_hpc_deployments,
+        lazy="selectin",
+        back_populates="functions",
     )
 
     invocation_logs: Mapped[list["HpcInvocationLog"]] = relationship(
@@ -63,8 +65,6 @@ class HpcFunction(Base, DoiMixin, AssociatedMaterialsMixin, FunctionMetadataMixi
         return [
             {
                 "deployment_id": self.deployment.id,
-                "deployment_name": self.deployment.name,
-                "deployment_type": self.deployment.deployment_type,
                 "endpoint_name": endpoint.name,
                 "endpoint_gcmu_id": endpoint.gcmu_id,
             }

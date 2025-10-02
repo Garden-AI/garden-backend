@@ -1072,7 +1072,7 @@ async def test_patch_garden_remove_hpc_function(
     )
     assert deployment_response.status_code == 200
     deployment_id = deployment_response.json()["id"]
-    create_hpc_function_json["deployment_id"] = deployment_id
+    create_hpc_function_json["deployment_ids"] = [deployment_id]
 
     # Create an HPC function first
     hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)

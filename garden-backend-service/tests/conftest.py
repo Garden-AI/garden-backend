@@ -544,12 +544,7 @@ def create_hpc_endpoint_json() -> dict:
 @pytest.fixture
 def create_hpc_deployment_json() -> dict:
     return {
-        "name": "Test Conda Environment",
-        "description": "Test deployment for HPC functions",
-        "deployment_type": "conda",
-        "conda_env_name": "test_env",
-        "conda_requirements": {"numpy": "1.24.0"},
-        "python_dependencies": [],
+        "conda_env_path": "/home/test/.conda/envs/test-env",
     }
 
 

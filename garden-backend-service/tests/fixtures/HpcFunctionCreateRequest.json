@@ -6,13 +6,6 @@
   "year": "2024",
   "authors": ["HPC Researcher"],
   "tags": ["mathematics", "algorithms", "hpc"],
-  "test_functions": [],
-  "requirements": [],
-  "models": [],
-  "repositories": [],
-  "papers": [],
-  "datasets": [],
-  "notebooks": [],
   "function_name": "compute_fibonacci",
-  "deployment_id": 1
+  "deployment_ids": [1]
 }

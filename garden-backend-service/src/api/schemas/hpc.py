@@ -9,13 +9,11 @@ from src.api.schemas.shared_function_schemas import (
 
 class HpcFunctionCreateRequest(CommonFunctionMetadata):
     function_name: str
-    deployment_id: int
+    deployment_ids: list[int]
 
 
 class HpcFunctionDeploymentInfo(BaseSchema):
-    deployment_id: int
-    deployment_name: str
-    deployment_type: str
+    deployment_ids: list[int]
     endpoint_name: str
     endpoint_gcmu_id: str
 
@@ -30,3 +28,4 @@ class HpcFunctionMetadataResponse(CommonFunctionMetadata):
 
 class HpcFunctionPatchRequest(CommonFunctionPatchRequest):
     function_name: str | None = None
+    deployment_ids: list[int] | None = None

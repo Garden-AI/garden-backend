@@ -17,7 +17,7 @@ async def test_create_and_get_hpc_function(
     create_hpc_deployment_json,
 ):
     deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
-    create_hpc_function_json["deployment_id"] = deployment["id"]
+    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     assert create_response.status_code == 200
@@ -41,7 +41,7 @@ async def test_patch_hpc_function(
     create_hpc_deployment_json,
 ):
     deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
-    create_hpc_function_json["deployment_id"] = deployment["id"]
+    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     function_id = create_response.json()["id"]

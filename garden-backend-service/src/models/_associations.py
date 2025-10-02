@@ -56,3 +56,14 @@ hpc_deployment_endpoints = Table(
         "hpc_endpoint_id", Integer, ForeignKey("hpc_endpoints.id"), primary_key=True
     ),
 )
+
+hpc_functions_hpc_deployments = Table(
+    "hpc_functions_hpc_deployments",
+    Base.metadata,
+    Column(
+        "hpc_function_id", Integer, ForeignKey("hpc_functions.id"), primary_key=True
+    ),
+    Column(
+        "hpc_deployment_id", Integer, ForeignKey("hpc_deployments.id"), primary_key=True
+    ),
+)

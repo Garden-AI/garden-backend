@@ -17,7 +17,6 @@ class HpcEndpoint(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     gcmu_id: Mapped[str]
-
     deployments: Mapped[list["HpcDeployment"]] = relationship(
         secondary=hpc_deployment_endpoints,
         back_populates="endpoints",
