@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
@@ -28,3 +29,4 @@ class HpcInvocationLog(Base):
     hpc_endpoint: Mapped["HpcEndpoint"] = relationship()
     globus_task_id: Mapped[str]
     date_invoked: Mapped[datetime]
+    user_endpoint_config: Mapped[dict] = mapped_column(JSON)

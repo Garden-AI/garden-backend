@@ -1,8 +1,8 @@
 """create tables for hpc functions
 
-Revision ID: 594eed0f8431
+Revision ID: adc39d998ba3
 Revises: 94dfc9916805
-Create Date: 2025-10-02 14:55:30.093611
+Create Date: 2025-10-02 15:35:20.649786
 
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "594eed0f8431"
+revision: str = "adc39d998ba3"
 down_revision: Union[str, None] = "94dfc9916805"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -119,6 +119,11 @@ def upgrade() -> None:
         sa.Column("hpc_endpoint_id", sa.Integer(), nullable=False),
         sa.Column("globus_task_id", sa.String(), nullable=False),
         sa.Column("date_invoked", sa.DateTime(), nullable=False),
+        sa.Column(
+            "user_endpoint_config",
+            postgresql.JSON(astext_type=sa.Text()),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(
             ["function_id"],
             ["hpc_functions.id"],
