@@ -53,20 +53,27 @@ class HpcFunction(Base, DoiMixin, AssociatedMaterialsMixin, FunctionMetadataMixi
 
     @property
     def available_endpoints(self) -> list[str]:
-        if not self.deployment:
-            return []
-        return [endpoint.gcmu_id for endpoint in self.deployment.endpoints]
+        """Return unique list of endpoint IDs across all deployments."""
+        endpoint_ids = set()
+        for deployment in self.deployments:
+            for endpoint in deployment.endpoints:
+                endpoint_ids.add(endpoint.gcmu_id)
+        return list(endpoint_ids)
 
     @property
     def available_deployments(self) -> list[dict]:
-        if not self.deployment:
-            return []
+        """Return deployment info for each (deployment, endpoint) pair."""
+        result = []
 
-        return [
-            {
-                "deployment_id": self.deployment.id,
-                "endpoint_name": endpoint.name,
-                "endpoint_gcmu_id": endpoint.gcmu_id,
-            }
-            for endpoint in self.deployment.endpoints
-        ]
+        for deployment in self.deployments:
+            for endpoint in deployment.endpoints:
+                result.append(
+                    {
+                        "deployment_id": deployment.id,
+                        "endpoint_name": endpoint.name,
+                        "endpoint_gcmu_id": endpoint.gcmu_id,
+                        "conda_env_path": deployment.conda_env_path,
+                    }
+                )
+
+        return result
