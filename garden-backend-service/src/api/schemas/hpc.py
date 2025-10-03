@@ -13,9 +13,10 @@ class HpcFunctionCreateRequest(CommonFunctionMetadata):
 
 
 class HpcFunctionDeploymentInfo(BaseSchema):
-    deployment_ids: list[int]
+    deployment_id: int
     endpoint_name: str
     endpoint_gcmu_id: str
+    conda_env_path: str
 
 
 class HpcFunctionMetadataResponse(CommonFunctionMetadata):
