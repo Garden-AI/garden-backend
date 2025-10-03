@@ -23,6 +23,7 @@ from src.api.routes import (
     hpc,
     hpc_deployments,
     hpc_endpoints,
+    hpc_invocations,
     load_test,
     modal,
     notebook,
@@ -112,6 +113,7 @@ app.include_router(modal.modal_file_metadata.router)
 app.include_router(hpc.router)
 app.include_router(hpc_deployments.router)
 app.include_router(hpc_endpoints.router)
+app.include_router(hpc_invocations.router)
 
 app.mount("/mcp-http", mcp.streamable_http_app())
 app.mount("/mcp-sse", mcp.sse_app())
