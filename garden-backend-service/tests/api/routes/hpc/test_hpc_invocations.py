@@ -40,7 +40,7 @@ async def test_create_hpc_invocation(
     # Create invocation log
     invocation_request = {
         "function_id": function["id"],
-        "hpc_endpoint_id": endpoint["id"],
+        "endpoint_gcmu_id": endpoint["gcmu_id"],
         "globus_task_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_endpoint_config": {"key": "value"},
     }
@@ -76,13 +76,13 @@ async def test_get_hpc_invocations(
     # Create two invocation logs
     invocation_request_1 = {
         "function_id": function["id"],
-        "hpc_endpoint_id": endpoint["id"],
+        "endpoint_gcmu_id": endpoint["gcmu_id"],
         "globus_task_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_endpoint_config": {},
     }
     invocation_request_2 = {
         "function_id": function["id"],
-        "hpc_endpoint_id": endpoint["id"],
+        "endpoint_gcmu_id": endpoint["gcmu_id"],
         "globus_task_id": "550e8400-e29b-41d4-a716-446655440002",
         "user_endpoint_config": {},
     }
@@ -111,7 +111,7 @@ async def test_create_invocation_nonexistent_function(
 
     invocation_request = {
         "function_id": 99999,
-        "hpc_endpoint_id": endpoint["id"],
+        "endpoint_gcmu_id": endpoint["gcmu_id"],
         "globus_task_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_endpoint_config": {},
     }
@@ -137,7 +137,7 @@ async def test_create_invocation_nonexistent_endpoint(
 
     invocation_request = {
         "function_id": function["id"],
-        "hpc_endpoint_id": 99999,
+        "endpoint_gcmu_id": "99999999-9999-9999-9999-999999999999",
         "globus_task_id": "550e8400-e29b-41d4-a716-446655440001",
         "user_endpoint_config": {},
     }
