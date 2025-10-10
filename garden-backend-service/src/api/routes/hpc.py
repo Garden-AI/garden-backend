@@ -61,7 +61,7 @@ async def get_hpc_functions(
             (HpcFunction.user_id == user.id)
             | (gardens_hpc_functions.c.garden_id.is_not(None))
         )
-        .distinct()
+        .distinct(HpcFunction.id)
     )
     result = await db.scalars(stmt)
     return list(result.all())
