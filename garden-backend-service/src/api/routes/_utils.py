@@ -22,16 +22,19 @@ logger = get_logger(__name__)
 
 
 def assert_deletable_by_user(
-    obj: Garden | Entrypoint | HpcFunction, user: User
+    obj: Garden | Entrypoint | HpcFunction, user: User, settings=None
 ) -> None:
     """Check that a given Garden or Entrypoint is safe to delete, i.e. has a draft DOI and is owned by the user.
 
     Raises:
         HTTPException: if obj is not owned by user or has a registered 'findable' DOI
     """
+    if settings is None:
+        settings = get_settings()
+
     if (
         obj.owner.identity_id != user.identity_id
-        and str(user.identity_id) not in get_settings().SUPER_USERS
+        and str(user.identity_id) not in settings.SUPER_USERS
     ):
         logger.info(
             f"Failed to delete or replace object {str(type(obj).__name__).lower()} (not owned by user)"
@@ -59,15 +62,19 @@ def assert_editable_by_user(
         | HpcFunctionPatchRequest
     ),
     user: User,
+    settings=None,
 ) -> None:
     """Check that a given Garden or Entrypoint can be edited, i.e. is owned by the user and is not archived.
 
     Raises:
         HTTPException: If obj is not owned by user or is an archived resource (and resource is not being unarchived).
     """
+    if settings is None:
+        settings = get_settings()
+
     if (
         obj.owner.identity_id != user.identity_id
-        and str(user.identity_id) not in get_settings().SUPER_USERS
+        and str(user.identity_id) not in settings.SUPER_USERS
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
