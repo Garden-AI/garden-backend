@@ -143,15 +143,12 @@ async def delete_hpc_deployment(
     id: int,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    is_admin: bool = Depends(is_super_user),
 ):
     """
     Delete an HPC deployment (admin-only).
 
     Requirements:
-    - Must be super user
     - Deployment must not be used by any functions
-    - If deployment has invocation history, deletion will be blocked
     """
     deployment = await db.scalar(
         select(HpcDeployment)

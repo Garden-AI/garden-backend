@@ -135,7 +135,6 @@ async def delete_hpc_function(
     - Must be function owner OR super user
     - Function must have a draft DOI (doi_is_draft=True)
     - Function must not be in any gardens
-    - If function has invocation history, deletion will be blocked
     """
     hpc_function = await db.scalar(
         select(HpcFunction)

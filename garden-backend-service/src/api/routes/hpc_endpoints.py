@@ -76,8 +76,6 @@ async def update_hpc_endpoint(
 ):
     """
     Update an HPC endpoint (admin-only).
-
-    Note: gcmu_id is immutable and cannot be changed after creation.
     """
     endpoint = await db.scalar(
         select(HpcEndpoint)
@@ -115,7 +113,6 @@ async def delete_hpc_endpoint(
     Requirements:
     - Must be super user
     - Endpoint must not be used by any deployments
-    - If endpoint has invocation history, deletion will be blocked
     """
     endpoint = await db.scalar(
         select(HpcEndpoint)
