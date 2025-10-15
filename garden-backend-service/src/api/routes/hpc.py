@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_editable_by_user
+from src.api.routes._utils import assert_deletable_by_user, assert_editable_by_user
 from src.api.schemas.hpc import (
     HpcFunctionCreateRequest,
     HpcFunctionMetadataResponse,
@@ -88,7 +90,11 @@ async def update_hpc_function(
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
 ):
-    hpc_function = await HpcFunction.get(db, id=id)
+    hpc_function = await db.scalar(
+        select(HpcFunction)
+        .options(selectinload(HpcFunction.user))
+        .where(HpcFunction.id == id)
+    )
     if hpc_function is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -111,6 +117,56 @@ async def update_hpc_function(
 
 
 async def _collect_deployments(ids: list[int], db: AsyncSession) -> list[HpcDeployment]:
-    stmt = select(HpcDeployment).where(HpcDeployment.id in ids)
+    stmt = select(HpcDeployment).where(HpcDeployment.id.in_(ids))
     results = await db.scalars(stmt)
-    return results.all()
+    return list(results.all())
+
+
+@router.delete("/functions/{id}", status_code=status.HTTP_200_OK)
+async def delete_hpc_function(
+    id: int,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+):
+    """
+    Delete an HPC function.
+
+    Requirements:
+    - Must be function owner OR super user
+    - Function must have a draft DOI (doi_is_draft=True)
+    - Function must not be in any gardens
+    - If function has invocation history, deletion will be blocked
+    """
+    hpc_function = await db.scalar(
+        select(HpcFunction)
+        .options(selectinload(HpcFunction.user))
+        .where(HpcFunction.id == id)
+    )
+
+    if hpc_function is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"HPC Function not found with id {id}",
+        )
+
+    assert_deletable_by_user(hpc_function, user)
+
+    # Attempt deletion - will fail if invocation history exists (FK constraint)
+    try:
+        await db.delete(hpc_function)
+        await db.commit()
+        log.info(
+            "Deleted HPC function", function_id=id, function_name=hpc_function.name
+        )
+        return {"detail": f"Successfully deleted HPC function {id}"}
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning(
+            "Failed to delete HPC function due to FK constraint",
+            function_id=id,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete function with invocation history. Invocation logs must be preserved.",
+        ) from e

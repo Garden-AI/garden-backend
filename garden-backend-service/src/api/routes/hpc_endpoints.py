@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from structlog import get_logger
 
-from src.api.dependencies.auth import authed_user
+from src.api.dependencies.auth import authed_user, is_super_user
 from src.api.dependencies.database import get_db_session
 from src.api.schemas.hpc_endpoints import (
     HpcEndpointCreateRequest,
+    HpcEndpointPatchRequest,
     HpcEndpointResponse,
 )
 from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
@@ -61,3 +64,92 @@ async def get_hpc_endpoints(
     stmt = select(HpcEndpoint)
     result = await db.scalars(stmt.limit(limit))
     return list(result.all())
+
+
+@router.patch("/{id}", response_model=HpcEndpointResponse)
+async def update_hpc_endpoint(
+    id: int,
+    endpoint_data: HpcEndpointPatchRequest,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+    is_admin: bool = Depends(is_super_user),
+):
+    """
+    Update an HPC endpoint (admin-only).
+
+    Note: gcmu_id is immutable and cannot be changed after creation.
+    """
+    endpoint = await db.scalar(
+        select(HpcEndpoint)
+        .options(selectinload(HpcEndpoint.deployments))
+        .where(HpcEndpoint.id == id)
+    )
+
+    if endpoint is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"HPC Endpoint not found with id {id}",
+        )
+
+    # Update only provided fields (partial update)
+    for key, value in endpoint_data.model_dump(exclude_none=True).items():
+        setattr(endpoint, key, value)
+
+    await db.commit()
+    await db.refresh(endpoint)
+
+    log.info("Updated HPC endpoint", endpoint_id=id, endpoint_name=endpoint.name)
+    return endpoint
+
+
+@router.delete("/{id}", status_code=status.HTTP_200_OK)
+async def delete_hpc_endpoint(
+    id: int,
+    db: AsyncSession = Depends(get_db_session),
+    user: User = Depends(authed_user),
+    is_admin: bool = Depends(is_super_user),
+):
+    """
+    Delete an HPC endpoint (admin-only).
+
+    Requirements:
+    - Must be super user
+    - Endpoint must not be used by any deployments
+    - If endpoint has invocation history, deletion will be blocked
+    """
+    endpoint = await db.scalar(
+        select(HpcEndpoint)
+        .options(selectinload(HpcEndpoint.deployments))
+        .where(HpcEndpoint.id == id)
+    )
+    if endpoint is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"HPC Endpoint not found with id {id}",
+        )
+
+    # Check if endpoint is used by any deployments
+    if len(endpoint.deployments) > 0:
+        deployment_ids = [d.id for d in endpoint.deployments]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete endpoint used by {len(endpoint.deployments)} deployment(s) (IDs: {deployment_ids}). Remove deployments first.",
+        )
+
+    # Attempt deletion - will fail if invocation history exists (FK constraint)
+    try:
+        await db.delete(endpoint)
+        await db.commit()
+        log.info("Deleted HPC endpoint", endpoint_id=id, endpoint_name=endpoint.name)
+        return {"detail": f"Successfully deleted HPC endpoint {id}"}
+    except IntegrityError as e:
+        await db.rollback()
+        log.warning(
+            "Failed to delete HPC endpoint due to FK constraint",
+            endpoint_id=id,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete endpoint with invocation history. Invocation logs must be preserved.",
+        ) from e
