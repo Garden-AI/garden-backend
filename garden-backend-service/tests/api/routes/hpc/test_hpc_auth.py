@@ -65,7 +65,8 @@ async def test_hpc_function_non_owner(
     override_get_settings_dependency,
 ):
     """Test that non-owners receive a 403 Forbidden error when modifying a function."""
-    # Create endpoint, deployment, and function as the first user
+    # Manually set up the authenticated override for the first user
+    # Note: override_get_settings_dependency is already active via fixture
     app.dependency_overrides[authenticated] = lambda: mock_auth_state
     endpoint_response = await client.post(
         "/hpc/endpoints", json=create_hpc_endpoint_json
