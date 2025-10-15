@@ -10,6 +10,7 @@ from src.main import app
 async def test_hpc_endpoints_unauthenticated(
     client,
     mock_db_session,
+    override_get_settings_dependency,
 ):
     """Test that unauthenticated users receive a 403 Forbidden error."""
     # Test PATCH and DELETE on deployments
@@ -33,6 +34,7 @@ async def test_hpc_admin_endpoints_non_admin(
     client,
     mock_db_session,
     override_authenticated_dependency,  # Regular user, not superuser
+    override_get_settings_dependency,
 ):
     """Test that non-admin users receive a 403 Forbidden error on admin endpoints."""
     # Test PATCH and DELETE on deployments
@@ -60,6 +62,7 @@ async def test_hpc_function_non_owner(
     create_hpc_function_json,
     create_hpc_deployment_json,
     create_hpc_endpoint_json,
+    override_get_settings_dependency,
 ):
     """Test that non-owners receive a 403 Forbidden error when modifying a function."""
     # Create endpoint, deployment, and function as the first user
