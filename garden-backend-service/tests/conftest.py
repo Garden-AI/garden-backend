@@ -204,13 +204,8 @@ def mock_modal_publisher_auth_state(
 
 
 @pytest.fixture
-def override_get_settings_dependency(mock_settings, mocker):
-    # Override FastAPI dependency injection
+def override_get_settings_dependency(mock_settings):
     app.dependency_overrides[get_settings] = lambda: mock_settings
-
-    # Also mock direct calls to get_settings() throughout the codebase
-    mocker.patch("src.config.get_settings", return_value=mock_settings)
-
     yield
     app.dependency_overrides.clear()
 

@@ -99,5 +99,5 @@ async def test_hpc_function_non_owner(
     delete_function_response = await client.delete(f"/hpc/functions/{function_id}")
     assert delete_function_response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    # Clean up the override
-    app.dependency_overrides.clear()
+    # Clean up only the authenticated override (don't clear all overrides!)
+    del app.dependency_overrides[authenticated]

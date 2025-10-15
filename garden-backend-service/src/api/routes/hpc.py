@@ -13,7 +13,6 @@ from src.api.schemas.hpc import (
     HpcFunctionMetadataResponse,
     HpcFunctionPatchRequest,
 )
-from src.config import Settings, get_settings
 from src.models._associations import (
     gardens_hpc_functions,
 )
@@ -90,7 +89,6 @@ async def update_hpc_function(
     function_data: HpcFunctionPatchRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
 ):
     hpc_function = await db.scalar(
         select(HpcFunction)
@@ -103,7 +101,7 @@ async def update_hpc_function(
             detail=f"No HPC Function with ID {id} found.",
         )
 
-    assert_editable_by_user(hpc_function, function_data, user, settings)
+    assert_editable_by_user(hpc_function, function_data, user)
 
     for key, value in function_data.model_dump(
         exclude={"deployment_ids"}, exclude_none=True
@@ -129,7 +127,6 @@ async def delete_hpc_function(
     id: int,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
-    settings: Settings = Depends(get_settings),
 ):
     """
     Delete an HPC function.
@@ -152,7 +149,7 @@ async def delete_hpc_function(
             detail=f"HPC Function not found with id {id}",
         )
 
-    assert_deletable_by_user(hpc_function, user, settings)
+    assert_deletable_by_user(hpc_function, user)
 
     # Attempt deletion - will fail if invocation history exists (FK constraint)
     try:
