@@ -23,6 +23,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
     in_modal_publishers_group,
+    is_super_user,
     under_modal_usage_limit,
 )
 from src.api.dependencies.database import async_init, init
@@ -181,6 +182,13 @@ def override_authenticated_dependency(mock_auth_state):
 @pytest.fixture
 def override_publisher_group_membership():
     app.dependency_overrides[in_modal_publishers_group] = lambda: True
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_is_super_user_dependency():
+    app.dependency_overrides[is_super_user] = lambda: True
     yield
     app.dependency_overrides.clear()
 

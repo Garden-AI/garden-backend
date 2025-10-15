@@ -1,12 +1,6 @@
 import pytest
 
 
-async def create_hpc_deployment(client, create_hpc_deployment_json):
-    response = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
-    assert response.status_code == 200
-    return response.json()
-
-
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_create_and_get_hpc_function(
@@ -15,8 +9,21 @@ async def test_create_and_get_hpc_function(
     override_authenticated_dependency,
     create_hpc_function_json,
     create_hpc_deployment_json,
+    create_hpc_endpoint_json,
 ):
-    deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
+    )
+    assert endpoint_response.status_code == 200
+    endpoint = endpoint_response.json()
+
+    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
+    deployment_response = await client.post(
+        "/hpc/deployments", json=create_hpc_deployment_json
+    )
+    assert deployment_response.status_code == 200
+    deployment = deployment_response.json()
+
     create_hpc_function_json["deployment_ids"] = [deployment["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
@@ -39,8 +46,19 @@ async def test_patch_hpc_function(
     override_authenticated_dependency,
     create_hpc_function_json,
     create_hpc_deployment_json,
+    create_hpc_endpoint_json,
 ):
-    deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
+    )
+    assert endpoint_response.status_code == 200
+    endpoint = endpoint_response.json()
+
+    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
+    deployment = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
+    assert deployment.status_code == 200
+    deployment = deployment.json()
+
     create_hpc_function_json["deployment_ids"] = [deployment["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
@@ -51,3 +69,44 @@ async def test_patch_hpc_function(
     )
     assert patch_response.status_code == 200
     assert "updated" in patch_response.json()["tags"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_hpc_function(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    create_hpc_function_json,
+    create_hpc_deployment_json,
+    create_hpc_endpoint_json,
+):
+    """Test successful deletion of an HPC function."""
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
+    )
+    assert endpoint_response.status_code == 200
+    endpoint = endpoint_response.json()
+
+    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
+    deployment = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
+    assert deployment.status_code == 200
+    deployment = deployment.json()
+
+    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
+
+    create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
+    function_id = create_response.json()["id"]
+
+    # Deletion should succeed
+    delete_response = await client.delete(f"/hpc/functions/{function_id}")
+    assert delete_response.status_code == 200
+    assert "Successfully deleted" in delete_response.json()["detail"]
+
+    # Function should no longer exist
+    get_response = await client.get(f"/hpc/functions/{function_id}")
+    assert get_response.status_code == 404
+
+    # Test deleting a non-existent function
+    delete_response_404 = await client.delete("/hpc/functions/99999")
+    assert delete_response_404.status_code == 404
