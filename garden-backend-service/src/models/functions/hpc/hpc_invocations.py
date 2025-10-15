@@ -23,9 +23,13 @@ class HpcInvocationLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship()
-    function_id: Mapped[int] = mapped_column(ForeignKey("hpc_functions.id"))
+    function_id: Mapped[int] = mapped_column(
+        ForeignKey("hpc_functions.id", ondelete="RESTRICT")
+    )
     function: Mapped["HpcFunction"] = relationship(back_populates="invocation_logs")
-    hpc_endpoint_id: Mapped[int] = mapped_column(ForeignKey("hpc_endpoints.id"))
+    hpc_endpoint_id: Mapped[int] = mapped_column(
+        ForeignKey("hpc_endpoints.id", ondelete="RESTRICT")
+    )
     hpc_endpoint: Mapped["HpcEndpoint"] = relationship()
     globus_task_id: Mapped[str]
     date_invoked: Mapped[datetime]
