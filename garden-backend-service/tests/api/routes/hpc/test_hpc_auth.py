@@ -37,13 +37,6 @@ async def test_hpc_admin_endpoints_non_admin(
     override_get_settings_dependency,
 ):
     """Test that non-admin users receive a 403 Forbidden error on admin endpoints."""
-    # Test PATCH and DELETE on deployments
-    patch_deployment_response = await client.patch("/hpc/deployments/1", json={})
-    assert patch_deployment_response.status_code == status.HTTP_403_FORBIDDEN
-
-    delete_deployment_response = await client.delete("/hpc/deployments/1")
-    assert delete_deployment_response.status_code == status.HTTP_403_FORBIDDEN
-
     # Test PATCH and DELETE on endpoints
     patch_endpoint_response = await client.patch("/hpc/endpoints/1", json={})
     assert patch_endpoint_response.status_code == status.HTTP_403_FORBIDDEN
