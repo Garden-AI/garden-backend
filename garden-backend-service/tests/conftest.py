@@ -23,6 +23,7 @@ from src.api.dependencies.auth import (
     _get_auth_token,
     authenticated,
     in_modal_publishers_group,
+    is_super_user,
     under_modal_usage_limit,
 )
 from src.api.dependencies.database import async_init, init
@@ -186,6 +187,13 @@ def override_publisher_group_membership():
 
 
 @pytest.fixture
+def override_is_super_user_dependency():
+    app.dependency_overrides[is_super_user] = lambda: True
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def mock_modal_publisher_auth_state(
     override_authenticated_dependency,
     override_publisher_group_membership,
@@ -196,10 +204,21 @@ def mock_modal_publisher_auth_state(
 
 
 @pytest.fixture
-def override_get_settings_dependency(mock_settings):
+def override_get_settings_dependency(mock_settings, mocker):
+    # Clear the LRU cache so our mocks take effect
+    get_settings.cache_clear()
+
+    # Override the FastAPI dependency
     app.dependency_overrides[get_settings] = lambda: mock_settings
+
+    # Also mock the function where it's imported and used directly (not via Depends)
+    mocker.patch("src.api.routes._utils.get_settings", return_value=mock_settings)
+
     yield
+
+    # Cleanup
     app.dependency_overrides.clear()
+    get_settings.cache_clear()
 
 
 @pytest.fixture

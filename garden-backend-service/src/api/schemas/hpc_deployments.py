@@ -6,13 +6,16 @@ class HpcDeploymentBase(BaseSchema):
 
 
 class HpcDeploymentCreateRequest(HpcDeploymentBase):
-    pass
+    endpoint_ids: list[int] | None = None
 
 
 class HpcDeploymentResponse(HpcDeploymentBase):
     id: int
+    endpoint_ids: list[int] = []
+    user_endpoint_config: dict | None = None
 
 
 class HpcDeploymentPatchRequest(BaseSchema):
-    name: str | None = None
     conda_env_path: str | None = None
+    user_endpoint_config: dict | None = None
+    endpoint_ids: list[int] | None = None

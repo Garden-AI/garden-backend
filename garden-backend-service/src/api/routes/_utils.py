@@ -10,16 +10,20 @@ from structlog import get_logger
 
 from src.api.schemas.entrypoint import EntrypointPatchRequest
 from src.api.schemas.garden import GardenPatchRequest
+from src.api.schemas.hpc import HpcFunctionPatchRequest
 from src.api.schemas.modal.modal_app import ModalAppPatchRequest
 from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
 from src.config import get_settings
 from src.models import Entrypoint, Garden, ModalApp, ModalFunction, User
 from src.models._associations import gardens_entrypoints
+from src.models.functions.hpc.hpc_functions import HpcFunction
 
 logger = get_logger(__name__)
 
 
-def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
+def assert_deletable_by_user(
+    obj: Garden | Entrypoint | HpcFunction, user: User
+) -> None:
     """Check that a given Garden or Entrypoint is safe to delete, i.e. has a draft DOI and is owned by the user.
 
     Raises:
@@ -46,12 +50,13 @@ def assert_deletable_by_user(obj: Garden | Entrypoint, user: User) -> None:
 
 
 def assert_editable_by_user(
-    obj: Garden | Entrypoint | ModalFunction | ModalApp,
+    obj: Garden | Entrypoint | ModalFunction | ModalApp | HpcFunction,
     patch_request: (
         GardenPatchRequest
         | EntrypointPatchRequest
         | ModalFunctionPatchRequest
         | ModalAppPatchRequest
+        | HpcFunctionPatchRequest
     ),
     user: User,
 ) -> None:
