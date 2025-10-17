@@ -13,6 +13,7 @@ from src.api.schemas.hpc_deployments import (
     HpcDeploymentResponse,
 )
 from src.models.functions.hpc.hpc_deployments import HpcDeployment
+from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
 from src.models.user import User
 
 log = get_logger(__name__)
@@ -117,8 +118,6 @@ async def update_hpc_deployment(
 
     # Update endpoint associations if provided
     if deployment_data.endpoint_ids is not None:
-        from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
-
         endpoints = await db.scalars(
             select(HpcEndpoint).where(HpcEndpoint.id.in_(deployment_data.endpoint_ids))
         )
