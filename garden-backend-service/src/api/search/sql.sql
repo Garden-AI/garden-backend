@@ -53,6 +53,7 @@ language plpgsql
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS garden_documents AS
     SELECT g.id AS garden_id,
+    setweight(to_tsvector('simple', g.doi), 'A') || -- 'simple' keeps DOI intact
     setweight(to_tsvector(array_to_string(g.authors, ' ')), 'A') ||
     setweight(to_tsvector(array_to_string(g.contributors, ' ')), 'A') ||
     setweight(to_tsvector(array_to_string(g.tags, ' ')), 'B') ||
