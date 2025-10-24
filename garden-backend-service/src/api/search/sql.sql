@@ -20,16 +20,26 @@ BEGIN
          INNER JOIN modal_function_documents mf
          ON gm.modal_function_id = mf.id
          GROUP BY gm.garden_id
+    ), hpc_function_ranks AS (
+         SELECT gm.garden_id,
+                COALESCE(SUM(ts_rank(hpcf.hpcf_document, query)), 0) AS rank
+         FROM gardens_hpc_functions gm
+         INNER JOIN hpc_function_documents hpcf
+         ON gm.hpc_function_id = hpcf.id
+         GROUP BY gm.garden_id
     ), garden_ranks AS (
        SELECT gd.garden_id,
               COALESCE(ts_rank(gd.garden_document, query), 0)
               + COALESCE(ep_ranks.rank, 0)
-              + COALESCE(mf_ranks.rank, 0) AS rank
+              + COALESCE(mf_ranks.rank, 0)
+              + COALESCE(hpcf_ranks.rank, 0) AS rank
        FROM garden_documents gd
        LEFT JOIN ep_ranks
        ON ep_ranks.garden_id = gd.garden_id
        LEFT JOIN modal_function_ranks mf_ranks
        ON mf_ranks.garden_id = gd.garden_id
+        LEFT JOIN hpc_function_ranks hpcf_ranks
+        ON hpcf_ranks.garden_id = gd.garden_id
     )
     SELECT gr.garden_id, gr.rank
     FROM garden_ranks gr
@@ -43,6 +53,7 @@ language plpgsql
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS garden_documents AS
     SELECT g.id AS garden_id,
+    setweight(to_tsvector('simple', g.doi), 'A') || -- 'simple' keeps DOI intact
     setweight(to_tsvector(array_to_string(g.authors, ' ')), 'A') ||
     setweight(to_tsvector(array_to_string(g.contributors, ' ')), 'A') ||
     setweight(to_tsvector(array_to_string(g.tags, ' ')), 'B') ||
@@ -68,10 +79,19 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS modal_function_documents AS
     setweight(to_tsvector(mf.description), 'D') AS mf_document
     FROM modal_functions mf;
 
+CREATE MATERIALIZED VIEW IF NOT EXISTS hpc_function_documents AS
+    SELECT hpcf.id,
+    setweight(to_tsvector(array_to_string(hpcf.authors, ' ')), 'A') ||
+    setweight(to_tsvector(array_to_string(hpcf.tags, ' ')), 'A') ||
+    setweight(to_tsvector(hpcf.title), 'D') ||
+    setweight(to_tsvector(hpcf.description), 'D') AS hpcf_document
+    FROM hpc_functions hpcf;
+
 
 CREATE INDEX IF NOT EXISTS garden_documents_index ON garden_documents USING GIN(garden_document);
 CREATE INDEX IF NOT EXISTS entrypoint_documents_index ON entrypoint_documents USING GIN(ep_document);
 CREATE INDEX IF NOT EXISTS modal_function_documents_index ON modal_function_documents USING GIN(mf_document);
+CREATE INDEX IF NOT EXISTS hpc_function_documents_index ON hpc_function_documents USING GIN(hpcf_document);
 
 
 CREATE OR REPLACE FUNCTION refresh_garden_documents()
@@ -109,6 +129,17 @@ $$
 LANGUAGE plpgsql
 ;
 
+CREATE OR REPLACE FUNCTION refresh_hpc_function_documents()
+RETURNS TRIGGER
+AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW hpc_function_documents;
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql
+;
+
 CREATE OR REPLACE TRIGGER garden_documents_trigger
 AFTER INSERT OR UPDATE OF authors,
                 contributors,
@@ -135,3 +166,11 @@ AFTER INSERT OR UPDATE OF authors,
                 title
 ON modal_functions
 EXECUTE FUNCTION refresh_modal_function_documents();
+
+CREATE OR REPLACE TRIGGER hpc_function_documents_trigger
+AFTER INSERT OR UPDATE OF authors,
+                tags,
+                description,
+                title
+ON hpc_functions
+EXECUTE FUNCTION refresh_hpc_function_documents();
