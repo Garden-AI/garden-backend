@@ -7,5 +7,5 @@
   "authors": ["HPC Researcher"],
   "tags": ["mathematics", "algorithms", "hpc"],
   "function_name": "compute_fibonacci",
-  "deployment_ids": [1]
+  "endpoint_ids": [1]
 }

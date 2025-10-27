@@ -970,17 +970,17 @@ async def test_add_garden_with_hpc_function(
     override_authenticated_dependency,
     mock_garden_create_request_no_entrypoints_json,
     create_hpc_function_json,
-    create_hpc_deployment_json,
+    create_hpc_endpoint_json,
 ):
-    # Create a deployment first
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
+    # Create an endpoint first
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
     )
-    assert deployment_response.status_code == 200
-    deployment_id = deployment_response.json()["id"]
-    create_hpc_function_json["deployment_id"] = deployment_id
+    assert endpoint_response.status_code == 200
+    endpoint_id = endpoint_response.json()["id"]
+    create_hpc_function_json["endpoint_ids"] = [endpoint_id]
 
-    # Create an HPC function first
+    # Create an HPC function
     hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     assert hpc_response.status_code == 200
     hpc_function_id = hpc_response.json()["id"]
@@ -1023,7 +1023,7 @@ async def test_patch_garden_add_hpc_function(
     override_authenticated_dependency,
     mock_garden_create_request_no_entrypoints_json,
     create_hpc_function_json,
-    create_hpc_deployment_json,
+    create_hpc_endpoint_json,
 ):
     # Create a garden without HPC functions
     garden_response = await client.post(
@@ -1032,13 +1032,13 @@ async def test_patch_garden_add_hpc_function(
     assert garden_response.status_code == 200
     garden_doi = garden_response.json()["doi"]
 
-    # Create a deployment first
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
+    # Create an endpoint first
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
     )
-    assert deployment_response.status_code == 200
-    deployment_id = deployment_response.json()["id"]
-    create_hpc_function_json["deployment_id"] = deployment_id
+    assert endpoint_response.status_code == 200
+    endpoint_id = endpoint_response.json()["id"]
+    create_hpc_function_json["endpoint_ids"] = [endpoint_id]
 
     # Create an HPC function
     hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
@@ -1064,17 +1064,17 @@ async def test_patch_garden_remove_hpc_function(
     override_authenticated_dependency,
     mock_garden_create_request_no_entrypoints_json,
     create_hpc_function_json,
-    create_hpc_deployment_json,
+    create_hpc_endpoint_json,
 ):
-    # Create a deployment first
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
+    # Create an endpoint first
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
     )
-    assert deployment_response.status_code == 200
-    deployment_id = deployment_response.json()["id"]
-    create_hpc_function_json["deployment_ids"] = [deployment_id]
+    assert endpoint_response.status_code == 200
+    endpoint_id = endpoint_response.json()["id"]
+    create_hpc_function_json["endpoint_ids"] = [endpoint_id]
 
-    # Create an HPC function first
+    # Create an HPC function
     hpc_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     assert hpc_response.status_code == 200
     hpc_function_id = hpc_response.json()["id"]

@@ -563,13 +563,6 @@ def create_hpc_endpoint_json() -> dict:
 
 
 @pytest.fixture
-def create_hpc_deployment_json() -> dict:
-    return {
-        "conda_env_path": "/home/test/.conda/envs/test-env",
-    }
-
-
-@pytest.fixture
 def create_hpc_function_json() -> dict:
     path = Path(__file__).parent / "fixtures" / "HpcFunctionCreateRequest.json"
     with open(path, "r") as f_in:

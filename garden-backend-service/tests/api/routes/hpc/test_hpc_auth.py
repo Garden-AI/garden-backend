@@ -13,13 +13,6 @@ async def test_hpc_endpoints_unauthenticated(
     override_get_settings_dependency,
 ):
     """Test that unauthenticated users receive a 403 Forbidden error."""
-    # Test PATCH and DELETE on deployments
-    patch_deployment_response = await client.patch("/hpc/deployments/1", json={})
-    assert patch_deployment_response.status_code == status.HTTP_403_FORBIDDEN
-
-    delete_deployment_response = await client.delete("/hpc/deployments/1")
-    assert delete_deployment_response.status_code == status.HTTP_403_FORBIDDEN
-
     # Test PATCH and DELETE on endpoints
     patch_endpoint_response = await client.patch("/hpc/endpoints/1", json={})
     assert patch_endpoint_response.status_code == status.HTTP_403_FORBIDDEN
@@ -53,7 +46,6 @@ async def test_hpc_function_non_owner(
     mock_auth_state,  # The owner
     mock_auth_state_other_user,  # The other user
     create_hpc_function_json,
-    create_hpc_deployment_json,
     create_hpc_endpoint_json,
     override_get_settings_dependency,
 ):
@@ -67,14 +59,7 @@ async def test_hpc_function_non_owner(
     assert endpoint_response.status_code == 200
     endpoint = endpoint_response.json()
 
-    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
-    )
-    assert deployment_response.status_code == 200
-    deployment = deployment_response.json()
-
-    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
+    create_hpc_function_json["endpoint_ids"] = [endpoint["id"]]
     function_response = await client.post(
         "/hpc/functions", json=create_hpc_function_json
     )

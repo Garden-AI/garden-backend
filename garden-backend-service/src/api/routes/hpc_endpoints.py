@@ -77,11 +77,7 @@ async def update_hpc_endpoint(
     """
     Update an HPC endpoint (admin-only).
     """
-    endpoint = await db.scalar(
-        select(HpcEndpoint)
-        .options(selectinload(HpcEndpoint.deployments))
-        .where(HpcEndpoint.id == id)
-    )
+    endpoint = await db.scalar(select(HpcEndpoint).where(HpcEndpoint.id == id))
 
     if endpoint is None:
         raise HTTPException(
