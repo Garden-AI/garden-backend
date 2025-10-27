@@ -3,7 +3,7 @@ from src.api.schemas.base import BaseSchema
 
 class HpcEndpointBase(BaseSchema):
     name: str
-    gcmu_id: str  # Globus Compute endpoint UUID
+    gcmu_id: str | None = None  # Globus Compute endpoint UUID
 
 
 class HpcEndpointCreateRequest(HpcEndpointBase):

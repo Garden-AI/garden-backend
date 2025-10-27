@@ -112,11 +112,11 @@ async def delete_hpc_endpoint(
 
     Requirements:
     - Must be super user
-    - Endpoint must not be used by any deployments
+    - Endpoint must not be used by any functions
     """
     endpoint = await db.scalar(
         select(HpcEndpoint)
-        .options(selectinload(HpcEndpoint.deployments))
+        .options(selectinload(HpcEndpoint.functions))
         .where(HpcEndpoint.id == id)
     )
     if endpoint is None:
@@ -125,12 +125,12 @@ async def delete_hpc_endpoint(
             detail=f"HPC Endpoint not found with id {id}",
         )
 
-    # Check if endpoint is used by any deployments
-    if len(endpoint.deployments) > 0:
-        deployment_ids = [d.id for d in endpoint.deployments]
+    # Check if endpoint is used by any functions
+    if len(endpoint.functions) > 0:
+        function_ids = [f.id for f in endpoint.functions]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete endpoint used by {len(endpoint.deployments)} deployment(s) (IDs: {deployment_ids}). Remove deployments first.",
+            detail=f"Cannot delete endpoint used by {len(endpoint.functions)} function(s) (IDs: {function_ids}). Remove functions first.",
         )
 
     # Attempt deletion - will fail if invocation history exists (FK constraint)

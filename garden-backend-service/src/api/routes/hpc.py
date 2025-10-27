@@ -16,7 +16,7 @@ from src.api.schemas.hpc import (
 from src.models._associations import (
     gardens_hpc_functions,
 )
-from src.models.functions.hpc.hpc_deployments import HpcDeployment
+from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
 from src.models.functions.hpc.hpc_functions import HpcFunction
 from src.models.user import User
 
@@ -35,13 +35,13 @@ async def create_hpc_function(
     user: User = Depends(authed_user),
 ):
     log.info("Creating hpc function...")
-    deployments = await _collect_deployments(create_request.deployment_ids, db)
+    endpoints = await _collect_endpoints(create_request.endpoint_ids, db)
     func = HpcFunction.from_dict(
-        create_request.model_dump(exclude=["deployment_ids"], exclude_unset=True)
+        create_request.model_dump(exclude=["endpoint_ids"], exclude_unset=True)
     )
     func.name = create_request.function_name
     func.user = user
-    func.deployments = deployments
+    func.endpoints = endpoints
     db.add(func)
     await db.commit()
     await db.refresh(func)
@@ -104,20 +104,21 @@ async def update_hpc_function(
     assert_editable_by_user(hpc_function, function_data, user)
 
     for key, value in function_data.model_dump(
-        exclude={"deployment_ids"}, exclude_none=True
+        exclude={"endpoint_ids"}, exclude_none=True
     ).items():
         setattr(hpc_function, key, value)
 
-    deployments = await _collect_deployments(function_data.deployment_ids or [], db)
-    hpc_function.deployments = deployments
+    if function_data.endpoint_ids is not None:
+        endpoints = await _collect_endpoints(function_data.endpoint_ids, db)
+        hpc_function.endpoints = endpoints
     await db.commit()
     log.info("Updated HPC Function", id=id)
 
     return hpc_function
 
 
-async def _collect_deployments(ids: list[int], db: AsyncSession) -> list[HpcDeployment]:
-    stmt = select(HpcDeployment).where(HpcDeployment.id.in_(ids))
+async def _collect_endpoints(ids: list[int], db: AsyncSession) -> list[HpcEndpoint]:
+    stmt = select(HpcEndpoint).where(HpcEndpoint.id.in_(ids))
     results = await db.scalars(stmt)
     return list(results.all())
 

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.models._associations import hpc_functions_hpc_deployments
+from src.models._associations import hpc_functions_hpc_endpoints
 from src.models.base import Base
 from src.models.functions.common import (
     AssociatedMaterialsMixin,
@@ -14,12 +14,10 @@ from src.models.functions.common import (
 if TYPE_CHECKING:
     from src.models.user import User
 
-    from .hpc_deployments import HpcDeployment
     from .hpc_endpoints import HpcEndpoint
     from .hpc_invocations import HpcInvocationLog
 else:
     User = "User"
-    HpcDeployment = "HpcDeployment"
     HpcEndpoint = "HpcEndpoint"
     HpcInvocationLog = "HpcInvocationLog"
 
@@ -32,8 +30,8 @@ class HpcFunction(Base, DoiMixin, AssociatedMaterialsMixin, FunctionMetadataMixi
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship()
 
-    deployments: Mapped[list["HpcDeployment"]] = relationship(
-        secondary=hpc_functions_hpc_deployments,
+    endpoints: Mapped[list["HpcEndpoint"]] = relationship(
+        secondary=hpc_functions_hpc_endpoints,
         lazy="selectin",
         back_populates="functions",
     )
@@ -52,28 +50,12 @@ class HpcFunction(Base, DoiMixin, AssociatedMaterialsMixin, FunctionMetadataMixi
         return len(self.invocation_logs)
 
     @property
-    def available_endpoints(self) -> list[str]:
-        """Return unique list of endpoint IDs across all deployments."""
-        endpoint_ids = set()
-        for deployment in self.deployments:
-            for endpoint in deployment.endpoints:
-                endpoint_ids.add(endpoint.gcmu_id)
-        return list(endpoint_ids)
-
-    @property
-    def available_deployments(self) -> list[dict]:
-        """Return deployment info for each (deployment, endpoint) pair."""
-        result = []
-
-        for deployment in self.deployments:
-            for endpoint in deployment.endpoints:
-                result.append(
-                    {
-                        "deployment_id": deployment.id,
-                        "endpoint_name": endpoint.name,
-                        "endpoint_gcmu_id": endpoint.gcmu_id,
-                        "conda_env_path": deployment.conda_env_path,
-                    }
-                )
-
-        return result
+    def available_endpoints(self) -> list[dict]:
+        """Return list of available endpoints with name and ID."""
+        return [
+            {
+                "name": endpoint.name,
+                "gcmu_id": endpoint.gcmu_id,
+            }
+            for endpoint in self.endpoints
+        ]
