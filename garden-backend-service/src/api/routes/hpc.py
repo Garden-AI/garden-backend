@@ -136,6 +136,8 @@ async def delete_hpc_function(
     - Must be function owner OR super user
     - Function must have a draft DOI (doi_is_draft=True)
     - Function must not be in any gardens
+
+    Note: Invocation logs will be preserved with function_id set to NULL.
     """
     hpc_function = await db.scalar(
         select(HpcFunction)
@@ -151,7 +153,7 @@ async def delete_hpc_function(
 
     assert_deletable_by_user(hpc_function, user)
 
-    # Attempt deletion - will fail if invocation history exists (FK constraint)
+    # Attempt deletion
     try:
         await db.delete(hpc_function)
         await db.commit()
@@ -162,11 +164,11 @@ async def delete_hpc_function(
     except IntegrityError as e:
         await db.rollback()
         log.warning(
-            "Failed to delete HPC function due to FK constraint",
+            "Failed to delete HPC function due to constraint violation",
             function_id=id,
             error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete function with invocation history. Invocation logs must be preserved.",
+            detail="Cannot delete function. It may still be referenced by a garden or other resource.",
         ) from e

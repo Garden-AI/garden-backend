@@ -109,6 +109,8 @@ async def delete_hpc_endpoint(
     Requirements:
     - Must be super user
     - Endpoint must not be used by any functions
+
+    Note: Invocation logs will be preserved with hpc_endpoint_id set to NULL.
     """
     endpoint = await db.scalar(
         select(HpcEndpoint)
@@ -129,7 +131,7 @@ async def delete_hpc_endpoint(
             detail=f"Cannot delete endpoint used by {len(endpoint.functions)} function(s) (IDs: {function_ids}). Remove functions first.",
         )
 
-    # Attempt deletion - will fail if invocation history exists (FK constraint)
+    # Attempt deletion
     try:
         await db.delete(endpoint)
         await db.commit()
@@ -138,11 +140,11 @@ async def delete_hpc_endpoint(
     except IntegrityError as e:
         await db.rollback()
         log.warning(
-            "Failed to delete HPC endpoint due to FK constraint",
+            "Failed to delete HPC endpoint due to constraint violation",
             endpoint_id=id,
             error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete endpoint with invocation history. Invocation logs must be preserved.",
+            detail="Cannot delete endpoint due to a constraint violation.",
         ) from e
