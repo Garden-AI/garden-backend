@@ -7,7 +7,11 @@ from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
 from src.api.dependencies.database import get_db_session
-from src.api.routes._utils import assert_deletable_by_user, assert_editable_by_user
+from src.api.routes._utils import (
+    assert_deletable_by_user,
+    assert_editable_by_user,
+    get_gardens_for_hpc_function,
+)
 from src.api.schemas.hpc import (
     HpcFunctionCreateRequest,
     HpcFunctionMetadataResponse,
@@ -123,6 +127,34 @@ async def _collect_endpoints(ids: list[int], db: AsyncSession) -> list[HpcEndpoi
     return list(results.all())
 
 
+async def _raise_if_undeletable(
+    hpc_function: HpcFunction, user: User, db: AsyncSession
+) -> None:
+    """Check if an HPC function can be deleted.
+
+    Raises HTTPException if:
+    - User doesn't own the function
+    - Function has a published (non-draft) DOI
+    - Function is used by any gardens
+    """
+    # Check ownership and DOI status
+    assert_deletable_by_user(hpc_function, user)
+
+    # Check if function is in any gardens
+    gardens = await get_gardens_for_hpc_function(hpc_function, db)
+    if gardens:
+        garden_dois = [g.doi for g in gardens]
+        log.info(
+            "Failed to delete HPC function (used by gardens)",
+            function_id=hpc_function.id,
+            garden_count=len(gardens),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete HPC function. It is used by {len(gardens)} garden(s) with DOIs: {garden_dois}",
+        )
+
+
 @router.delete("/functions/{id}", status_code=status.HTTP_200_OK)
 async def delete_hpc_function(
     id: int,
@@ -151,7 +183,7 @@ async def delete_hpc_function(
             detail=f"HPC Function not found with id {id}",
         )
 
-    assert_deletable_by_user(hpc_function, user)
+    await _raise_if_undeletable(hpc_function, user, db)
 
     # Attempt deletion
     try:

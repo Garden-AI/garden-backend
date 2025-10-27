@@ -15,7 +15,7 @@ from src.api.schemas.modal.modal_app import ModalAppPatchRequest
 from src.api.schemas.modal.modal_function import ModalFunctionPatchRequest
 from src.config import get_settings
 from src.models import Entrypoint, Garden, ModalApp, ModalFunction, User
-from src.models._associations import gardens_entrypoints
+from src.models._associations import gardens_entrypoints, gardens_hpc_functions
 from src.models.functions.hpc.hpc_functions import HpcFunction
 
 logger = get_logger(__name__)
@@ -147,6 +147,18 @@ async def get_gardens_for_entrypoint(
         .where(gardens_entrypoints.c.entrypoint_id == entrypoint.id)
     )
     return garden_entrys.all()
+
+
+async def get_gardens_for_hpc_function(
+    hpc_function: HpcFunction, db: AsyncSession
+) -> list[Garden]:
+    """Get all gardens that contain this HPC function."""
+    gardens = await db.scalars(
+        select(Garden)
+        .join(gardens_hpc_functions, Garden.id == gardens_hpc_functions.c.garden_id)
+        .where(gardens_hpc_functions.c.hpc_function_id == hpc_function.id)
+    )
+    return list(gardens.all())
 
 
 def deprecated(
