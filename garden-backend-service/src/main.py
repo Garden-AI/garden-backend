@@ -21,7 +21,6 @@ from src.api.routes import (
     greet,
     hello_database,
     hpc,
-    hpc_deployments,
     hpc_endpoints,
     hpc_invocations,
     load_test,
@@ -111,7 +110,6 @@ app.include_router(modal.modal_functions.router)
 app.include_router(modal.modal_file_metadata.router)
 
 app.include_router(hpc.router)
-app.include_router(hpc_deployments.router)
 app.include_router(hpc_endpoints.router)
 app.include_router(hpc_invocations.router)
 

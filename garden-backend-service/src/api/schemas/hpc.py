@@ -9,24 +9,21 @@ from src.api.schemas.shared_function_schemas import (
 
 class HpcFunctionCreateRequest(CommonFunctionMetadata):
     function_name: str
-    deployment_ids: list[int]
+    endpoint_ids: list[int]
 
 
-class HpcFunctionDeploymentInfo(BaseSchema):
-    deployment_id: int
-    endpoint_name: str
-    endpoint_gcmu_id: str
-    conda_env_path: str
+class HpcEndpointInfo(BaseSchema):
+    name: str
+    gcmu_id: str | None
 
 
 class HpcFunctionMetadataResponse(CommonFunctionMetadata):
     id: int
     function_name: str
-    available_deployments: list[HpcFunctionDeploymentInfo] = Field(default_factory=list)
-    available_endpoints: list[str] = Field(default_factory=list)
+    available_endpoints: list[HpcEndpointInfo] = Field(default_factory=list)
     num_invocations: int = 0
 
 
 class HpcFunctionPatchRequest(CommonFunctionPatchRequest):
     function_name: str | None = None
-    deployment_ids: list[int] | None = None
+    endpoint_ids: list[int] | None = None

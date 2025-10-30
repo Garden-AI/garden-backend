@@ -8,7 +8,6 @@ async def test_create_and_get_hpc_function(
     mock_db_session,
     override_authenticated_dependency,
     create_hpc_function_json,
-    create_hpc_deployment_json,
     create_hpc_endpoint_json,
 ):
     endpoint_response = await client.post(
@@ -17,14 +16,7 @@ async def test_create_and_get_hpc_function(
     assert endpoint_response.status_code == 200
     endpoint = endpoint_response.json()
 
-    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
-    )
-    assert deployment_response.status_code == 200
-    deployment = deployment_response.json()
-
-    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
+    create_hpc_function_json["endpoint_ids"] = [endpoint["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     assert create_response.status_code == 200
@@ -45,7 +37,6 @@ async def test_patch_hpc_function(
     mock_db_session,
     override_authenticated_dependency,
     create_hpc_function_json,
-    create_hpc_deployment_json,
     create_hpc_endpoint_json,
 ):
     endpoint_response = await client.post(
@@ -54,12 +45,7 @@ async def test_patch_hpc_function(
     assert endpoint_response.status_code == 200
     endpoint = endpoint_response.json()
 
-    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
-    deployment = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
-    assert deployment.status_code == 200
-    deployment = deployment.json()
-
-    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
+    create_hpc_function_json["endpoint_ids"] = [endpoint["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     function_id = create_response.json()["id"]
@@ -78,7 +64,6 @@ async def test_delete_hpc_function(
     mock_db_session,
     override_authenticated_dependency,
     create_hpc_function_json,
-    create_hpc_deployment_json,
     create_hpc_endpoint_json,
 ):
     """Test successful deletion of an HPC function."""
@@ -88,12 +73,7 @@ async def test_delete_hpc_function(
     assert endpoint_response.status_code == 200
     endpoint = endpoint_response.json()
 
-    create_hpc_deployment_json["endpoint_ids"] = [endpoint["id"]]
-    deployment = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
-    assert deployment.status_code == 200
-    deployment = deployment.json()
-
-    create_hpc_function_json["deployment_ids"] = [deployment["id"]]
+    create_hpc_function_json["endpoint_ids"] = [endpoint["id"]]
 
     create_response = await client.post("/hpc/functions", json=create_hpc_function_json)
     function_id = create_response.json()["id"]

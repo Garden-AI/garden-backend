@@ -7,14 +7,8 @@ async def create_hpc_endpoint(client, create_hpc_endpoint_json):
     return response.json()
 
 
-async def create_hpc_deployment(client, create_hpc_deployment_json):
-    response = await client.post("/hpc/deployments", json=create_hpc_deployment_json)
-    assert response.status_code == 200
-    return response.json()
-
-
-async def create_hpc_function(client, create_hpc_function_json, deployment_id):
-    create_hpc_function_json["deployment_ids"] = [deployment_id]
+async def create_hpc_function(client, create_hpc_function_json, endpoint_id):
+    create_hpc_function_json["endpoint_ids"] = [endpoint_id]
     response = await client.post("/hpc/functions", json=create_hpc_function_json)
     assert response.status_code == 200
     return response.json()
@@ -27,14 +21,12 @@ async def test_create_hpc_invocation(
     mock_db_session,
     override_authenticated_dependency,
     create_hpc_endpoint_json,
-    create_hpc_deployment_json,
     create_hpc_function_json,
 ):
     # Set up test data
     endpoint = await create_hpc_endpoint(client, create_hpc_endpoint_json)
-    deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
     function = await create_hpc_function(
-        client, create_hpc_function_json, deployment["id"]
+        client, create_hpc_function_json, endpoint["id"]
     )
 
     # Create invocation log
@@ -63,14 +55,12 @@ async def test_get_hpc_invocations(
     mock_db_session,
     override_authenticated_dependency,
     create_hpc_endpoint_json,
-    create_hpc_deployment_json,
     create_hpc_function_json,
 ):
     # Set up test data
     endpoint = await create_hpc_endpoint(client, create_hpc_endpoint_json)
-    deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
     function = await create_hpc_function(
-        client, create_hpc_function_json, deployment["id"]
+        client, create_hpc_function_json, endpoint["id"]
     )
 
     # Create two invocation logs
@@ -127,12 +117,12 @@ async def test_create_invocation_nonexistent_endpoint(
     client,
     mock_db_session,
     override_authenticated_dependency,
-    create_hpc_deployment_json,
+    create_hpc_endpoint_json,
     create_hpc_function_json,
 ):
-    deployment = await create_hpc_deployment(client, create_hpc_deployment_json)
+    endpoint = await create_hpc_endpoint(client, create_hpc_endpoint_json)
     function = await create_hpc_function(
-        client, create_hpc_function_json, deployment["id"]
+        client, create_hpc_function_json, endpoint["id"]
     )
 
     invocation_request = {

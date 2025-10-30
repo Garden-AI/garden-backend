@@ -2,7 +2,6 @@ from .base import Base  # noqa
 from .entrypoint import Entrypoint  # noqa
 from .garden import Garden  # noqa
 
-from .functions.hpc.hpc_deployments import HpcDeployment  # noqa
 from .functions.hpc.hpc_endpoints import HpcEndpoint  # noqa
 from .functions.hpc.hpc_functions import HpcFunction  # noqa
 from .functions.hpc.hpc_invocations import HpcInvocationLog  # noqa

@@ -77,11 +77,7 @@ async def update_hpc_endpoint(
     """
     Update an HPC endpoint (admin-only).
     """
-    endpoint = await db.scalar(
-        select(HpcEndpoint)
-        .options(selectinload(HpcEndpoint.deployments))
-        .where(HpcEndpoint.id == id)
-    )
+    endpoint = await db.scalar(select(HpcEndpoint).where(HpcEndpoint.id == id))
 
     if endpoint is None:
         raise HTTPException(
@@ -112,11 +108,13 @@ async def delete_hpc_endpoint(
 
     Requirements:
     - Must be super user
-    - Endpoint must not be used by any deployments
+    - Endpoint must not be used by any functions
+
+    Note: Invocation logs will be preserved with hpc_endpoint_id set to NULL.
     """
     endpoint = await db.scalar(
         select(HpcEndpoint)
-        .options(selectinload(HpcEndpoint.deployments))
+        .options(selectinload(HpcEndpoint.functions))
         .where(HpcEndpoint.id == id)
     )
     if endpoint is None:
@@ -125,15 +123,15 @@ async def delete_hpc_endpoint(
             detail=f"HPC Endpoint not found with id {id}",
         )
 
-    # Check if endpoint is used by any deployments
-    if len(endpoint.deployments) > 0:
-        deployment_ids = [d.id for d in endpoint.deployments]
+    # Check if endpoint is used by any functions
+    if len(endpoint.functions) > 0:
+        function_ids = [f.id for f in endpoint.functions]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete endpoint used by {len(endpoint.deployments)} deployment(s) (IDs: {deployment_ids}). Remove deployments first.",
+            detail=f"Cannot delete endpoint used by {len(endpoint.functions)} function(s) (IDs: {function_ids}). Remove functions first.",
         )
 
-    # Attempt deletion - will fail if invocation history exists (FK constraint)
+    # Attempt deletion
     try:
         await db.delete(endpoint)
         await db.commit()
@@ -142,11 +140,11 @@ async def delete_hpc_endpoint(
     except IntegrityError as e:
         await db.rollback()
         log.warning(
-            "Failed to delete HPC endpoint due to FK constraint",
+            "Failed to delete HPC endpoint due to constraint violation",
             endpoint_id=id,
             error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete endpoint with invocation history. Invocation logs must be preserved.",
+            detail="Cannot delete endpoint due to a constraint violation.",
         ) from e

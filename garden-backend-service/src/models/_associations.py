@@ -46,24 +46,13 @@ entrypoints_mdf_datasets = Table(
     Column("dataset_id", Integer, ForeignKey("mdf_datasets.id"), primary_key=True),
 )
 
-hpc_deployment_endpoints = Table(
-    "hpc_deployment_endpoints",
-    Base.metadata,
-    Column(
-        "hpc_deployment_id", Integer, ForeignKey("hpc_deployments.id"), primary_key=True
-    ),
-    Column(
-        "hpc_endpoint_id", Integer, ForeignKey("hpc_endpoints.id"), primary_key=True
-    ),
-)
-
-hpc_functions_hpc_deployments = Table(
-    "hpc_functions_hpc_deployments",
+hpc_functions_hpc_endpoints = Table(
+    "hpc_functions_hpc_endpoints",
     Base.metadata,
     Column(
         "hpc_function_id", Integer, ForeignKey("hpc_functions.id"), primary_key=True
     ),
     Column(
-        "hpc_deployment_id", Integer, ForeignKey("hpc_deployments.id"), primary_key=True
+        "hpc_endpoint_id", Integer, ForeignKey("hpc_endpoints.id"), primary_key=True
     ),
 )

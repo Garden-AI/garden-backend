@@ -46,7 +46,7 @@ async def test_delete_hpc_endpoint(
     override_authenticated_dependency,
     override_is_super_user_dependency,
     create_hpc_endpoint_json,
-    create_hpc_deployment_json,
+    create_hpc_function_json,
 ):
     """Test deletion of an HPC endpoint and its constraints."""
     # Create an endpoint
@@ -57,21 +57,21 @@ async def test_delete_hpc_endpoint(
     endpoint = endpoint_response.json()
     endpoint_id = endpoint["id"]
 
-    # Create a deployment that uses this endpoint
-    create_hpc_deployment_json["endpoint_ids"] = [endpoint_id]
-    deployment_response = await client.post(
-        "/hpc/deployments", json=create_hpc_deployment_json
+    # Create a function that uses this endpoint
+    create_hpc_function_json["endpoint_ids"] = [endpoint_id]
+    function_response = await client.post(
+        "/hpc/functions", json=create_hpc_function_json
     )
-    assert deployment_response.status_code == 200
-    deployment_id = deployment_response.json()["id"]
+    assert function_response.status_code == 200
+    function_id = function_response.json()["id"]
 
     # Attempt to delete the endpoint while it's in use
     delete_response_400 = await client.delete(f"/hpc/endpoints/{endpoint_id}")
     assert delete_response_400.status_code == 400
     assert "Cannot delete endpoint used by" in delete_response_400.json()["detail"]
 
-    # Delete the deployment, then retry deleting the endpoint
-    await client.delete(f"/hpc/deployments/{deployment_id}")
+    # Delete the function, then retry deleting the endpoint
+    await client.delete(f"/hpc/functions/{function_id}")
 
     # Deletion should now succeed
     delete_response_200 = await client.delete(f"/hpc/endpoints/{endpoint_id}")
