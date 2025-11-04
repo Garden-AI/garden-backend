@@ -12,7 +12,7 @@ from src.api.schemas.hpc_endpoints import (
     HpcEndpointPatchRequest,
     HpcEndpointResponse,
 )
-from src.config import get_settings
+from src.config import Settings, get_settings
 from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
 from src.models.user import User
 
@@ -77,6 +77,7 @@ async def update_hpc_endpoint(
     endpoint_data: HpcEndpointPatchRequest,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
 ):
     """
     Update an HPC endpoint (owner or admin only).
@@ -92,7 +93,7 @@ async def update_hpc_endpoint(
     # Check if user is owner or super user
     if (
         endpoint.owner.identity_id != user.identity_id
-        and str(user.identity_id) not in get_settings().SUPER_USERS
+        and str(user.identity_id) not in settings.SUPER_USERS
     ):
         log.warning(
             "Unauthorized edit attempt",
@@ -126,6 +127,7 @@ async def delete_hpc_endpoint(
     id: int,
     db: AsyncSession = Depends(get_db_session),
     user: User = Depends(authed_user),
+    settings: Settings = Depends(get_settings),
 ):
     """
     Delete an HPC endpoint (owner or admin only).
@@ -150,7 +152,7 @@ async def delete_hpc_endpoint(
     # Check if user is owner or super user
     if (
         endpoint.owner.identity_id != user.identity_id
-        and str(user.identity_id) not in get_settings().SUPER_USERS
+        and str(user.identity_id) not in settings.SUPER_USERS
     ):
         log.warning(
             "Unauthorized deletion attempt",
