@@ -48,6 +48,7 @@ async def test_delete_hpc_endpoint(
     mock_db_session,
     override_authenticated_dependency,
     override_is_super_user_dependency,
+    override_get_settings_dependency,
     create_hpc_endpoint_json,
     create_hpc_function_json,
 ):
