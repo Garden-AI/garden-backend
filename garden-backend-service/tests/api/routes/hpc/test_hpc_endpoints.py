@@ -1,5 +1,8 @@
 import pytest
 
+from src.api.dependencies.auth import authenticated
+from src.main import app
+
 
 @pytest.mark.asyncio
 @pytest.mark.integration
@@ -45,6 +48,7 @@ async def test_delete_hpc_endpoint(
     mock_db_session,
     override_authenticated_dependency,
     override_is_super_user_dependency,
+    override_get_settings_dependency,
     create_hpc_endpoint_json,
     create_hpc_function_json,
 ):
@@ -85,3 +89,41 @@ async def test_delete_hpc_endpoint(
     # Test deleting a non-existent endpoint
     delete_response_404 = await client.delete("/hpc/endpoints/99999")
     assert delete_response_404.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_delete_hpc_endpoint_authorization(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_get_settings_dependency,
+    create_hpc_endpoint_json,
+    mock_auth_state_other_user,
+):
+    """Test that users cannot delete endpoints they don't own."""
+    # Create an endpoint as the default user
+    endpoint_response = await client.post(
+        "/hpc/endpoints", json=create_hpc_endpoint_json
+    )
+    assert endpoint_response.status_code == 200
+    endpoint = endpoint_response.json()
+    endpoint_id = endpoint["id"]
+
+    # Verify the endpoint was created with the correct owner
+    assert endpoint["owner"] == "M. Sartre"
+
+    # Switch to a different user
+    app.dependency_overrides[authenticated] = lambda: mock_auth_state_other_user
+
+    # Attempt to delete the endpoint as a different user (should fail with 403)
+    delete_response = await client.delete(f"/hpc/endpoints/{endpoint_id}")
+    assert delete_response.status_code == 403
+    assert "not owned by user" in delete_response.json()["detail"]
+
+    # Verify the endpoint still exists
+    get_response = await client.get(f"/hpc/endpoints/{endpoint_id}")
+    assert get_response.status_code == 200
+
+    # Clean up
+    app.dependency_overrides.clear()

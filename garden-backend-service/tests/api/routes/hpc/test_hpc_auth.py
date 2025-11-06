@@ -23,23 +23,6 @@ async def test_hpc_endpoints_unauthenticated(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
-async def test_hpc_admin_endpoints_non_admin(
-    client,
-    mock_db_session,
-    override_authenticated_dependency,  # Regular user, not superuser
-    override_get_settings_dependency,
-):
-    """Test that non-admin users receive a 403 Forbidden error on admin endpoints."""
-    # Test PATCH and DELETE on endpoints
-    patch_endpoint_response = await client.patch("/hpc/endpoints/1", json={})
-    assert patch_endpoint_response.status_code == status.HTTP_403_FORBIDDEN
-
-    delete_endpoint_response = await client.delete("/hpc/endpoints/1")
-    assert delete_endpoint_response.status_code == status.HTTP_403_FORBIDDEN
-
-
-@pytest.mark.asyncio
-@pytest.mark.integration
 async def test_hpc_function_non_owner(
     client,
     mock_db_session,
