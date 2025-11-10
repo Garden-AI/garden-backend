@@ -39,10 +39,8 @@ class _NotebookMetadata(BaseRelatedMetadataSchema):
     url: Url
 
 
-class CommonFunctionMetadata(BaseSchema):
+class CommonFunctionMetadataBase(BaseSchema):
     is_archived: bool = False
-
-    function_text: str
 
     title: str
     description: str | None
@@ -58,6 +56,14 @@ class CommonFunctionMetadata(BaseSchema):
     papers: list[_PaperMetadata] = Field(default_factory=list)
     datasets: list[_DatasetMetadata] = Field(default_factory=list)
     notebooks: list[_NotebookMetadata] = Field(default_factory=list)
+
+
+class CommonFunctionMetadata(CommonFunctionMetadataBase):
+    function_text: str
+
+
+class CommonFunctionMetadataSearchResult(CommonFunctionMetadataBase):
+    pass
 
 
 class CommonFunctionPatchRequest(BaseSchema):
