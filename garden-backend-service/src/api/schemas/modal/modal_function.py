@@ -2,13 +2,16 @@ from uuid import UUID
 
 from pydantic import AliasPath, Field
 
-from ..shared_function_schemas import CommonFunctionMetadata, CommonFunctionPatchRequest
+from ..shared_function_schemas import (
+    CommonFunctionMetadata,
+    CommonFunctionMetadataSearchResult,
+    CommonFunctionPatchRequest,
+)
 
 
-class ModalFunctionMetadata(CommonFunctionMetadata):
+class ModalFunctionMetadataBase(CommonFunctionMetadata):
     # Equivalent to "short_name" on entrypoints
     function_name: str
-    file_contents: str | None = None
     # Modal functions get a DOI when they are published
     # If they don't have a DOI, they are in draft state
     doi: str | None = None
@@ -17,7 +20,11 @@ class ModalFunctionMetadata(CommonFunctionMetadata):
     example_usage: str = ""
 
 
-class ModalFunctionMetadataResponse(ModalFunctionMetadata):
+class ModalFunctionMetadata(ModalFunctionMetadataBase):
+    file_contents: str | None = None
+
+
+class ModalFunctionSearchResult(CommonFunctionMetadataSearchResult):
     id: int = Field(..., description="The unique identifier for the modal function")
     modal_app_id: int
     owner: str = Field("", validation_alias=AliasPath("owner", "name"))
@@ -27,6 +34,10 @@ class ModalFunctionMetadataResponse(ModalFunctionMetadata):
         default_factory=lambda: 0,
         description="The number of times this function has been invoked",
     )
+
+
+class ModalFunctionMetadataResponse(ModalFunctionSearchResult, ModalFunctionMetadata):
+    pass
 
 
 class ModalFunctionPatchRequest(CommonFunctionPatchRequest):

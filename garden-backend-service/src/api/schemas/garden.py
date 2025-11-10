@@ -8,8 +8,11 @@ from src.models.garden import GardenState
 
 from .base import BaseSchema, UniqueList
 from .entrypoint import EntrypointMetadataResponse
-from .hpc import HpcFunctionMetadataResponse
-from .modal.modal_function import ModalFunctionMetadataResponse
+from .hpc import HpcFunctionMetadataResponse, HpcFunctionSearchResult
+from .modal.modal_function import (
+    ModalFunctionMetadataResponse,
+    ModalFunctionSearchResult,
+)
 
 
 class GardenMetadata(BaseSchema):
@@ -48,6 +51,31 @@ class GardenMetadataResponse(GardenMetadata):
     entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
     modal_functions: list[ModalFunctionMetadataResponse] = Field(default_factory=list)
     hpc_functions: list[HpcFunctionMetadataResponse] = Field(default_factory=list)
+    marked_for_deletion: datetime | None
+
+    @computed_field
+    @property
+    def entrypoint_ids(self) -> list[str]:
+        return [ep.doi for ep in self.entrypoints]
+
+    @computed_field
+    @property
+    def modal_function_ids(self) -> list[int]:
+        return [mf.id for mf in self.modal_functions]
+
+    @computed_field
+    @property
+    def hpc_function_ids(self) -> list[int]:
+        return [hpcf.id for hpcf in self.hpc_functions]
+
+
+class GardenSearchMetadataResponse(GardenMetadata):
+    owner: str = Field(validation_alias=AliasPath("owner", "name"))
+    owner_identity_id: UUID = Field(validation_alias=AliasPath("owner", "identity_id"))
+    id: int
+    entrypoints: list[EntrypointMetadataResponse] = Field(default_factory=list)
+    modal_functions: list[ModalFunctionSearchResult] = Field(default_factory=list)
+    hpc_functions: list[HpcFunctionSearchResult] = Field(default_factory=list)
     marked_for_deletion: datetime | None
 
     @computed_field
@@ -152,5 +180,5 @@ class GardenSearchResponse(BaseSchema):
     count: int
     total: int
     offset: int
-    garden_meta: list[GardenMetadataResponse]
+    garden_meta: list[GardenSearchMetadataResponse]
     facets: GardenSearchFacets
