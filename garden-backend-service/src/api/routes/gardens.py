@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
@@ -35,9 +36,32 @@ from src.datacite.doi_utils import (
 )
 from src.models import Entrypoint, Garden, ModalFunction, User
 from src.models.functions.hpc.hpc_functions import HpcFunction
+from src.models.functions.modal.modal_app import ModalApp
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
+
+
+def _defer_search_text_fields():
+    """
+    Returns SQLAlchemy load options that defer heavy text fields
+    for search results to reduce data transfer and serialization time.
+
+    This defers:
+    - ModalFunction.function_text (large Python function code)
+    - ModalApp.file_contents (large Python file with app definition)
+    - HpcFunction.function_text (large Python function code)
+    """
+    return [
+        # Defer heavy text fields in related modal functions
+        selectinload(Garden.modal_functions).defer(ModalFunction.function_text),
+        # Defer heavy file_contents from modal_app
+        selectinload(Garden.modal_functions)
+        .selectinload(ModalFunction.modal_app)
+        .defer(ModalApp.file_contents),
+        # Defer heavy text fields in related HPC functions
+        selectinload(Garden.hpc_functions).defer(HpcFunction.function_text),
+    ]
 
 
 class StateTransition(str, Enum):
@@ -82,8 +106,10 @@ async def search_gardens(
     """
     # Handle function-specific search
     if function_ids is not None:
-        stmt = select(Garden).where(
-            Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
+        stmt = (
+            select(Garden)
+            .where(Garden.modal_functions.any(ModalFunction.id.in_(function_ids)))
+            .options(*_defer_search_text_fields())
         )
         result = await db.scalars(stmt.limit(limit))
         gardens = list(result.all())
@@ -91,7 +117,7 @@ async def search_gardens(
         return gardens
 
     # Handle general search
-    stmt = select(Garden)
+    stmt = select(Garden).options(*_defer_search_text_fields())
 
     if doi is not None:
         stmt = stmt.where(Garden.doi.in_(doi))
@@ -129,7 +155,7 @@ async def search(
     search_request: GardenSearchRequest,
     db: AsyncSession = Depends(get_db_session),
 ) -> GardenSearchResponse:
-    stmt = select(Garden)
+    stmt = select(Garden).options(*_defer_search_text_fields())
 
     # Apply filters to query
     try:
