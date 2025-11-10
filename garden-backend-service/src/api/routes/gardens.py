@@ -20,6 +20,7 @@ from src.api.schemas.garden import (
     GardenCreateRequest,
     GardenMetadataResponse,
     GardenPatchRequest,
+    GardenSearchMetadataResponse,
     GardenSearchRequest,
     GardenSearchResponse,
     GardenState,
@@ -60,7 +61,7 @@ async def add_garden(
 
 
 @router.get(
-    "", response_model=list[GardenMetadataResponse], operation_id="search_gardens"
+    "", response_model=list[GardenSearchMetadataResponse], operation_id="search_gardens"
 )
 async def search_gardens(
     doi: Annotated[list[str] | None, Query()] = None,
