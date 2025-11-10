@@ -7,7 +7,6 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from structlog import get_logger
 
 from src.api.dependencies.auth import authed_user
@@ -35,7 +34,6 @@ from src.datacite.doi_utils import (
 )
 from src.models import Entrypoint, Garden, ModalFunction, User
 from src.models.functions.hpc.hpc_functions import HpcFunction
-from src.models.functions.modal.modal_app import ModalApp
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/gardens")
@@ -83,24 +81,8 @@ async def search_gardens(
     """
     # Handle function-specific search
     if function_ids is not None:
-        stmt = (
-            select(Garden)
-            .where(Garden.modal_functions.any(ModalFunction.id.in_(function_ids)))
-            .options(
-                selectinload(Garden.user),
-                selectinload(Garden.entrypoints).selectinload(Entrypoint.user),
-                selectinload(Garden.modal_functions)
-                .selectinload(ModalFunction.modal_app)
-                .selectinload(ModalApp.user),
-                selectinload(Garden.modal_functions).selectinload(
-                    ModalFunction.invocation_logs
-                ),
-                selectinload(Garden.hpc_functions).selectinload(HpcFunction.user),
-                selectinload(Garden.hpc_functions).selectinload(HpcFunction.endpoints),
-                selectinload(Garden.hpc_functions).selectinload(
-                    HpcFunction.invocation_logs
-                ),
-            )
+        stmt = select(Garden).where(
+            Garden.modal_functions.any(ModalFunction.id.in_(function_ids))
         )
         result = await db.scalars(stmt.limit(limit))
         gardens = list(result.all())
@@ -131,21 +113,6 @@ async def search_gardens(
     if year is not None:
         stmt = stmt.where(Garden.year == year)
 
-    # Eagerly load all nested relationships to avoid N+1 queries
-    stmt = stmt.options(
-        selectinload(Garden.user),
-        selectinload(Garden.entrypoints).selectinload(Entrypoint.user),
-        selectinload(Garden.modal_functions)
-        .selectinload(ModalFunction.modal_app)
-        .selectinload(ModalApp.user),
-        selectinload(Garden.modal_functions).selectinload(
-            ModalFunction.invocation_logs
-        ),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.user),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.endpoints),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.invocation_logs),
-    )
-
     result = await db.scalars(stmt.limit(limit))
     gardens = list(result.all())
 
@@ -155,7 +122,7 @@ async def search_gardens(
 @router.post(
     "/search",
     status_code=status.HTTP_200_OK,
-    response_model=GardenSearchResponse,
+    # response_model=GardenSearchResponse,  # TEMPORARILY DISABLED FOR PERFORMANCE TEST
 )
 async def search(
     search_request: GardenSearchRequest,
@@ -192,21 +159,6 @@ async def search(
             stmt = sort_results(Garden, stmt, search_request.sort)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    # Eagerly load all nested relationships to avoid N+1 queries
-    stmt = stmt.options(
-        selectinload(Garden.user),
-        selectinload(Garden.entrypoints).selectinload(Entrypoint.user),
-        selectinload(Garden.modal_functions)
-        .selectinload(ModalFunction.modal_app)
-        .selectinload(ModalApp.user),
-        selectinload(Garden.modal_functions).selectinload(
-            ModalFunction.invocation_logs
-        ),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.user),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.endpoints),
-        selectinload(Garden.hpc_functions).selectinload(HpcFunction.invocation_logs),
-    )
 
     # Run the search query
     result = await db.scalars(stmt)
