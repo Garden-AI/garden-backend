@@ -129,6 +129,8 @@ class GardenSearchFacets(BaseSchema):
     model_authors: dict[str, int] = Field(default_factory=dict)
     gardeners: dict[str, int] = Field(default_factory=dict)
     year: dict[str, int] = Field(default_factory=dict)
+    function_type: dict[str, int] = Field(default_factory=dict)
+    hpc_endpoint: dict[str, int] = Field(default_factory=dict)
 
 
 class GardenSearchSort(BaseSchema):

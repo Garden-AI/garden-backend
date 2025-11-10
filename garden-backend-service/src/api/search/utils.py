@@ -1,4 +1,4 @@
-from sqlalchemy import asc, column, desc, func, or_, select
+from sqlalchemy import asc, column, desc, func, literal_column, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, TEXT
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import Select
@@ -9,7 +9,11 @@ from src.api.schemas.garden import (
     GardenSearchSort,
 )
 from src.models import User
-from src.models._associations import gardens_hpc_functions, hpc_functions_hpc_endpoints
+from src.models._associations import (
+    gardens_hpc_functions,
+    gardens_modal_functions,
+    hpc_functions_hpc_endpoints,
+)
 from src.models.base import Base
 from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
 
@@ -229,18 +233,78 @@ async def calculate_facets(db: AsyncSession, query: Select) -> GardenSearchFacet
         filtered_gardens.c.year.label("year"), func.count().label("count")
     ).group_by(column("year"))
 
+    # Function types facet: count gardens by whether they have modal/hpc functions
+    # Use UNION to get counts for both types
+    modal_count_query = (
+        select(
+            literal_column("'modal'").label("function_type"),
+            func.count().label("count"),
+        )
+        .select_from(filtered_gardens)
+        .where(
+            select(1)
+            .select_from(gardens_modal_functions)
+            .where(gardens_modal_functions.c.garden_id == filtered_gardens.c.id)
+            .exists()
+        )
+    )
+
+    hpc_count_query = (
+        select(
+            literal_column("'hpc'").label("function_type"), func.count().label("count")
+        )
+        .select_from(filtered_gardens)
+        .where(
+            select(1)
+            .select_from(gardens_hpc_functions)
+            .where(gardens_hpc_functions.c.garden_id == filtered_gardens.c.id)
+            .exists()
+        )
+    )
+
+    function_types_query = modal_count_query.union_all(hpc_count_query)
+
+    # HPC endpoints facet: count unique endpoint names across all HPC functions
+    hpc_endpoints_query = (
+        select(HpcEndpoint.name.label("endpoint"), func.count().label("count"))
+        .select_from(filtered_gardens)
+        .join(
+            gardens_hpc_functions,
+            filtered_gardens.c.id == gardens_hpc_functions.c.garden_id,
+        )
+        .join(
+            hpc_functions_hpc_endpoints,
+            gardens_hpc_functions.c.hpc_function_id
+            == hpc_functions_hpc_endpoints.c.hpc_function_id,
+        )
+        .join(
+            HpcEndpoint,
+            hpc_functions_hpc_endpoints.c.hpc_endpoint_id == HpcEndpoint.id,
+        )
+        .group_by(HpcEndpoint.name)
+    )
+
     tags_result = await db.execute(tags_query)
     authors_result = await db.execute(authors_query)
     gardeners_result = await db.execute(gardeners_query)
     year_result = await db.execute(year_query)
+    function_types_result = await db.execute(function_types_query)
+    hpc_endpoints_result = await db.execute(hpc_endpoints_query)
 
     tags = {row[0]: row[1] for row in tags_result.all()}
     authors = {row[0]: row[1] for row in authors_result.all()}
     gardeners = {row[0]: row[1] for row in gardeners_result.all()}
     year = {str(row[0]): row[1] for row in year_result.all()}
+    function_types = {row[0]: row[1] for row in function_types_result.all()}
+    hpc_endpoints = {row[0]: row[1] for row in hpc_endpoints_result.all()}
 
     return GardenSearchFacets(
-        tags=tags, model_authors=authors, gardeners=gardeners, year=year
+        tags=tags,
+        model_authors=authors,
+        gardeners=gardeners,
+        year=year,
+        function_type=function_types,
+        hpc_endpoint=hpc_endpoints,
     )
 
 
