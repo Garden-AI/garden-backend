@@ -122,7 +122,7 @@ async def search_gardens(
 @router.post(
     "/search",
     status_code=status.HTTP_200_OK,
-    # response_model=GardenSearchResponse,  # TEMPORARILY DISABLED FOR PERFORMANCE TEST
+    response_model=GardenSearchResponse,
 )
 async def search(
     search_request: GardenSearchRequest,
