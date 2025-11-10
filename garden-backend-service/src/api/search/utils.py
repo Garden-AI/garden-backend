@@ -9,7 +9,82 @@ from src.api.schemas.garden import (
     GardenSearchSort,
 )
 from src.models import User
+from src.models._associations import gardens_hpc_functions, hpc_functions_hpc_endpoints
 from src.models.base import Base
+from src.models.functions.hpc.hpc_endpoints import HpcEndpoint
+
+
+def apply_function_type_filter(
+    model: type[Base],
+    stmt: Select,
+    values: list[str],
+) -> Select:
+    """
+    Filter gardens by function type (modal, hpc, or both).
+
+    Args:
+        model: The Garden model
+        stmt: The SQLAlchemy Select statement
+        values: List of function types - ["modal"], ["hpc"], or ["modal", "hpc"]
+
+    Returns:
+        Modified Select statement with function type filter applied
+    """
+    if not values:
+        return stmt
+
+    function_type_conditions = []
+
+    for value in values:
+        if value == "modal":
+            # Garden has at least one modal function
+            function_type_conditions.append(getattr(model, "modal_functions").any())
+        elif value == "hpc":
+            # Garden has at least one HPC function
+            function_type_conditions.append(getattr(model, "hpc_functions").any())
+
+    # Apply OR logic: garden must have at least one of the requested function types
+    if function_type_conditions:
+        stmt = stmt.where(or_(*function_type_conditions))
+
+    return stmt
+
+
+def apply_hpc_endpoints_filter(
+    model: type[Base], stmt: Select, endpoint_names: list[str]
+) -> Select:
+    """
+    Filter gardens that have HPC functions available on specific endpoints.
+
+    Args:
+        model: The Garden model
+        stmt: The SQLAlchemy Select statement
+        endpoint_names: List of HPC endpoint names (e.g., ["Polaris", "Perlmutter"])
+
+    Returns:
+        Modified Select statement with HPC endpoint filter applied
+    """
+    if not endpoint_names:
+        return stmt
+
+    # Filter to gardens where ANY HPC function has ANY of the specified endpoints
+    subquery = (
+        select(gardens_hpc_functions.c.garden_id)
+        .join(
+            hpc_functions_hpc_endpoints,
+            gardens_hpc_functions.c.hpc_function_id
+            == hpc_functions_hpc_endpoints.c.hpc_function_id,
+        )
+        .join(
+            HpcEndpoint,
+            hpc_functions_hpc_endpoints.c.hpc_endpoint_id == HpcEndpoint.id,
+        )
+        .where(HpcEndpoint.name.in_(endpoint_names))
+    )
+
+    stmt = stmt.where(getattr(model, "id").in_(subquery))
+
+    return stmt
 
 
 def apply_filters(
@@ -49,9 +124,19 @@ def apply_filters(
         This will generate a query with `WHERE` clauses matching the title and tags.
     """
     for filter in filters:
-        or_conditions = []
+        if filter.field_name == "function_type":
+            stmt = apply_function_type_filter(model, stmt, filter.values)
+            continue
+
+        if filter.field_name == "hpc_endpoints":
+            stmt = apply_hpc_endpoints_filter(model, stmt, filter.values)
+            continue
+
+        # Validate that the field exists on the model for standard filters
         if not hasattr(model, filter.field_name):
             raise ValueError(f"Invalid filter field_name: {filter.field_name}")
+
+        or_conditions = []
         for value in filter.values:
             if filter.field_name == "owner":
                 if filter.operation == "OR":
