@@ -43,7 +43,7 @@ jobs:
           docker run --rm -v $(pwd):/var/task public.ecr.aws/sam/build-python3.12 /bin/sh -c "\
              pip install --upgrade pip && \
              pip install watchfiles --platform manylinux2014_x86_64 --only-binary=:all: --target ./packages && \
-             pip install modal==1.0.4 --target ./packages"
+             pip install 'modal>=1.2.4,<1.3' --target ./packages"
           # Put the requirements into the top level of our deployable zip archive.
           cd packages
           zip -r ../app.zip *
