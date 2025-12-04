@@ -1,5 +1,6 @@
 import io
 import sys
+import traceback
 from typing import Any, TypedDict
 
 import modal
@@ -47,7 +48,9 @@ def get_app_from_file_contents(file_contents: str):
 
     try:
         user_app = import_app(tmp_file_path)
-    except Exception:
+    except Exception as e:
+        print(f"Failed to import Modal app: {e}")
+        print(traceback.format_exc())
         raise ModalException(
             detail="Failed to import app from Modal File",
             suggested_fix="Make sure provided Modal file has a `modal.App` object called `app` in the global scope. e.g `app = modal.App('my-app')`",
@@ -78,7 +81,9 @@ def extract_from_spec(
     """
     try:
         return {key: getattr(spec, key) for key in keys}
-    except Exception:
+    except Exception as e:
+        print(f"Failed to extract specs: {e}")
+        print(traceback.format_exc())
         raise ModalException(
             detail="Failed to parse function hardware spec.",
             status_code=500,
