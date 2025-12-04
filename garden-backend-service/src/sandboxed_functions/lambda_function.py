@@ -82,7 +82,7 @@ def extract_from_spec(
     try:
         return {key: getattr(spec, key) for key in keys}
     except Exception as e:
-        print(f"Failed to import Modal app: {e}")
+        print(f"Failed to extract specs: {e}")
         print(traceback.format_exc())
         raise ModalException(
             detail="Failed to parse function hardware spec.",
