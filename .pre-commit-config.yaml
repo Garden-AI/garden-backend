@@ -22,6 +22,8 @@ repos:
       - id: ruff-format
   # keep lockfile synced with pyproject.toml
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.5.24
+    rev: 0.9.15
     hooks:
       - id: uv-lock
+        files: ./garden-backend-service/pyproject.toml
+        args: [--project, ./garden-backend-service]
