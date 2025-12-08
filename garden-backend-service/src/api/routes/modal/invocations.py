@@ -50,12 +50,12 @@ def _has_monitoring_task_for_invocation(
     Returns:
         True if a monitoring task for this invocation_id already exists, False otherwise
     """
-    # BackgroundTasks.tasks is a list of tuples: (func, args, kwargs)
-    for task_func, task_args, task_kwargs in background_tasks.tasks:
+    # BackgroundTasks.tasks is a list of BackgroundTask objects
+    for task in background_tasks.tasks:
         # Check if this is a monitor_modal_invocation task
-        if task_func == monitor_modal_invocation:
+        if task.func == monitor_modal_invocation:
             # The second argument (index 1) is the db_result_id
-            if len(task_args) > 1 and task_args[1] == invocation_id:
+            if len(task.args) > 1 and task.args[1] == invocation_id:
                 return True
     return False
 
