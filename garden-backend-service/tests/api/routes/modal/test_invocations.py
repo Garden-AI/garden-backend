@@ -582,6 +582,12 @@ async def test_get_modal_invocation_restarts_dropped_background_task(
         "src.api.routes.modal.invocations.monitor_modal_invocation"
     )
 
+    # Mock that no task exists (should restart)
+    mocker.patch(
+        "src.api.routes.modal.invocations._has_monitoring_task_for_invocation",
+        return_value=False,
+    )
+
     # Send the GET request for a pending invocation with no active background task
     response = await client.get("/modal-invocations/1")
     assert response.status_code == 200
@@ -596,3 +602,83 @@ async def test_get_modal_invocation_restarts_dropped_background_task(
 
     # Should have started a new background monitoring task
     mock_monitor.assert_called_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_get_modal_invocation_does_not_restart_existing_background_task(
+    client,
+    mock_db_session,
+    override_get_settings_dependency,
+    override_get_modal_client_dependency,
+    mocker,
+):
+    """Test that we don't restart a background task if one is already running for the invocation."""
+    # Create mock modal function
+    mock_modal_fn = MagicMock()
+    mock_modal_fn.id = 1
+    mock_modal_fn.function_name = "test_function"
+    mock_modal_fn.modal_app = MagicMock()
+    mock_modal_fn.modal_app.app_name = "test_app"
+
+    # Create mock database objects for a pending invocation
+    mock_db_log = MagicMock()
+    mock_db_log.id = 1
+    mock_db_log.user_id = 1
+    mock_db_log.function_id = 1
+    mock_db_log.date_invoked = "2024-01-01T00:00:00"
+    mock_db_log.date_resolved = None
+
+    mock_db_result = MagicMock()
+    mock_db_result.id = 1
+    mock_db_result.function_id = 1
+    mock_db_result.function_call_id = "test_function_call_id"
+    mock_db_result.status = AsyncModalJobStatus.PENDING
+    mock_db_result.output = None
+    mock_db_result.error = None
+    mock_db_result.log = mock_db_log
+    mock_db_log.result = mock_db_result
+
+    # Mock the database queries
+    mocker.patch(
+        "src.api.routes.modal.invocations.ModalInvocationResult.get",
+        return_value=mock_db_result,
+    )
+    mocker.patch(
+        "src.api.routes.modal.invocations.ModalFunction.get",
+        return_value=mock_modal_fn,
+    )
+
+    # Mock the invocation reconstruction
+    mock_invocation = AsyncMock()
+    mock_invocation.function_call_id = "test_function_call_id"
+    mock_create_invocation = mocker.patch(
+        "src.api.routes.modal.invocations._create_invocation_from_function_call_id",
+        return_value=mock_invocation,
+    )
+
+    # Mock the background task monitoring
+    mock_monitor = mocker.patch(
+        "src.api.routes.modal.invocations.monitor_modal_invocation"
+    )
+
+    # Mock _has_monitoring_task_for_invocation to return True (task already exists)
+    mocker.patch(
+        "src.api.routes.modal.invocations._has_monitoring_task_for_invocation",
+        return_value=True,
+    )
+
+    # Send the GET request
+    response = await client.get("/modal-invocations/1")
+    assert response.status_code == 200
+    response_data = response.json()
+
+    # Should return pending status
+    assert response_data["id"] == 1
+    assert response_data["status"] == "pending"
+
+    # Should NOT have recreated the invocation
+    mock_create_invocation.assert_not_called()
+
+    # Should NOT have started a new background monitoring task
+    mock_monitor.assert_not_called()

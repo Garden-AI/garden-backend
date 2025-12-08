@@ -38,6 +38,28 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/modal-invocations")
 
 
+def _has_monitoring_task_for_invocation(
+    background_tasks: BackgroundTasks, invocation_id: int
+) -> bool:
+    """Check if there's already a monitoring task for this invocation in the background tasks.
+
+    Args:
+        background_tasks: The FastAPI BackgroundTasks object from the current request
+        invocation_id: The ID of the invocation to check for
+
+    Returns:
+        True if a monitoring task for this invocation_id already exists, False otherwise
+    """
+    # BackgroundTasks.tasks is a list of tuples: (func, args, kwargs)
+    for task_func, task_args, task_kwargs in background_tasks.tasks:
+        # Check if this is a monitor_modal_invocation task
+        if task_func == monitor_modal_invocation:
+            # The second argument (index 1) is the db_result_id
+            if len(task_args) > 1 and task_args[1] == invocation_id:
+                return True
+    return False
+
+
 @router.post(
     "/blob-uploads",
 )
@@ -202,22 +224,23 @@ async def get_modal_invocation_output(
         response_data["error"] = inv.error
 
     elif inv.status is AsyncModalJobStatus.PENDING:
-        # invocation record still says pending -- rebuild the invocation and restart
-        # the background monitoring task in case it was dropped (e.g., server restart)
-        modal_fn = await ModalFunction.get(db, id=inv.function_id)
-        if modal_fn is not None:
-            # Rebuild the invocation object from the stored function_call_id
-            invocation = await _create_invocation_from_function_call_id(
-                inv.function_call_id, modal_client
-            )
-            # Start a new background monitoring task
-            background_tasks.add_task(
-                monitor_modal_invocation, invocation, inv.id, modal_client, settings
-            )
-            logger.info(
-                f"Restarted monitoring task for pending invocation {id} "
-                f"with function_call_id {inv.function_call_id}"
-            )
+        # invocation record still says pending -- check if there's already a background
+        # task monitoring it, and if not, rebuild the invocation and restart monitoring
+        if not _has_monitoring_task_for_invocation(background_tasks, inv.id):
+            modal_fn = await ModalFunction.get(db, id=inv.function_id)
+            if modal_fn is not None:
+                # Rebuild the invocation object from the stored function_call_id
+                invocation = await _create_invocation_from_function_call_id(
+                    inv.function_call_id, modal_client
+                )
+                # Start a new background monitoring task
+                background_tasks.add_task(
+                    monitor_modal_invocation, invocation, inv.id, modal_client, settings
+                )
+                logger.info(
+                    f"Restarted monitoring task for pending invocation {id} "
+                    f"with function_call_id {inv.function_call_id}"
+                )
 
     logger.info(response_data=response_data)
     return response_data
