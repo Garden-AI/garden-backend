@@ -128,6 +128,7 @@ async def run_benchmark(
 async def get_results_for_benchmark_task(
     benchmark_id: int,
     task_id: int,
+    background_tasks: BackgroundTasks,
     include_failed: bool = Query(default=False),
     modal_client: Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
@@ -166,6 +167,7 @@ async def get_results_for_benchmark_task(
         modal_client,
         logger,
         include_failed,
+        background_tasks,
     )
     return benchmark_results
 
@@ -212,6 +214,7 @@ async def _get_results_for_runs(
     modal_client: Client,
     logger,
     include_failed: bool,
+    background_tasks: BackgroundTasks,
 ) -> list[BenchmarkResult]:
     """"""
     results = []
@@ -219,7 +222,7 @@ async def _get_results_for_runs(
         try:
             # Get the invocation result
             invocation_output = await get_modal_invocation_output(
-                benchmark_run.invocation_id, modal_client, db
+                benchmark_run.invocation_id, background_tasks, modal_client, db
             )
             if not invocation_output:
                 # Skip runs with missing invocation output
