@@ -151,6 +151,13 @@ async def monitor_modal_invocation(
 
         except Exception as e:
             log.error(f"Getting outputs from modal failed: {e}")
+
+            # If the client is broken (e.g. "Double Open", "Closed", or gRPC error), reset it.
+            # This ensures the next task gets a fresh client.
+            from src.api.dependencies.modal import ModalClient
+
+            await ModalClient.get_instance().reset()
+
             result.error = str(e)
             result.status = AsyncModalJobStatus.ERROR
 

@@ -41,6 +41,21 @@ class ModalClient:
                 logger.info("Modal client singleton initialized successfully")
             return self._client
 
+    async def reset(self):
+        """Resets the singleton instance, forcing a fresh client on next access."""
+        async with self._lock:
+            if self._client:
+                logger.info("Resetting Modal client singleton...")
+                try:
+                    # Attempt to gracefully close the existing client
+                    await self._client.__aexit__(None, None, None)
+                except Exception as e:
+                    logger.error(f"Error closing Modal client during reset: {e}")
+                finally:
+                    # Always ensure client is cleared so next request creates a new one
+                    self._client = None
+                    logger.info("Modal client singleton reset complete")
+
 
 async def get_modal_client(settings: Settings = Depends(get_settings)) -> modal.Client:
     return await ModalClient.get_instance().get_client(settings)
