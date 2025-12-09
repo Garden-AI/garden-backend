@@ -9,7 +9,8 @@ from src.config import Settings, get_settings
 async def get_modal_client(
     settings: Settings = Depends(get_settings),
 ) -> AsyncGenerator[modal.Client, None]:
-    async with modal.client._Client.from_credentials(
+    client = await modal.client._Client.from_credentials(
         settings.MODAL_TOKEN_ID, settings.MODAL_TOKEN_SECRET
-    ) as client:
+    )
+    async with client:
         yield client
