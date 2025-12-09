@@ -1,71 +1,26 @@
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models import Base
-from src.models.functions.modal.invocations import ModalInvocationResult
-from src.models.functions.modal.modal_function import ModalFunction
-
-
-class Benchmark(Base):
-    """Track available benchmarks"""
-
-    __tablename__ = "benchmarks"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False)
-    description: Mapped[str] = mapped_column(nullable=True)
-    tasks: Mapped[list["BenchmarkTask"]] = relationship(
-        back_populates="benchmark", lazy="selectin"
-    )
+from src.models.base import Base
 
 
-class BenchmarkTask(Base):
-    """Track tasks associated with benchmarks"""
+class BenchmarkResult(Base):
+    """Stores benchmark metrics/results."""
 
-    __tablename__ = "benchmark_tasks"
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
-    benchmark: Mapped["Benchmark"] = relationship(
-        back_populates="tasks", lazy="selectin"
-    )
-
-    function_id: Mapped[int] = mapped_column(
-        ForeignKey(ModalFunction.id, ondelete="SET NULL")
-    )
-    function: Mapped[ModalFunction] = relationship(lazy="selectin")
-
-
-class BenchmarkRun(Base):
-    """Stores information about benchmark runs"""
-
-    __tablename__ = "benchmark_runs"
+    __tablename__ = "benchmark_results"
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    benchmark_id: Mapped[int] = mapped_column(ForeignKey(Benchmark.id))
-    benchmark: Mapped[Benchmark] = relationship(
-        "Benchmark", foreign_keys=[benchmark_id]
-    )
+    benchmark_name: Mapped[str] = mapped_column(String, nullable=False)
 
-    task_id: Mapped[int | None] = mapped_column(
-        ForeignKey(BenchmarkTask.id, ondelete="SET NULL")
-    )
-    task: Mapped[BenchmarkTask] = relationship()
+    benchmark_task_name: Mapped[str] = mapped_column(String, nullable=False)
 
-    # The function that was benchmarked
-    function_id: Mapped[int | None] = mapped_column(
-        ForeignKey(ModalFunction.id, ondelete="SET NULL")
-    )
-    function: Mapped[ModalFunction] = relationship(
-        "ModalFunction", foreign_keys=[function_id]
-    )
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
-    # The invocation result that contains the task output
-    invocation_id: Mapped[int | None] = mapped_column(
-        ForeignKey(ModalInvocationResult.id, ondelete="SET NULL")
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
-    invocation: Mapped[ModalInvocationResult] = relationship("ModalInvocationResult")
-
-    date: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now())

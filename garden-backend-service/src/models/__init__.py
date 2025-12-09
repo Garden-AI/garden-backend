@@ -11,4 +11,4 @@ from .functions.modal.modal_function import ModalFunction  # noqa
 from .functions.modal.modal_app import ModalApp  # noqa
 from .functions.modal.invocations import ModalInvocationLog, ModalInvocationResult  # noqa
 from .user import User  # noqa
-from .benchmark import BenchmarkRun  # noqa
+from .benchmark import BenchmarkResult  # noqa
