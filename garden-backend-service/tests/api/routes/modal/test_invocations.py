@@ -584,7 +584,7 @@ async def test_get_modal_invocation_restarts_dropped_background_task(
 
     # Mock that no task exists (should restart)
     mocker.patch(
-        "src.api.routes.modal.invocations._has_monitoring_task_for_invocation",
+        "src.modal.utils.is_invocation_being_monitored",
         return_value=False,
     )
 
@@ -662,9 +662,9 @@ async def test_get_modal_invocation_does_not_restart_existing_background_task(
         "src.api.routes.modal.invocations.monitor_modal_invocation"
     )
 
-    # Mock _has_monitoring_task_for_invocation to return True (task already exists)
+    # Mock is_invocation_being_monitored to return True (task already exists)
     mocker.patch(
-        "src.api.routes.modal.invocations._has_monitoring_task_for_invocation",
+        "src.modal.utils.is_invocation_being_monitored",
         return_value=True,
     )
 

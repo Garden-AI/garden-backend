@@ -25,7 +25,7 @@ from src.api.schemas.modal.invocations import (
 )
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
-from src.modal.utils import monitor_modal_invocation
+from src.modal.utils import is_invocation_being_monitored, monitor_modal_invocation
 from src.models.functions.modal.invocations import (
     ModalInvocationLog,
     ModalInvocationResult,
@@ -36,28 +36,6 @@ from src.models.user import User
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/modal-invocations")
-
-
-def _has_monitoring_task_for_invocation(
-    background_tasks: BackgroundTasks, invocation_id: int
-) -> bool:
-    """Check if there's already a monitoring task for this invocation in the background tasks.
-
-    Args:
-        background_tasks: The FastAPI BackgroundTasks object from the current request
-        invocation_id: The ID of the invocation to check for
-
-    Returns:
-        True if a monitoring task for this invocation_id already exists, False otherwise
-    """
-    # BackgroundTasks.tasks is a list of BackgroundTask objects
-    for task in background_tasks.tasks:
-        # Check if this is a monitor_modal_invocation task
-        if task.func == monitor_modal_invocation:
-            # The second argument (index 1) is the db_result_id
-            if len(task.args) > 1 and task.args[1] == invocation_id:
-                return True
-    return False
 
 
 @router.post(
@@ -226,7 +204,7 @@ async def get_modal_invocation_output(
     elif inv.status is AsyncModalJobStatus.PENDING:
         # invocation record still says pending -- check if there's already a background
         # task monitoring it, and if not, rebuild the invocation and restart monitoring
-        if not _has_monitoring_task_for_invocation(background_tasks, inv.id):
+        if not is_invocation_being_monitored(inv.id):
             modal_fn = await ModalFunction.get(db, id=inv.function_id)
             if modal_fn is not None:
                 # Rebuild the invocation object from the stored function_call_id

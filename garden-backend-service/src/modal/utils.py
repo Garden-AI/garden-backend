@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from typing import Awaitable, Callable, Mapping
 
@@ -19,6 +20,19 @@ from .status import AsyncModalJobStatus
 from .usage import estimate_usage
 
 log = get_logger(__name__)
+
+# Track active monitoring tasks by invocation ID (point-in-time check)
+_active_invocation_monitors: set[int] = set()
+_invocation_monitor_lock = asyncio.Lock()
+
+
+def is_invocation_being_monitored(db_result_id: int) -> bool:
+    """Check if an invocation is currently being monitored.
+
+    Note: This is a point-in-time check without locking, suitable for
+    read-only checks where eventual consistency is acceptable.
+    """
+    return db_result_id in _active_invocation_monitors
 
 
 async def cancel_modal_invocation(result: ModalInvocationResult, client: modal.Client):
@@ -93,45 +107,64 @@ async def monitor_modal_invocation(
 ):
     """Background task for asynchronously polling modal for invocation outputs/errors"""
 
-    session_maker = await get_db_session_maker(settings=settings)
-    async with session_maker() as session:
-        result = await ModalInvocationResult.get(session, id=db_result_id)
-    if result is None:
-        # We don't have this result in the db, bail
-        log.info(
-            f"modal invocation result with id {db_result_id} not found in database"
-        )
-        return
+    # Check if already being monitored (with lock to prevent race conditions)
+    async with _invocation_monitor_lock:
+        if db_result_id in _active_invocation_monitors:
+            log.info(
+                f"Monitoring task already active for invocation {db_result_id}, skipping"
+            )
+            return
+        _active_invocation_monitors.add(db_result_id)
 
     try:
-        # poll for and parse the outputs from modal,
-        log.info(f"Polling modal for invocation results for invocation {db_result_id}")
-        processed_result = await _process_modal_invocation(
-            invocation, settings.MODAL_TIMEOUT_SECONDS
-        )
-
-        # update the existing record with parsed info
-        result.status = processed_result.status
-        result.output = processed_result.output
-        result.error = processed_result.error
-        result.log.date_resolved = datetime.now()
-
-        if result.status in [AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT]:
-            # send a request to cancel the invocation on modal's end, just to be safe
-            await cancel_modal_invocation(result, client)
-
-    except Exception as e:
-        log.error(f"Getting outputs from modal failed: {e}")
-        result.error = str(e)
-        result.status = AsyncModalJobStatus.ERROR
-
-    try:
-        # write any updates to the db
+        session_maker = await get_db_session_maker(settings=settings)
         async with session_maker() as session:
-            session.add(result)
-            await session.commit()
-    except Exception as e:
-        log.error(f"Failed to update modal invocation result: {e}")
+            result = await ModalInvocationResult.get(session, id=db_result_id)
+        if result is None:
+            # We don't have this result in the db, bail
+            log.info(
+                f"modal invocation result with id {db_result_id} not found in database"
+            )
+            return
+
+        try:
+            # poll for and parse the outputs from modal,
+            log.info(
+                f"Polling modal for invocation results for invocation {db_result_id}"
+            )
+            processed_result = await _process_modal_invocation(
+                invocation, settings.MODAL_TIMEOUT_SECONDS
+            )
+
+            # update the existing record with parsed info
+            result.status = processed_result.status
+            result.output = processed_result.output
+            result.error = processed_result.error
+            result.log.date_resolved = datetime.now()
+
+            if result.status in [
+                AsyncModalJobStatus.ERROR,
+                AsyncModalJobStatus.TIMED_OUT,
+            ]:
+                # send a request to cancel the invocation on modal's end, just to be safe
+                await cancel_modal_invocation(result, client)
+
+        except Exception as e:
+            log.error(f"Getting outputs from modal failed: {e}")
+            result.error = str(e)
+            result.status = AsyncModalJobStatus.ERROR
+
+        try:
+            # write any updates to the db
+            async with session_maker() as session:
+                session.add(result)
+                await session.commit()
+        except Exception as e:
+            log.error(f"Failed to update modal invocation result: {e}")
+    finally:
+        # Always remove from active set when done
+        _active_invocation_monitors.discard(db_result_id)
+        log.info(f"Monitoring task completed for invocation {db_result_id}")
 
 
 async def monitor_modal_deployment(
