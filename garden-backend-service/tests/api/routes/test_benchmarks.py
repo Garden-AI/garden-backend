@@ -1,100 +1,65 @@
-from copy import deepcopy
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
-from modal_proto import api_pb2
-
-from src.api.schemas.benchmark import (
-    BenchmarkRequest,
-    BenchmarkResult,
-)
-from src.modal.utils import AsyncModalJobStatus
-from src.models.benchmark import Benchmark, BenchmarkTask
-
-
-async def create_benchmark_and_task(db_session_maker, function_id) -> tuple[int, int]:
-    benchmark = Benchmark(id=1, name="Test Benchmark")
-    task = BenchmarkTask(benchmark_id=benchmark.id, function_id=function_id)
-    async with db_session_maker() as db:
-        db.add(benchmark)
-        db.add(task)
-        await db.commit()
-        await db.refresh(benchmark)
-        await db.refresh(task)
-        return benchmark.id, task.id
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_run_benchmark(
+async def test_get_benchmarks_empty(
     client,
     mock_db_session,
-    async_db_session,
     override_authenticated_dependency,
-    mock_modal_publisher_auth_state,
-    mock_modal_app_create_request_one_function,
-    override_sandboxed_functions,
-    override_get_modal_client_dependency,
-    mocker,
-    mock_garden_create_request_no_entrypoints_json,
 ):
-    # mock the modal helpers in the invocations routes
-    mock_function = MagicMock()
-    mock_function.object_id = "mock_function_id"
-    mock_invocation = AsyncMock()
-    mock_invocation.function_call_id = "mock_call_id"
-    mock_invocation.pop_function_call_outputs.return_value = MagicMock(
-        outputs=[
-            api_pb2.FunctionGetOutputsItem(
-                result=api_pb2.GenericResult(status=0, data=b"mock_result_data"),
-                data_format=api_pb2.DATA_FORMAT_PICKLE,
-            )
-        ]
-    )
+    """Test getting benchmarks when none exist."""
+    response = await client.get("/benchmarks")
+    assert response.status_code == 200
+    assert response.json() == []
 
-    mocker.patch(
-        "src.api.routes.modal.invocations._fetch_modal_function",
-        return_value=mock_function,
-    )
-    mocker.patch(
-        "src.api.routes.modal.invocations._create_invocation",
-        return_value=mock_invocation,
-    )
-    mocker.patch(
-        "src.modal.utils.estimate_usage",
-        return_value=1.0,
-    )
 
-    # Create a modal app with at least 1 function
-    modal_app_response = await client.post(
-        "/modal-apps", json=mock_modal_app_create_request_one_function
-    )
-    assert modal_app_response.status_code == 200
-    modal_app = modal_app_response.json()
-    function_id = modal_app["modal_function_ids"][0]
-    # create a garden with the function
-    payload = deepcopy(mock_garden_create_request_no_entrypoints_json)
-    payload["modal_function_ids"] = [function_id]
-    garden_response = await client.post("/gardens", json=payload)
-    assert garden_response.status_code == 200
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_benchmark_regular_user_fails(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+):
+    """Test that a regular user cannot create a benchmark result."""
+    payload = {
+        "benchmark_name": "My Benchmark",
+        "benchmark_task_name": "Task 1",
+        "metrics": {"score": 99.9, "latency": 10},
+    }
+    response = await client.post("/benchmarks", json=payload)
+    assert response.status_code == 403
 
-    # Create the benchmark
-    benchmark_id, task_id = await create_benchmark_and_task(
-        async_db_session, function_id
-    )
-    # Run the benchmark
-    run_request = BenchmarkRequest(function_id=function_id)
-    run_response = await client.post(
-        f"/benchmarks/{benchmark_id}/{task_id}", json=run_request.model_dump()
-    )
-    assert run_response.status_code == 200
 
-    # Check the benchmark results
-    results_response = await client.get(f"/benchmarks/{benchmark_id}/{task_id}")
-    assert results_response.status_code == 200
-    results = results_response.json()
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_create_and_get_benchmark_super_user(
+    client,
+    mock_db_session,
+    override_authenticated_dependency,
+    override_is_super_user_dependency,
+):
+    """Test that a super user can create a benchmark result and it can be retrieved."""
+    payload = {
+        "benchmark_name": "My Benchmark",
+        "benchmark_task_name": "Task 1",
+        "metrics": {"score": 99.9, "latency": 10},
+    }
+
+    # Create
+    response = await client.post("/benchmarks", json=payload)
+    assert response.status_code == 201
+    created_result = response.json()
+    assert created_result["benchmark_name"] == payload["benchmark_name"]
+    assert created_result["benchmark_task_name"] == payload["benchmark_task_name"]
+    assert created_result["metrics"] == payload["metrics"]
+    assert "id" in created_result
+    assert "timestamp" in created_result
+
+    # Get all
+    response = await client.get("/benchmarks")
+    assert response.status_code == 200
+    results = response.json()
     assert len(results) == 1
-    result = BenchmarkResult(**results[0])
-    assert result.status == AsyncModalJobStatus.DONE
-    assert result.benchmark_id == benchmark_id
-    assert result.function_id == function_id
+    assert results[0]["id"] == created_result["id"]
+    assert results[0]["metrics"] == payload["metrics"]
