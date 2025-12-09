@@ -25,7 +25,7 @@ from src.api.schemas.modal.invocations import (
 )
 from src.config import Settings, get_settings
 from src.modal.status import AsyncModalJobStatus
-from src.modal.utils import is_invocation_being_monitored, monitor_modal_invocation
+from src.modal.utils import monitor_modal_invocation
 from src.models.functions.modal.invocations import (
     ModalInvocationLog,
     ModalInvocationResult,
@@ -161,10 +161,8 @@ async def invoke_modal_fn_async(
 @router.get("/{id}", response_model=ModalInvocationOutputsResponse)
 async def get_modal_invocation_output(
     id: int,
-    background_tasks: BackgroundTasks,
     modal_client: modal.Client = Depends(get_modal_client),
     db: AsyncSession = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
 ):
     inv = await ModalInvocationResult.get(db, id=id)
     if inv is None:
@@ -200,25 +198,6 @@ async def get_modal_invocation_output(
 
     elif inv.status in {AsyncModalJobStatus.ERROR, AsyncModalJobStatus.TIMED_OUT}:
         response_data["error"] = inv.error
-
-    elif inv.status is AsyncModalJobStatus.PENDING:
-        # invocation record still says pending -- check if there's already a background
-        # task monitoring it, and if not, rebuild the invocation and restart monitoring
-        if not is_invocation_being_monitored(inv.id):
-            modal_fn = await ModalFunction.get(db, id=inv.function_id)
-            if modal_fn is not None:
-                # Rebuild the invocation object from the stored function_call_id
-                invocation = await _create_invocation_from_function_call_id(
-                    inv.function_call_id, modal_client
-                )
-                # Start a new background monitoring task
-                background_tasks.add_task(
-                    monitor_modal_invocation, invocation, inv.id, modal_client, settings
-                )
-                logger.info(
-                    f"Restarted monitoring task for pending invocation {id} "
-                    f"with function_call_id {inv.function_call_id}"
-                )
 
     logger.info(response_data=response_data)
     return response_data
@@ -258,17 +237,6 @@ async def _fetch_modal_function(
         )
         await resolver.load(obj)
         return obj
-
-
-async def _create_invocation_from_function_call_id(
-    function_call_id: str,
-    client: modal.Client,
-) -> modal._functions._Invocation:
-    """Rebuild an Invocation object from an existing function_call_id.
-
-    This is used to recreate dropped background monitoring tasks after server restarts.
-    """
-    return modal._functions._Invocation(client.stub, function_call_id, client)
 
 
 async def _create_invocation(
