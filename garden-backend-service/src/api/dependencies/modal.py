@@ -1,10 +1,13 @@
 import asyncio
 from typing import Optional
 
+import structlog
 from fastapi import Depends
 
 import modal
 from src.config import Settings, get_settings
+
+logger = structlog.get_logger(__name__)
 
 
 class ModalClient:
@@ -28,12 +31,14 @@ class ModalClient:
         async with self._lock:
             # Check again after acquiring lock
             if self._client is None:
+                logger.info("Initializing new Modal client singleton...")
                 # Create and enter the client context
                 client = modal.client._Client.from_credentials(
                     settings.MODAL_TOKEN_ID, settings.MODAL_TOKEN_SECRET
                 )
                 # We need to explicitly enter the context to keep it alive
                 self._client = await client.__aenter__()
+                logger.info("Modal client singleton initialized successfully")
             return self._client
 
 
