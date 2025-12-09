@@ -1,4 +1,5 @@
-from typing import AsyncGenerator
+import asyncio
+from typing import Optional
 
 from fastapi import Depends
 
@@ -6,15 +7,35 @@ import modal
 from src.config import Settings, get_settings
 
 
-async def get_modal_client(
-    settings: Settings = Depends(get_settings),
-) -> AsyncGenerator[modal.Client, None]:
-    # from_credentials returns an already-started client
-    client = await modal.client._Client.from_credentials(
-        settings.MODAL_TOKEN_ID, settings.MODAL_TOKEN_SECRET
-    )
-    try:
-        yield client
-    finally:
-        # Manually close the client since we can't use 'async with' (it would double-open)
-        await client.__aexit__(None, None, None)
+class ModalClient:
+    """Singleton wrapper for modal.Client to prevent resource leaks."""
+
+    _instance: Optional["ModalClient"] = None
+    _client: Optional[modal.Client] = None
+    _lock: asyncio.Lock = asyncio.Lock()
+
+    @classmethod
+    def get_instance(cls) -> "ModalClient":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    async def get_client(self, settings: Settings) -> modal.Client:
+        # Double-checked locking optimization
+        if self._client is not None:
+            return self._client
+
+        async with self._lock:
+            # Check again after acquiring lock
+            if self._client is None:
+                # Create and enter the client context
+                client = modal.client._Client.from_credentials(
+                    settings.MODAL_TOKEN_ID, settings.MODAL_TOKEN_SECRET
+                )
+                # We need to explicitly enter the context to keep it alive
+                self._client = await client.__aenter__()
+            return self._client
+
+
+async def get_modal_client(settings: Settings = Depends(get_settings)) -> modal.Client:
+    return await ModalClient.get_instance().get_client(settings)
