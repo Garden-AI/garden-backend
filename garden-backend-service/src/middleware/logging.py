@@ -99,15 +99,6 @@ class ErrorHandlingMiddleware:
                 path=scope["path"],
             )
 
-            # Attempt to reset the ModalClient singleton if it's potentially responsible
-            # This is safe to call even if the error wasn't Modal-related.
-            try:
-                from src.api.dependencies.modal import ModalClient
-
-                await ModalClient.get_instance().reset()
-            except Exception:
-                pass  # Don't let clean-up failure mask the original error
-
             await self._send_response(
                 send,
                 500,
