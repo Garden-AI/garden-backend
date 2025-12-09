@@ -32,12 +32,11 @@ class ModalClient:
             # Check again after acquiring lock
             if self._client is None:
                 logger.info("Initializing new Modal client singleton...")
-                # Create and enter the client context
-                client = modal.client._Client.from_credentials(
+                # from_credentials returns an already-started client (coroutine results in Client)
+                # We must await the coroutine, and we must NOT call __aenter__ again.
+                self._client = await modal.client._Client.from_credentials(
                     settings.MODAL_TOKEN_ID, settings.MODAL_TOKEN_SECRET
                 )
-                # We need to explicitly enter the context to keep it alive
-                self._client = await client.__aenter__()
                 logger.info("Modal client singleton initialized successfully")
             return self._client
 
