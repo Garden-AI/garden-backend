@@ -153,3 +153,56 @@ def hello():
     assert "Module-level import 'definitelynotamodule' is not allowed" in str(
         excinfo.value.detail
     )
+
+
+def test_parse_modal_file_accepts_stdlib_submodule_import():
+    contents = """
+import urllib.request
+from urllib.request import Request
+import modal
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return "Hello World"
+    """
+    # This should NOT raise ModalException
+    result = parse_modal_file(contents)
+    assert len(result.functions) == 1
+
+
+def test_parse_modal_file_rejects_nested_non_stdlib_import():
+    contents = """
+import requests.auth
+from requests.auth import HTTPBasicAuth
+import modal
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return "Hello World"
+    """
+    with pytest.raises(ModalException) as excinfo:
+        parse_modal_file(contents)
+    assert "Module-level import 'requests.auth' is not allowed" in str(
+        excinfo.value.detail
+    )
+
+
+def test_parse_modal_file_rejects_relative_import():
+    contents = """
+from . import local_module
+from ..utils import helper
+import modal
+
+app = modal.App("my-app")
+
+@app.function()
+def hello():
+    return "Hello World"
+    """
+    with pytest.raises(ModalException) as excinfo:
+        parse_modal_file(contents)
+    assert "Module-level import 'from ' is not allowed" in str(excinfo.value.detail)

@@ -81,28 +81,31 @@ class ModalFileParseResults:
     local_entrypoints: list[ModalLocalEntrypointInfo] = field(default_factory=list)
 
 
+def _is_allowed_import(module_name: str | None) -> bool:
+    """Check if the given module_name is 'modal' or a valid stdlib module."""
+    if not module_name:
+        return False
+    # Check if the top-level module is 'modal' or in stdlib
+    top_level_module = module_name.split(".")[0]
+    return top_level_module == "modal" or top_level_module in sys.stdlib_module_names
+
+
 def _validate_module_level_imports(tree: ast.Module) -> None:
     """Check that there are no module-level imports other than 'import modal' or stdlib imports."""
     for node in tree.body:
         match node:
             case ast.Import(names=names):
                 for alias in names:
-                    if (
-                        alias.name != "modal"
-                        and alias.name not in sys.stdlib_module_names
-                    ):
+                    if not _is_allowed_import(alias.name):
                         raise ModalException(
                             detail=f"Module-level import '{alias.name}' is not allowed.",
                             suggested_fix="Place all imports other than 'import modal' or stdlib imports inside function or class scopes.",
                         )
-            case ast.ImportFrom(module=module_name):
-                # Only allow if module_name is 'modal' or a valid stdlib module
-                if module_name is None or (
-                    module_name != "modal"
-                    and module_name not in sys.stdlib_module_names
-                ):
+            case ast.ImportFrom(module=module_name, level=level):
+                # level > 0 means relative import
+                if level > 0 or not _is_allowed_import(module_name):
                     raise ModalException(
-                        detail=f"Module-level import 'from {module_name}' is not allowed.",
+                        detail=f"Module-level import 'from {module_name if module_name else ''}' is not allowed.",
                         suggested_fix="Place all imports other than 'import modal' or stdlib imports inside function or class scopes.",
                     )
 
