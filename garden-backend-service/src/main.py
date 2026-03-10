@@ -81,19 +81,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Add middleware in reverse execution order (last added = first to execute)
+# CORSMiddleware must be outermost to ensure CORS headers are added to ALL responses,
+# including error responses from ErrorHandlingMiddleware
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(ProcessTimeMiddleware)
+app.add_middleware(AddRequestIDMiddleware)
+app.add_middleware(HeaderLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Add our custom middleware
-app.add_middleware(ErrorHandlingMiddleware)
-app.add_middleware(ProcessTimeMiddleware)
-app.add_middleware(AddRequestIDMiddleware)
-app.add_middleware(HeaderLoggingMiddleware)
 
 app.include_router(greet.router)
 app.include_router(docker_push_token.router)
